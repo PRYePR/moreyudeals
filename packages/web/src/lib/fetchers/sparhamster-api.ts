@@ -158,14 +158,21 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       console.log(`ℹ️  No deal price pattern found in title, keeping original: "${originalTitle}"`)
     }
 
-    // 提取商家链接
-    let merchantUrl = this.extractMerchantUrl(content, post.link)
-    // 解析跳转链接以获取最终URL
-    merchantUrl = await this.resolveRedirectUrl(merchantUrl)
+    // 从 tags 中提取商家信息（这是 sparhamster.at 的正确方法）
+    const merchantInfo = this.extractMerchantFromTags(post)
+    const merchantName = merchantInfo.name
+    const merchantLogo = merchantInfo.logo
 
-    // 从最终URL提取商家信息
-    const merchantName = this.extractMerchantNameFromUrl(merchantUrl)
-    const merchantLogo = this.getMerchantLogoUrl(merchantUrl)
+    // 提取商家链接（作为 dealUrl）
+    // 直接使用 forward 链接，不进行解析（性能优化）
+    // 用户点击时由浏览器处理跳转
+    let merchantUrl = this.extractMerchantUrl(content, post.link)
+
+    // 如果没有找到有效的商家链接，且我们有商家信息，则使用商家主页
+    if (merchantUrl === post.link && merchantInfo.homepageUrl) {
+      console.log(`ℹ️  No merchant link found, using homepage: ${merchantInfo.homepageUrl}`)
+      merchantUrl = merchantInfo.homepageUrl
+    }
 
     // 翻译标题和描述
     const translatedTitle = await this.translateText(titleToTranslate, 'de', 'zh')
@@ -514,49 +521,97 @@ export class SparhamsterApiFetcher extends BaseFetcher {
   }
 
   /**
-   * 从最终URL中提取商家名称
+   * 从文章的 tags 中提取商家信息
+   * sparhamster.at 使用 tags 来标记商家（如 "Amazon", "MediaMarkt" 等）
    */
-  private extractMerchantNameFromUrl(url: string): string | undefined {
-    try {
-      const urlObj = new URL(url)
-      const hostname = urlObj.hostname
+  private extractMerchantFromTags(post: WordPressPost): { name?: string, logo?: string, homepageUrl?: string } {
+    const embedded = post._embedded
+    if (!embedded || !embedded['wp:term']) {
+      return {}
+    }
 
-      // 移除 www. 前缀
-      const domain = hostname.replace(/^www\./, '')
+    // wp:term[1] 是 tags (wp:term[0] 是 categories)
+    const tags = embedded['wp:term'][1] || []
 
-      // 提取主域名（去除国家后缀）
-      const domainParts = domain.split('.')
-      if (domainParts.length >= 2) {
-        // 取第一部分作为商家名
-        const merchantKey = domainParts[0]
+    // 已知商家 tags 的映射（基于 sparhamster.at 的实际 tags）
+    const merchantTagPatterns: Record<string, { name: string, domain: string, homepage: string }> = {
+      'amazon-de': { name: 'Amazon', domain: 'amazon.de', homepage: 'https://www.amazon.de' },
+      'amazon-co-uk': { name: 'Amazon UK', domain: 'amazon.co.uk', homepage: 'https://www.amazon.co.uk' },
+      'amazon-it': { name: 'Amazon IT', domain: 'amazon.it', homepage: 'https://www.amazon.it' },
+      'amazon-fr': { name: 'Amazon FR', domain: 'amazon.fr', homepage: 'https://www.amazon.fr' },
+      'amazon-es': { name: 'Amazon ES', domain: 'amazon.es', homepage: 'https://www.amazon.es' },
+      'amazon-com': { name: 'Amazon US', domain: 'amazon.com', homepage: 'https://www.amazon.com' },
+      'media-markt': { name: 'MediaMarkt', domain: 'mediamarkt.at', homepage: 'https://www.mediamarkt.at' },
+      'media-markt-at': { name: 'MediaMarkt', domain: 'mediamarkt.at', homepage: 'https://www.mediamarkt.at' },
+      'saturn': { name: 'Saturn', domain: 'saturn.at', homepage: 'https://www.saturn.at' },
+      'saturn-at': { name: 'Saturn', domain: 'saturn.at', homepage: 'https://www.saturn.at' },
+      'hofer': { name: 'Hofer', domain: 'hofer.at', homepage: 'https://www.hofer.at' },
+      'lidl': { name: 'Lidl', domain: 'lidl.at', homepage: 'https://www.lidl.at' },
+      'billa': { name: 'BILLA', domain: 'billa.at', homepage: 'https://www.billa.at' },
+      'spar': { name: 'SPAR', domain: 'spar.at', homepage: 'https://www.spar.at' },
+      'mueller': { name: 'Müller', domain: 'mueller.at', homepage: 'https://www.mueller.at' },
+      'dm': { name: 'dm', domain: 'dm.at', homepage: 'https://www.dm.at' },
+      'thalia': { name: 'Thalia', domain: 'thalia.at', homepage: 'https://www.thalia.at' },
+      'xxxlutz': { name: 'XXXLutz', domain: 'xxxlutz.at', homepage: 'https://www.xxxlutz.at' },
+      'xxxlutz-at': { name: 'XXXLutz', domain: 'xxxlutz.at', homepage: 'https://www.xxxlutz.at' },
+      'ikea': { name: 'IKEA', domain: 'ikea.com', homepage: 'https://www.ikea.com/at' },
+      'otto-at': { name: 'OTTO', domain: 'otto.at', homepage: 'https://www.otto.at' },
+      'universal-at': { name: 'Universal', domain: 'universal.at', homepage: 'https://www.universal.at' },
+      'interspar': { name: 'Interspar', domain: 'interspar.at', homepage: 'https://www.interspar.at' },
+      'about-you-at': { name: 'About You', domain: 'aboutyou.at', homepage: 'https://www.aboutyou.at' },
+      'zalando': { name: 'Zalando', domain: 'zalando.at', homepage: 'https://www.zalando.at' },
+      'hervis': { name: 'Hervis', domain: 'hervis.at', homepage: 'https://www.hervis.at' },
+      'sportsdirect': { name: 'Sports Direct', domain: 'sportsdirect.com', homepage: 'https://at.sportsdirect.com' },
+      'notebooksbilliger-at': { name: 'notebooksbilliger.at', domain: 'notebooksbilliger.at', homepage: 'https://www.notebooksbilliger.at' },
+      'cyberport-at': { name: 'Cyberport', domain: 'cyberport.at', homepage: 'https://www.cyberport.at' },
+      'conrad-at': { name: 'Conrad', domain: 'conrad.at', homepage: 'https://www.conrad.at' },
+      'alternate-at': { name: 'Alternate', domain: 'alternate.at', homepage: 'https://www.alternate.at' },
+      'emp': { name: 'EMP', domain: 'emp.de', homepage: 'https://www.emp.de' },
+      'crocs': { name: 'Crocs', domain: 'crocs.at', homepage: 'https://www.crocs.at' },
+      'lottoland': { name: 'Lottoland', domain: 'lottoland.com', homepage: 'https://www.lottoland.at' },
+      'deichmann': { name: 'Deichmann', domain: 'deichmann.com', homepage: 'https://www.deichmann.com/at' },
+      'h-m': { name: 'H&M', domain: 'hm.com', homepage: 'https://www2.hm.com/de_at' },
+      'zara': { name: 'Zara', domain: 'zara.com', homepage: 'https://www.zara.com/at' },
+      'libro': { name: 'Libro', domain: 'libro.at', homepage: 'https://www.libro.at' },
+      'obi': { name: 'OBI', domain: 'obi.at', homepage: 'https://www.obi.at' },
+      'bauhaus': { name: 'Bauhaus', domain: 'bauhaus.at', homepage: 'https://www.bauhaus.at' },
+    }
 
-        // 使用标准化方法
-        return this.normalizeMerchantName(merchantKey)
+    // 查找第一个匹配的商家 tag
+    for (const tag of tags) {
+      const slug = tag.slug.toLowerCase()
+      const merchantInfo = merchantTagPatterns[slug]
+
+      if (merchantInfo) {
+        console.log(`✅ Found merchant from tag: ${tag.name} (slug: ${slug})`)
+        return {
+          name: merchantInfo.name,
+          logo: `https://www.google.com/s2/favicons?domain=${merchantInfo.domain}&sz=64`,
+          homepageUrl: merchantInfo.homepage
+        }
       }
 
-      return undefined
-    } catch (error) {
-      console.error('Error extracting merchant name from URL:', url, error)
-      return undefined
+      // 如果tag名称本身看起来像商家（首字母大写且不是通用词汇）
+      const tagName = tag.name
+      if (tagName && tagName[0] === tagName[0].toUpperCase() && tagName.length > 2) {
+        // 排除明显不是商家的 tags（如 "Black Friday", "Sale" 等）
+        const excludePatterns = ['black', 'friday', 'sale', 'deal', 'rabatt', 'aktion', 'gewinnspiel']
+        if (!excludePatterns.some(pattern => tagName.toLowerCase().includes(pattern))) {
+          console.log(`ℹ️  Using capitalized tag as potential merchant: ${tagName}`)
+          // 尝试从 tag slug 生成 domain (如 "Deichmann" -> "deichmann.com")
+          const possibleDomain = `${slug}.com`
+          return {
+            name: tagName,
+            logo: `https://www.google.com/s2/favicons?domain=${possibleDomain}&sz=64`
+          }
+        }
+      }
     }
+
+    console.log(`⚠️  No merchant tag found for post ${post.id}`)
+    return {}
   }
 
-  /**
-   * 从最终URL生成商家Logo URL
-   */
-  private getMerchantLogoUrl(url: string): string | undefined {
-    try {
-      const urlObj = new URL(url)
-      const hostname = urlObj.hostname
-
-      // 使用 Google Favicon 服务获取商家 Logo
-      // 这是一个免费且稳定的服务
-      return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`
-    } catch (error) {
-      console.error('Error generating merchant logo URL:', url, error)
-      return undefined
-    }
-  }
 
   /**
    * 翻译分类到中文
