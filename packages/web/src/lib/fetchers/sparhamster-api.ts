@@ -158,8 +158,14 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       console.log(`ℹ️  No deal price pattern found in title, keeping original: "${originalTitle}"`)
     }
 
-    // 提取商家信息
-    const merchantName = this.extractMerchantName(content)
+    // 提取商家链接
+    let merchantUrl = this.extractMerchantUrl(content, post.link)
+    // 解析跳转链接以获取最终URL
+    merchantUrl = await this.resolveRedirectUrl(merchantUrl)
+
+    // 从最终URL提取商家信息
+    const merchantName = this.extractMerchantNameFromUrl(merchantUrl)
+    const merchantLogo = this.getMerchantLogoUrl(merchantUrl)
 
     // 翻译标题和描述
     const translatedTitle = await this.translateText(titleToTranslate, 'de', 'zh')
@@ -181,7 +187,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       currency: 'EUR',
       discountPercentage: priceInfo.discountPercentage,
       imageUrl,
-      dealUrl: post.link,
+      dealUrl: merchantUrl,
       category: translatedCategory,
       source: this.sourceName,
       publishedAt,
@@ -192,7 +198,8 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       categories: categoryNames,
       content: this.cleanHtml(content),
       wordpressId: post.id,
-      merchantName
+      merchantName,
+      merchantLogo
     }
   }
 
@@ -498,11 +505,57 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       'dm': 'dm',
       'thalia': 'Thalia',
       'hervis': 'Hervis',
-      'interspar': 'Interspar'
+      'interspar': 'Interspar',
+      'geizhals': 'Geizhals'
     }
 
     const lowerMerchant = merchant.toLowerCase()
     return normalizations[lowerMerchant] || merchant
+  }
+
+  /**
+   * 从最终URL中提取商家名称
+   */
+  private extractMerchantNameFromUrl(url: string): string | undefined {
+    try {
+      const urlObj = new URL(url)
+      const hostname = urlObj.hostname
+
+      // 移除 www. 前缀
+      const domain = hostname.replace(/^www\./, '')
+
+      // 提取主域名（去除国家后缀）
+      const domainParts = domain.split('.')
+      if (domainParts.length >= 2) {
+        // 取第一部分作为商家名
+        const merchantKey = domainParts[0]
+
+        // 使用标准化方法
+        return this.normalizeMerchantName(merchantKey)
+      }
+
+      return undefined
+    } catch (error) {
+      console.error('Error extracting merchant name from URL:', url, error)
+      return undefined
+    }
+  }
+
+  /**
+   * 从最终URL生成商家Logo URL
+   */
+  private getMerchantLogoUrl(url: string): string | undefined {
+    try {
+      const urlObj = new URL(url)
+      const hostname = urlObj.hostname
+
+      // 使用 Google Favicon 服务获取商家 Logo
+      // 这是一个免费且稳定的服务
+      return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`
+    } catch (error) {
+      console.error('Error generating merchant logo URL:', url, error)
+      return undefined
+    }
   }
 
   /**

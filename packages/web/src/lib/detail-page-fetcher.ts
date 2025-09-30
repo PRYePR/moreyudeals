@@ -1,5 +1,4 @@
-// Temporary fallback version without cheerio due to dependency issues
-// This will provide mock data until cheerio can be properly installed
+import { Deal } from './fetchers/types'
 
 export interface DetailContent {
   fullDescription: string
@@ -22,151 +21,245 @@ export interface DetailContent {
 }
 
 export class DetailPageFetcher {
-  private async fetchPage(url: string): Promise<string> {
+  /**
+   * 从 Deal 对象获取详细内容
+   * @param deal - 完整的 Deal 对象，包含 content 字段
+   * @returns DetailContent - 格式化的详情内容
+   */
+  async fetchDetailContent(deal: Deal): Promise<DetailContent> {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-        },
-        cache: 'no-store'
-      })
+      console.log(`🔍 Fetching detail content for deal: ${deal.id}`)
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      // 从 deal.content 中提取图片
+      const images = this.extractImagesFromContent(deal.content)
+
+      // 如果没有从 content 中提取到图片，使用 deal.imageUrl
+      if (images.length === 0 && deal.imageUrl) {
+        images.push(deal.imageUrl)
       }
 
-      return await response.text()
+      // 提取商家 logo
+      const retailerLogo = this.getRetailerLogo(deal.source, deal.merchantName)
+
+      // 构建规格信息
+      const specifications: Record<string, string> = {}
+
+      if (deal.merchantName) {
+        specifications['商家'] = deal.merchantName
+      }
+
+      specifications['来源'] = deal.source
+      specifications['分类'] = deal.category
+      specifications['发布日期'] = new Date(deal.publishedAt).toLocaleDateString('zh-CN')
+
+      if (deal.expiresAt) {
+        specifications['有效期至'] = new Date(deal.expiresAt).toLocaleDateString('zh-CN')
+      }
+
+      if (deal.voucherCode) {
+        specifications['优惠码'] = deal.voucherCode
+      }
+
+      if (deal.shippingCost) {
+        specifications['运费'] = deal.shippingCost
+      } else {
+        specifications['运费'] = '请查看商家网站'
+      }
+
+      // 提取特性列表
+      const features = this.extractFeaturesFromContent(deal.content)
+
+      return {
+        fullDescription: deal.content || deal.translatedDescription || deal.description,
+        specifications,
+        features,
+        images,
+        pricing: {
+          currentPrice: deal.price,
+          originalPrice: deal.originalPrice,
+          currency: deal.currency,
+          availability: this.getAvailabilityStatus(deal),
+          shippingInfo: deal.shippingCost || '请查看商家网站了解运费详情'
+        },
+        retailer: {
+          name: deal.merchantName || deal.source,
+          logo: retailerLogo,
+          url: deal.dealUrl
+        },
+        additionalContent: this.generateAdditionalContent(deal)
+      }
     } catch (error) {
-      console.error('Error fetching page:', error)
-      throw error
+      console.error('Error generating detail content:', error)
+      return this.getEmptyDetailContent(deal)
     }
   }
 
-  async fetchDetailContent(dealUrl: string): Promise<DetailContent> {
-    try {
-      console.log(`🔍 Fetching detail content for URL: ${dealUrl}`)
+  /**
+   * 从 HTML 内容中提取图片 URL
+   */
+  private extractImagesFromContent(content: string): string[] {
+    const images: string[] = []
 
-      // For now, return enhanced mock data based on the URL
-      const domain = new URL(dealUrl).hostname.toLowerCase()
+    // 匹配 img 标签的 src 属性
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+    let match
 
-      // Fetch the page to get basic HTML content
-      const html = await this.fetchPage(dealUrl)
-
-      return this.generateMockDetailContent(dealUrl, domain, html)
-    } catch (error) {
-      console.error('Error parsing detail page:', error)
-      return this.getEmptyDetailContent(dealUrl)
+    while ((match = imgRegex.exec(content)) !== null) {
+      const src = match[1]
+      // 过滤掉小图标和占位图
+      if (src && !src.includes('icon') && !src.includes('logo') && !src.includes('placeholder')) {
+        // 确保 URL 是完整的
+        if (src.startsWith('//')) {
+          images.push('https:' + src)
+        } else if (src.startsWith('/')) {
+          images.push('https://www.sparhamster.at' + src)
+        } else if (src.startsWith('http')) {
+          images.push(src)
+        }
+      }
     }
+
+    // 去重
+    return [...new Set(images)]
   }
 
-  private generateMockDetailContent(url: string, domain: string, html: string): DetailContent {
-    // Extract basic info from HTML using simple string methods
-    const title = this.extractTitle(html)
-    const description = this.extractBasicDescription(html)
+  /**
+   * 从内容中提取特性列表
+   */
+  private extractFeaturesFromContent(content: string): string[] {
+    const features: string[] = []
 
-    let retailerName = 'Unknown'
-    let retailerLogo = undefined
+    // 尝试提取 ul/li 列表
+    const ulRegex = /<ul[^>]*>([\s\S]*?)<\/ul>/gi
+    let ulMatch
 
-    if (domain.includes('amazon')) {
-      retailerName = 'Amazon'
-      retailerLogo = 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg'
-    } else if (domain.includes('mediamarkt')) {
-      retailerName = 'MediaMarkt'
-      retailerLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/MediaMarkt_logo.svg/200px-MediaMarkt_logo.svg.png'
-    } else if (domain.includes('otto')) {
-      retailerName = 'Otto'
-      retailerLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Otto_logo.svg/200px-Otto_logo.svg.png'
-    } else if (domain.includes('ebay')) {
-      retailerName = 'eBay'
-      retailerLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/EBay_logo.svg/200px-EBay_logo.svg.png'
-    } else if (domain.includes('sparhamster')) {
-      retailerName = 'Sparhamster.at'
+    while ((ulMatch = ulRegex.exec(content)) !== null) {
+      const ulContent = ulMatch[1]
+      const liRegex = /<li[^>]*>(.*?)<\/li>/gi
+      let liMatch
+
+      while ((liMatch = liRegex.exec(ulContent)) !== null) {
+        const text = liMatch[1]
+          .replace(/<[^>]*>/g, '') // 移除 HTML 标签
+          .replace(/&[a-zA-Z0-9#]+;/g, '') // 移除 HTML 实体
+          .trim()
+
+        if (text && text.length > 3 && text.length < 200) {
+          features.push(text)
+        }
+      }
+    }
+
+    // 如果没有提取到特性，返回默认特性
+    if (features.length === 0) {
+      features.push('查看原始页面了解更多产品特性')
+    }
+
+    return features.slice(0, 10) // 最多返回 10 个特性
+  }
+
+  /**
+   * 获取商家 logo
+   */
+  private getRetailerLogo(source: string, merchantName?: string): string | undefined {
+    const merchant = (merchantName || source).toLowerCase()
+
+    const logoMap: Record<string, string> = {
+      'amazon': 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg',
+      'mediamarkt': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/MediaMarkt_logo.svg/200px-MediaMarkt_logo.svg.png',
+      'saturn': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Saturn_logo.svg/200px-Saturn_logo.svg.png',
+      'otto': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Otto_logo.svg/200px-Otto_logo.svg.png',
+      'ebay': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/EBay_logo.svg/200px-EBay_logo.svg.png',
+      'ikea': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Ikea_logo.svg/200px-Ikea_logo.svg.png',
+      'xxxlutz': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/XXXLutz_Logo.svg/200px-XXXLutz_Logo.svg.png'
+    }
+
+    for (const [key, logo] of Object.entries(logoMap)) {
+      if (merchant.includes(key)) {
+        return logo
+      }
+    }
+
+    return undefined
+  }
+
+  /**
+   * 获取可用性状态
+   */
+  private getAvailabilityStatus(deal: Deal): string {
+    const now = new Date()
+    const expiresAt = new Date(deal.expiresAt)
+
+    if (expiresAt < now) {
+      return '优惠已过期'
+    }
+
+    const daysRemaining = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (daysRemaining <= 1) {
+      return '今天到期'
+    } else if (daysRemaining <= 3) {
+      return `还剩 ${daysRemaining} 天`
+    } else if (daysRemaining <= 7) {
+      return `本周到期 (${daysRemaining} 天)`
     } else {
-      retailerName = domain.replace('www.', '').split('.')[0].toUpperCase()
+      return '有效'
+    }
+  }
+
+  /**
+   * 生成附加内容
+   */
+  private generateAdditionalContent(deal: Deal): string {
+    const parts: string[] = []
+
+    if (deal.discountPercentage) {
+      parts.push(`💰 节省 ${deal.discountPercentage}% - 立即抢购！`)
     }
 
+    if (deal.tags && deal.tags.length > 0) {
+      parts.push(`🏷️ 标签: ${deal.tags.join(', ')}`)
+    }
+
+    if (deal.voucherCode) {
+      parts.push(`🎟️ 使用优惠码: <strong>${deal.voucherCode}</strong>`)
+    }
+
+    const merchantName = deal.merchantName || deal.source
+    parts.push(`🛒 请访问 ${merchantName} 官方网站了解最新价格和库存情况。`)
+
+    parts.push(`📅 发布时间: ${new Date(deal.publishedAt).toLocaleString('zh-CN')}`)
+
+    if (deal.translationProvider) {
+      parts.push(`🌐 由 ${deal.translationProvider} 提供翻译`)
+    }
+
+    return parts.join('<br><br>')
+  }
+
+  /**
+   * 返回空的详情内容（错误情况）
+   */
+  private getEmptyDetailContent(deal: Deal): DetailContent {
     return {
-      fullDescription: description || `Dieses Produkt von ${retailerName} bietet hervorragende Qualität zu einem attraktiven Preis. Weitere Details finden Sie direkt auf der Produktseite.`,
+      fullDescription: deal.translatedDescription || deal.description || '暂无详细描述',
       specifications: {
-        'Marke': retailerName,
-        'Verfügbarkeit': 'Auf Lager',
-        'Versand': 'Kostenloser Versand verfügbar',
-        'Garantie': '2 Jahre Herstellergarantie',
-        'Bewertung': '4.5 von 5 Sternen'
+        '来源': deal.source,
+        '分类': deal.category
       },
-      features: [
-        'Hochwertige Materialien und Verarbeitung',
-        'Benutzerfreundliches Design',
-        'Ausgezeichnetes Preis-Leistungs-Verhältnis',
-        'Schnelle und zuverlässige Lieferung',
-        'Kundenservice und Support verfügbar'
-      ],
-      images: [
-        // Placeholder images - in real implementation would extract from HTML
-        'https://via.placeholder.com/500x500/e0e0e0/666666?text=Produktbild+1',
-        'https://via.placeholder.com/500x500/f0f0f0/777777?text=Produktbild+2',
-        'https://via.placeholder.com/500x500/e8e8e8/888888?text=Produktbild+3'
-      ],
-      pricing: {
-        currentPrice: 'Siehe Website',
-        currency: 'EUR',
-        availability: 'Auf Lager',
-        shippingInfo: 'Kostenloser Versand verfügbar'
-      },
-      retailer: {
-        name: retailerName,
-        logo: retailerLogo,
-        url: url
-      },
-      additionalContent: `Detaillierte Produktinformationen sind verfügbar auf ${retailerName}. Bitte besuchen Sie die Originalseite für die neuesten Preise und Verfügbarkeit.`
-    }
-  }
-
-  private extractTitle(html: string): string {
-    const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i)
-    return titleMatch ? titleMatch[1].trim() : ''
-  }
-
-  private extractBasicDescription(html: string): string {
-    // Extract meta description
-    const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)/i)
-    if (descMatch) {
-      return descMatch[1].trim()
-    }
-
-    // Fallback: try to extract first paragraph
-    const pMatch = html.match(/<p[^>]*>(.*?)<\/p>/i)
-    if (pMatch) {
-      return pMatch[1].replace(/<[^>]*>/g, '').trim().substring(0, 200) + '...'
-    }
-
-    return ''
-  }
-
-  private getEmptyDetailContent(url: string): DetailContent {
-    const domain = new URL(url).hostname.toLowerCase()
-    const retailerName = domain.replace('www.', '').split('.')[0].toUpperCase()
-
-    return {
-      fullDescription: 'Produktdetails sind vorübergehend nicht verfügbar.',
-      specifications: {},
       features: [],
-      images: [],
+      images: deal.imageUrl ? [deal.imageUrl] : [],
       pricing: {
-        currency: 'EUR',
-        availability: 'Unbekannt'
+        currentPrice: deal.price,
+        originalPrice: deal.originalPrice,
+        currency: deal.currency,
+        availability: '请查看商家网站'
       },
       retailer: {
-        name: retailerName,
-        url: url
+        name: deal.merchantName || deal.source,
+        url: deal.dealUrl
       },
-      additionalContent: 'Bitte besuchen Sie die Originalseite für weitere Informationen.'
+      additionalContent: '详细信息请访问商家官方网站。'
     }
   }
 }

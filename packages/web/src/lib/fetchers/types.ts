@@ -27,6 +27,7 @@ export interface Deal {
   wordpressId?: number
   temperature?: number
   merchantName?: string
+  merchantLogo?: string
   commentCount?: number
   viewCount?: number
   tags?: string[]

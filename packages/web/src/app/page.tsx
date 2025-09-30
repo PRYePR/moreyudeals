@@ -134,7 +134,7 @@ export default async function HomePage() {
             </a>
           </div>
 
-          <div className="deals-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {displayDeals.map((deal: any) => (
               <DealCard key={deal.id} deal={deal} />
             ))}

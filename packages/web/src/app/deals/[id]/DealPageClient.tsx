@@ -198,8 +198,8 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
 
               {/* Enhanced Detail Content */}
               <DealDetailContent
+                deal={deal}
                 dealId={dealId}
-                dealUrl={deal.dealUrl}
                 initialContent={deal.content || deal.translatedDescription}
                 onContentLoaded={setDetailContent}
               />

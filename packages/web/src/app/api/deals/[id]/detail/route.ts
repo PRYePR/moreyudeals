@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { detailPageFetcher } from '@/lib/detail-page-fetcher'
+import { Deal } from '@/lib/fetchers/types'
 
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -9,46 +10,34 @@ export async function GET(
     const resolvedParams = await params
     const dealId = resolvedParams.id
 
-    // 从查询参数获取原始URL
-    const { searchParams } = new URL(request.url)
-    const dealUrl = searchParams.get('url')
+    // 从请求体获取完整的 deal 对象
+    const deal: Deal = await request.json()
 
-    if (!dealUrl) {
+    if (!deal || !deal.id) {
       return NextResponse.json(
-        { error: 'Deal URL is required' },
+        { error: 'Valid deal object is required' },
         { status: 400 }
       )
     }
 
-    // 验证URL格式
-    try {
-      new URL(dealUrl)
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid URL format' },
-        { status: 400 }
-      )
-    }
+    console.log(`🔍 Generating detail content for deal ${dealId}: ${deal.translatedTitle}`)
 
-    console.log(`🔍 Fetching detail content for deal ${dealId} from ${dealUrl}`)
-
-    // 抓取详细页内容
-    const detailContent = await detailPageFetcher.fetchDetailContent(dealUrl)
+    // 从 deal 对象生成详细内容
+    const detailContent = await detailPageFetcher.fetchDetailContent(deal)
 
     return NextResponse.json({
       success: true,
       dealId,
-      url: dealUrl,
       content: detailContent,
       fetchedAt: new Date().toISOString()
     })
 
   } catch (error) {
-    console.error('Error fetching deal details:', error)
+    console.error('Error generating deal details:', error)
 
     return NextResponse.json(
       {
-        error: 'Failed to fetch deal details',
+        error: 'Failed to generate deal details',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
@@ -62,7 +51,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   })

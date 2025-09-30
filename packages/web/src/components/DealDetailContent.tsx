@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import { DetailContent } from '@/lib/detail-page-fetcher'
 
 interface DealDetailContentProps {
+  deal: any  // 完整的 Deal 对象
   dealId: string
-  dealUrl: string
   initialContent?: string
   onContentLoaded?: (content: DetailContent) => void
 }
 
-export default function DealDetailContent({ dealId, dealUrl, initialContent, onContentLoaded }: DealDetailContentProps) {
+export default function DealDetailContent({ deal, dealId, initialContent, onContentLoaded }: DealDetailContentProps) {
   const [detailContent, setDetailContent] = useState<DetailContent | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +23,14 @@ export default function DealDetailContent({ dealId, dealUrl, initialContent, onC
     setError(null)
 
     try {
-      const response = await fetch(`/api/deals/${dealId}/detail?url=${encodeURIComponent(dealUrl)}`)
+      // 使用 POST 方法，发送完整的 deal 对象
+      const response = await fetch(`/api/deals/${dealId}/detail`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(deal)
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -36,10 +43,10 @@ export default function DealDetailContent({ dealId, dealUrl, initialContent, onC
         setExpanded(true)
         onContentLoaded?.(data.content)
       } else {
-        throw new Error(data.message || 'Failed to fetch detail content')
+        throw new Error(data.message || 'Failed to generate detail content')
       }
     } catch (err) {
-      console.error('Error fetching detail content:', err)
+      console.error('Error generating detail content:', err)
       setError(err instanceof Error ? err.message : 'Unknown error occurred')
     } finally {
       setLoading(false)
@@ -125,9 +132,10 @@ export default function DealDetailContent({ dealId, dealUrl, initialContent, onC
       {detailContent.fullDescription && (
         <div className="bg-white rounded-lg p-6 shadow-lg">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">产品详细描述</h2>
-          <div className="prose max-w-none text-gray-700">
-            <p className="leading-relaxed">{detailContent.fullDescription}</p>
-          </div>
+          <div
+            className="prose max-w-none text-gray-700"
+            dangerouslySetInnerHTML={{ __html: detailContent.fullDescription }}
+          />
         </div>
       )}
 
