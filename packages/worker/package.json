@@ -1,0 +1,36 @@
+{
+  "name": "@moreyudeals/worker",
+  "version": "0.1.0",
+  "description": "RSS抓取和翻译Worker服务",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@moreyudeals/translation": "workspace:*",
+    "axios": "^1.6.2",
+    "cron": "^3.1.6",
+    "dotenv": "^16.3.1",
+    "rss-parser": "^3.13.0",
+    "cheerio": "^1.0.0-rc.12",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/pg": "^8.10.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "rss",
+    "worker",
+    "translation",
+    "deals",
+    "scheduler"
+  ],
+  "author": "Moreyudeals",
+  "license": "MIT"
+}

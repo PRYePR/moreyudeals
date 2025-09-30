@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* 自定义组件样式 */
+.deal-card {
+  @apply bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300;
+}
+
+.deal-card:hover {
+  @apply shadow-2xl transition-shadow duration-300;
+}
+
+.price-badge {
+  @apply bg-red-500 text-white px-2 py-1 rounded-full text-sm font-semibold;
+}
+
+.discount-badge {
+  @apply bg-green-500 text-white px-2 py-1 rounded-full text-sm font-semibold;
+}
+
+.category-badge {
+  @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.translation-disclaimer {
+  @apply bg-yellow-50 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800;
+}
+
+/* 响应式网格 - 适配横向卡片布局 */
+.deals-grid {
+  @apply grid gap-4 md:gap-6;
+  /* 手机: 1列, 其他: 2列 */
+  grid-template-columns: 1fr;
+}
+
+/* 640px+ (sm breakpoint) - 固定显示2列 */
+@media (min-width: 640px) {
+  .deals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 加载动画 */
+.loading-spinner {
+  @apply inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin;
+}
+
+/* 搜索框样式 */
+.search-input {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none;
+}
+
+/* 分页样式 */
+.pagination-button {
+  @apply px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.pagination-button.active {
+  @apply bg-blue-500 text-white border-blue-500 hover:bg-blue-600;
+}

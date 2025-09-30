@@ -1,0 +1,26 @@
+{
+  "name": "moreyudeals",
+  "version": "1.0.0",
+  "description": "Moreyu Deals - German Deal Aggregation Platform",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"yarn dev:cms\" \"yarn dev:web\" \"yarn dev:worker\"",
+    "dev:cms": "yarn workspace @moreyudeals/cms develop",
+    "dev:web": "yarn workspace @moreyudeals/web dev",
+    "dev:worker": "yarn workspace @moreyudeals/worker dev",
+    "build": "yarn workspace @moreyudeals/cms build && yarn workspace @moreyudeals/web build",
+    "start": "yarn workspace @moreyudeals/cms start",
+    "test": "yarn workspaces run test",
+    "lint": "yarn workspaces run lint",
+    "lint:fix": "yarn workspaces run lint:fix"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
