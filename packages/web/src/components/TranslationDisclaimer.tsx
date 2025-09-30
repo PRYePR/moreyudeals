@@ -28,8 +28,8 @@ export default function TranslationDisclaimer() {
                 AI翻译技术提供支持
               </span>
               <span className="flex items-center">
-                <span className="mr-1">🇩🇪</span>
-                原文来源：德国商家官方
+                <span className="mr-1">🇦🇹</span>
+                原文来源：奥地利商家官方
               </span>
               <span className="flex items-center">
                 <span className="mr-1">⚠️</span>

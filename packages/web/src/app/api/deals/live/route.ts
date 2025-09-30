@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sparhamsterFetcher } from '@/lib/sparhamster-fetcher'
+import { SparhamsterApiFetcher } from '@/lib/fetchers/sparhamster-api'
 import { dealsCache, CACHE_KEYS } from '@/lib/cache'
+import { createTranslationManager } from '@/lib/translation-setup'
+
+// 创建翻译管理器单例
+const translationManager = createTranslationManager({
+  deepl: {
+    apiKey: process.env.DEEPL_API_KEY || '1f7dff02-4dff-405f-94db-0d1ee398130f:fx',
+    endpoint: process.env.DEEPL_ENDPOINT || 'https://api-free.deepl.com/v2'
+  },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379'
+  },
+  routing: {
+    primary: 'deepl',
+    fallback: [],
+    maxRetries: 3,
+    cacheEnabled: true,
+    cacheTTL: 3600 * 24 // 24小时
+  }
+})
+
+// 创建 sparhamsterFetcher 实例（使用新的 API Fetcher）
+const sparhamsterFetcher = new SparhamsterApiFetcher(translationManager)
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,8 +57,9 @@ export async function GET(request: NextRequest) {
     if (!allDeals) {
       console.log('Cache miss - Fetching live deals from Sparhamster.at...')
 
-      // 获取真实数据
-      allDeals = await sparhamsterFetcher.fetchLatestDeals()
+      // 获取真实数据（使用新的 API Fetcher）
+      const result = await sparhamsterFetcher.fetchDeals({ limit: 20 })
+      allDeals = result.deals
 
       // 缓存5分钟
       if (allDeals && Array.isArray(allDeals) && allDeals.length > 0) {

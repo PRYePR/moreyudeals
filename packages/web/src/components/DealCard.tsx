@@ -21,6 +21,7 @@ interface Deal {
   language: 'de' | 'en'
   translationProvider: 'deepl' | 'microsoft' | 'google'
   isTranslated: boolean
+  merchantName?: string
 }
 
 interface DealCardProps {
@@ -132,6 +133,14 @@ export default function DealCard({ deal }: DealCardProps) {
           {/* Meta Information and Button Row */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col text-xs text-gray-500">
+              {deal.merchantName && (
+                <span className="flex items-center gap-1 font-medium text-gray-700">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  {deal.merchantName}
+                </span>
+              )}
               <span className="truncate">{deal.source}</span>
               <span>{formatDate(deal.publishedAt)}</span>
             </div>

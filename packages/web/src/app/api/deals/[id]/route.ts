@@ -42,7 +42,7 @@ const mockDeals = [
         { date: '2024-01-15', price: '899.99' }
       ],
       stockStatus: 'In Stock',
-      shippingInfo: 'Kostenloser Versand innerhalb Deutschlands',
+      shippingInfo: 'Kostenloser Versand innerhalb Österreichs',
       returnPolicy: '14 Tage Rückgaberecht',
       warranty: '2 Jahre Herstellergarantie'
     }

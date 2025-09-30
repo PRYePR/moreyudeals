@@ -36,7 +36,7 @@ export default function SearchBar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索德国优惠信息... (支持中文/德文/英文)"
+            placeholder="搜索奥地利优惠信息... (支持中文/德文/英文)"
             className="search-input pr-24"
             disabled={isLoading}
           />

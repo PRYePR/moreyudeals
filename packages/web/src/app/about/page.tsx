@@ -24,7 +24,7 @@ export default function AboutPage() {
             <div className="space-y-4 text-gray-700">
               <p>
                 Moreyu Deals 致力于为用户提供最新、最全面的奥地利商家优惠信息。
-                我们通过自动化技术收集来自各大德国电商平台和优惠网站的折扣信息，
+                我们通过自动化技术收集来自各大奥地利电商平台和优惠网站的折扣信息，
                 并提供中文翻译，帮助中文用户更好地理解和利用这些优惠。
               </p>
               <p>
