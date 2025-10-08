@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { DetailContent } from '@/lib/detail-page-fetcher'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('components:deal-detail-content')
 
 interface DealDetailContentProps {
   deal: any  // 完整的 Deal 对象
@@ -46,7 +49,7 @@ export default function DealDetailContent({ deal, dealId, initialContent, onCont
         throw new Error(data.message || 'Failed to generate detail content')
       }
     } catch (err) {
-      console.error('Error generating detail content:', err)
+      logger.error('Error generating detail content', err as Error)
       setError(err instanceof Error ? err.message : 'Unknown error occurred')
     } finally {
       setLoading(false)

@@ -1,4 +1,14 @@
 import { CoreTranslationManager } from '../../../translation'
+import {
+  merchantParser,
+  priceParser,
+  imageParser,
+  textCleaner
+} from './scrapers'
+import { defaultCache, cacheKeys, CACHE_TTL } from './cache'
+import { createModuleLogger } from './logger'
+
+const logger = createModuleLogger('sparhamster-fetcher')
 
 export interface SparhamsterDeal {
   id: string
@@ -62,8 +72,17 @@ export class SparhamsterFetcher {
   }
 
   async fetchLatestDeals(): Promise<SparhamsterDeal[]> {
+    const cacheKey = cacheKeys.allDeals()
+
     try {
-      console.log('🔍 Fetching deals from WordPress API...')
+      // 尝试从缓存获取
+      const cached = await defaultCache.get<SparhamsterDeal[]>(cacheKey)
+      if (cached) {
+        logger.info('Loaded deals from cache', { count: cached.length })
+        return cached
+      }
+
+      logger.info('Fetching deals from WordPress API')
       const response = await fetch(this.apiUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -75,7 +94,7 @@ export class SparhamsterFetcher {
       }
 
       const posts: WordPressPost[] = await response.json()
-      console.log(`📦 Fetched ${posts.length} posts from WordPress API`)
+      logger.debug('Fetched posts from WordPress API', { count: posts.length })
 
       const deals: SparhamsterDeal[] = []
 
@@ -86,10 +105,14 @@ export class SparhamsterFetcher {
         }
       }
 
-      console.log(`✅ Successfully parsed ${deals.length} deals`)
+      logger.info('Successfully parsed deals', { count: deals.length })
+
+      // 缓存结果（10分钟）
+      await defaultCache.set(cacheKey, deals, CACHE_TTL.DEALS_LIST)
+
       return deals
     } catch (error) {
-      console.error('❌ Error fetching Sparhamster deals:', error)
+      logger.error('Error fetching Sparhamster deals', error as Error)
       return []
     }
   }
@@ -100,39 +123,40 @@ export class SparhamsterFetcher {
     }
 
     const originalTitle = post.title.rendered
-    const originalDescription = this.cleanDescription(post.excerpt.rendered || '')
+    const originalDescription = textCleaner.cleanDescription(post.excerpt.rendered || '')
     const content = post.content.rendered || ''
 
     // 提取价格信息
-    const priceInfo = this.extractPriceInfo(originalTitle, content)
+    const priceInfo = priceParser.extractPriceInfo(originalTitle, content)
 
     // 提取图片 - 优先使用 WordPress 特色图片
     let imageUrl = this.extractFeaturedImage(post)
     if (!imageUrl) {
-      imageUrl = this.extractImageUrl(content)
+      imageUrl = imageParser.extractImageUrl(content)
     }
     if (!imageUrl && post.link) {
-      imageUrl = await this.extractImageFromDealPage(post.link)
+      imageUrl = await imageParser.extractImageFromDealPage(post.link)
     }
 
     // 提取分类名称
     const categoryNames = this.extractCategoryNames(post)
 
     if (!imageUrl) {
-      imageUrl = this.getPlaceholderImage(categoryNames)
+      imageUrl = imageParser.getPlaceholderImage(categoryNames)
     }
 
     // 生成过期时间（设为30天后）
     const publishedAt = new Date(post.date)
     const expiresAt = new Date(publishedAt.getTime() + 30 * 24 * 60 * 60 * 1000)
 
+    // 清理标题中的价格信息（如果需要）
     let titleToTranslate = originalTitle
-
-    // 仅当标题包含 "X statt Y" 这种明确的折扣格式时，才清洗标题
-    if (this.hasPriceInTitle(originalTitle)) {
-      console.log(`✨ Cleaning price from title: "${originalTitle}"`)
-      titleToTranslate = this.cleanTitleFromPriceInfo(originalTitle)
-      console.log(`📝 Cleaned title: "${titleToTranslate}"`)
+    if (priceParser.hasPriceInTitle(originalTitle)) {
+      logger.debug('Removing deal price from title', { originalTitle })
+      titleToTranslate = priceParser.cleanPriceFromTitle(originalTitle)
+      logger.debug('Cleaned title', { cleanedTitle: titleToTranslate })
+    } else {
+      logger.debug('No deal price pattern found in title, keeping original', { originalTitle })
     }
 
     // 翻译标题和描述
@@ -146,7 +170,7 @@ export class SparhamsterFetcher {
     const translationProvider = translationResult.provider
 
     // 提取商家信息
-    const merchantInfo = this.extractMerchantInfo(content, post.link)
+    const merchantInfo = this.extractMerchantInfo(content, post.link, categoryNames)
 
     return {
       id: this.generateId(post.link),
@@ -170,7 +194,7 @@ export class SparhamsterFetcher {
       translationProvider: translationProvider,
       isTranslated: true,
       categories: categoryNames,
-      content: this.cleanHtml(content),
+      content: textCleaner.cleanHtml(content),
       merchantName: merchantInfo.merchantName,
       merchantLogo: merchantInfo.merchantLogo
     }
@@ -197,229 +221,65 @@ export class SparhamsterFetcher {
     return categories
   }
 
-  private hasPriceInTitle(title: string): boolean {
-    const pricePatterns = [
-      /um\s+\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/i,
-      /für\s+\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/i,
-      /\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/i,
-    ]
-
-    return pricePatterns.some(pattern => pattern.test(title))
-  }
-
-  private extractPriceInfo(title: string, content: string): {
-    currentPrice?: string
-    originalPrice?: string
-    discountPercentage?: number
-  } {
-    const text = title + ' ' + content
-
-    const pricePatterns = [
-      /(\d+(?:[.,]\d+)?)\s*€\s*statt\s*(\d+(?:[.,]\d+)?)\s*€/i,
-      /von\s*(\d+(?:[.,]\d+)?)\s*€\s*auf\s*(\d+(?:[.,]\d+)?)\s*€/i,
-      /ursprünglich\s*(\d+(?:[.,]\d+)?)\s*€.*?jetzt\s*(\d+(?:[.,]\d+)?)\s*€/i,
-      /UVP:?\s*(\d+(?:[.,]\d+)?)\s*€.*?Preis:?\s*(\d+(?:[.,]\d+)?)\s*€/i
-    ]
-
-    for (const pattern of pricePatterns) {
-      const match = text.match(pattern)
-      if (match) {
-        const originalPrice = match[2] || match[1]
-        const currentPrice = match[1] || match[2]
-
-        if (originalPrice && currentPrice) {
-          const original = parseFloat(originalPrice.replace(',', '.'))
-          const current = parseFloat(currentPrice.replace(',', '.'))
-
-          if (current < original) {
-            const discountPercentage = Math.round(((original - current) / original) * 100)
-            return {
-              currentPrice: current.toFixed(2),
-              originalPrice: original.toFixed(2),
-              discountPercentage
-            }
-          }
-        }
-      }
-    }
-
-    const singlePriceMatch = text.match(/(\d+(?:[.,]\d+)?)\s*€/)
-    if (singlePriceMatch) {
-      return {
-        currentPrice: parseFloat(singlePriceMatch[1].replace(',', '.')).toFixed(2)
-      }
-    }
-
-    return {}
-  }
-
+  /**
+   * 提取商家信息（使用新的 merchantParser）
+   */
   private extractMerchantInfo(
     content: string,
-    fallbackUrl: string
-  ): {
-    merchantUrl: string;
-    merchantName?: string;
-    merchantLogo?: string;
-  } {
-    const candidates: Array<{
-      url: string;
-      name?: string;
-      logo?: string;
-      score: number;
-    }> = [];
-    const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-    const matches = content.matchAll(linkRegex);
-
-    for (const match of matches) {
-      const url = match[1];
-      const innerHtml = match[2];
-
-      if (!url.startsWith('http')) continue;
-
-      let score = 0;
-      let logo: string | undefined;
-      let name: string | undefined;
-
-      // 检查链接内部是否有图片 (这是最可靠的线索)
-      const imgMatch = innerHtml.match(
-        /<img[^>]+src=["']([^"']+)["'][^>]*alt=["']([^"']*)["']/i
-      );
-      if (imgMatch) {
-        logo = imgMatch[1];
-        name = imgMatch[2];
-        score += 100; // 包含图片的链接是首选
-
-        // 根据图片 alt 文本或 src 识别比价网站，并大力扣分
-        const logoIdentifier = `${name?.toLowerCase()} ${logo?.toLowerCase()}`;
-        if (
-          logoIdentifier.includes('geizhals') ||
-          logoIdentifier.includes('idealo')
-        ) {
-          score -= 200;
-        }
-      }
-
-      // 根据链接文本内容进行加分/扣分
-      const textContent = innerHtml.replace(/<[^>]+>/g, '').toLowerCase();
-      if (textContent.includes('vergleichspreis')) score -= 50; // "比价"
-      if (
-        textContent.includes('zum deal') ||
-        textContent.includes('zum angebot')
-      ) {
-        score += 20; // "去优惠"
-      }
-
-      candidates.push({ url, name, logo, score });
-    }
-
-    if (candidates.length > 0) {
-      // 排序，得分最高的在最前面
-      candidates.sort((a, b) => b.score - a.score);
-      const bestMatch = candidates[0];
-
-      if (bestMatch.score > 0) {
-        console.log(
-          `✅ Selected best merchant URL: ${bestMatch.url} (Score: ${bestMatch.score})`
-        );
-        return {
-          merchantUrl: bestMatch.url,
-          merchantName: bestMatch.name,
-          merchantLogo: bestMatch.logo,
-        };
-      }
-    }
-
-    console.log(`⚠️ No reliable merchant URL found, using fallback: ${fallbackUrl}`);
-    return { merchantUrl: fallbackUrl };
-  }
-
-  private extractImageUrl(content: string): string | null {
-    const imgMatches = [
-      /<img[^>]+src=["']([^"']+)["'][^>]*>/i,
-      /wp-content\/uploads\/[^"'\s]+\.(jpg|jpeg|png|gif|webp)/i,
-      /https:\/\/[^"'\s]*amazon[^"'\s]*\.(jpg|jpeg|png|gif|webp)/i
-    ]
-
-    for (const pattern of imgMatches) {
-      const match = content.match(pattern)
-      if (match) {
-        return match[1] || match[0]
-      }
-    }
-
-    return null
-  }
-
-  private async extractImageFromDealPage(dealUrl: string): Promise<string | null> {
-    try {
-      if (!dealUrl.includes('sparhamster.at')) {
-        return null
-      }
-
-      const response = await fetch(dealUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+    fallbackUrl: string,
+    categories: string[]
+  ): { merchantUrl: string; merchantName?: string; merchantLogo?: string } {
+    // 首先尝试从标签中识别已知商家
+    const knownMerchant = merchantParser.matchKnownMerchant(categories)
+    if (knownMerchant) {
+      logger.debug('Found merchant from tag', {
+        merchantName: knownMerchant.name,
+        slug: knownMerchant.slug
       })
+    }
 
-      if (!response.ok) {
-        return null
+    // 尝试从首字母大写的标签中提取商家名
+    const potentialMerchant = merchantParser.extractMerchantFromTags(categories)
+    if (potentialMerchant && !knownMerchant) {
+      logger.debug('Using capitalized tag as potential merchant', {
+        merchantName: potentialMerchant
+      })
+    }
+
+    // 从内容中提取商家链接
+    const result = merchantParser.extractMerchantInfo(content, fallbackUrl)
+
+    // 如果没有找到商家链接，使用已知商家的主页
+    if (result.merchantUrl === fallbackUrl && knownMerchant) {
+      const homepage = this.getMerchantHomepage(knownMerchant.slug)
+      logger.debug('No merchant link found, using homepage', { homepage })
+      return {
+        merchantUrl: homepage,
+        merchantName: knownMerchant.name,
+        merchantLogo: result.merchantLogo
       }
+    }
 
-      const html = await response.text()
-
-      const imagePatterns = [
-        /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-        /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-        /<img[^>]+class=[^>]*(?:product|deal|main|featured)[^>]*src=["']([^"']+)["'][^>]*>/i,
-        /<img[^>]+src=["']([^"']+)["'][^>]*>/i
-      ]
-
-      for (const pattern of imagePatterns) {
-        const match = html.match(pattern)
-        if (match && match[1]) {
-          let imageUrl = match[1]
-
-          if (imageUrl.startsWith('//')) {
-            imageUrl = 'https:' + imageUrl
-          } else if (imageUrl.startsWith('/')) {
-            imageUrl = 'https://www.sparhamster.at' + imageUrl
-          }
-
-          if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)) {
-            return imageUrl
-          }
-        }
-      }
-
-      return null
-    } catch (error) {
-      console.error('Error extracting image from deal page:', error)
-      return null
+    return {
+      ...result,
+      merchantName: result.merchantName || knownMerchant?.name || potentialMerchant
     }
   }
 
-  private getPlaceholderImage(categories?: string[]): string {
-    if (!categories) return 'https://picsum.photos/300/200?random=1'
-
-    const categoryImages: Record<string, string> = {
-      'elektronik': 'https://picsum.photos/300/200?random=2',
-      'amazon': 'https://picsum.photos/300/200?random=3',
-      'fashion': 'https://picsum.photos/300/200?random=4',
-      'gaming': 'https://picsum.photos/300/200?random=5',
-      'haushalt': 'https://picsum.photos/300/200?random=6',
-      'beauty': 'https://picsum.photos/300/200?random=7',
-      'lebensmittel': 'https://picsum.photos/300/200?random=8'
+  /**
+   * 获取已知商家的主页
+   */
+  private getMerchantHomepage(slug: string): string {
+    const homepages: Record<string, string> = {
+      'amazon-de': 'https://www.amazon.de',
+      'mediamarkt': 'https://www.mediamarkt.de',
+      'saturn': 'https://www.saturn.de',
+      'conrad': 'https://www.conrad.de',
+      'notebooksbilliger': 'https://www.notebooksbilliger.de',
+      'alternate': 'https://www.alternate.de',
     }
 
-    for (const category of categories) {
-      const key = category.toLowerCase()
-      if (categoryImages[key]) {
-        return categoryImages[key]
-      }
-    }
-
-    return 'https://picsum.photos/300/200?random=9'
+    return homepages[slug] || 'https://www.amazon.de'
   }
 
   private mapCategory(categories?: string[]): string {
@@ -449,48 +309,6 @@ export class SparhamsterFetcher {
     }
 
     return categories[0] || 'General'
-  }
-
-  private cleanDescription(description: string): string {
-    return description
-      .replace(/<[^>]*>/g, '')
-      .replace(/&[a-zA-Z0-9#]+;/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 300)
-  }
-
-  private cleanHtml(html: string): string {
-    return html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .trim()
-  }
-
-  private cleanTitleFromPriceInfo(title: string): string {
-    let cleanTitle = title
-
-    const pricePatterns = [
-      /\s+um\s+\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/gi,
-      /\s+für\s+\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/gi,
-      /\s+\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€/gi,
-      /\s*=\s*\d+(?:[.,]\d+)?\s*€\s+statt\s+\d+(?:[.,]\d+)?\s*€.*$/gi,
-      /^\d+(?:[.,]\d+)?\s*€.*?–\s*/gi,
-    ]
-
-    for (const pattern of pricePatterns) {
-      cleanTitle = cleanTitle.replace(pattern, '')
-    }
-
-    cleanTitle = cleanTitle.replace(/\s*–\s*\d+(?:[.,]\d+)?\s*€\s+\w+.*$/gi, '')
-
-    cleanTitle = cleanTitle
-      .replace(/\s+/g, ' ')
-      .replace(/[–-]\s*$/, '')
-      .trim()
-
-    return cleanTitle
   }
 
   private generateId(url: string): string {

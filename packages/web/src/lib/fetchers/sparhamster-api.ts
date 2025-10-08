@@ -1,6 +1,9 @@
 import { BaseFetcher } from './base-fetcher'
 import { CoreTranslationManager } from '../translation/translation-manager'
 import type { Deal, FetcherConfig, FetchResult } from './types'
+import { createModuleLogger } from '../logger'
+
+const logger = createModuleLogger('fetcher:sparhamster-api')
 
 /**
  * WordPress API 响应接口
@@ -54,7 +57,11 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       const limit = config?.limit || 20
       const page = config?.page || 1
 
-      console.log(`🔍 Fetching deals from ${this.sourceName} WordPress API...`)
+      logger.info('Fetching deals from WordPress API', {
+        source: this.sourceName,
+        limit,
+        page
+      })
 
       // 构建 API URL (_embed=true 会包含图片和分类信息)
       const url = `${this.apiBaseUrl}/posts?per_page=${limit}&page=${page}&_embed=true&orderby=date&order=desc`
@@ -71,7 +78,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
 
       const posts: WordPressPost[] = await response.json()
 
-      console.log(`📦 Fetched ${posts.length} posts from WordPress API`)
+      logger.debug('Fetched posts from WordPress API', { count: posts.length })
 
       // 转换所有文章为 Deal 对象
       const deals: Deal[] = []
@@ -82,11 +89,11 @@ export class SparhamsterApiFetcher extends BaseFetcher {
             deals.push(deal)
           }
         } catch (error) {
-          console.error(`❌ Failed to parse post ${post.id}:`, error)
+          logger.error('Failed to parse post', error as Error, { postId: post.id })
         }
       }
 
-      console.log(`✅ Successfully parsed ${deals.length} deals`)
+      logger.info('Successfully parsed deals', { count: deals.length })
 
       return {
         deals,
@@ -97,7 +104,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       }
 
     } catch (error) {
-      console.error(`❌ Error fetching from ${this.sourceName}:`, error)
+      logger.error('Error fetching deals', error as Error, { source: this.sourceName })
       return {
         deals: [],
         total: 0,
@@ -145,17 +152,19 @@ export class SparhamsterApiFetcher extends BaseFetcher {
 
     // 如果成功提取到交易价格文本，则从标题中精确移除
     if (priceInfo.matchedText) {
-      console.log(`✨ Removing deal price from title: "${priceInfo.matchedText}"`)
+      logger.debug('Removing deal price from title', {
+        matchedText: priceInfo.matchedText
+      })
       titleToTranslate = this.cleanTitleFromPriceInfo(originalTitle, priceInfo.matchedText)
-      console.log(`📝 Cleaned title: "${titleToTranslate}"`)
+      logger.debug('Cleaned title', { cleaned: titleToTranslate })
 
       // 特殊处理：对于 "= pro Monat" 这类结构，补充当前价格
       if (titleToTranslate.includes('= pro Monat') && priceInfo.currentPrice) {
         titleToTranslate = titleToTranslate.replace('= pro Monat', `= ${priceInfo.currentPrice} € pro Monat`)
-        console.log(`🔧 补充月费价格: "${titleToTranslate}"`)
+        logger.debug('Added monthly price to title', { title: titleToTranslate })
       }
     } else {
-      console.log(`ℹ️  No deal price pattern found in title, keeping original: "${originalTitle}"`)
+      logger.debug('No deal price pattern found in title', { title: originalTitle })
     }
 
     // 从 tags 中提取商家信息（这是 sparhamster.at 的正确方法）
@@ -170,7 +179,9 @@ export class SparhamsterApiFetcher extends BaseFetcher {
 
     // 如果没有找到有效的商家链接，且我们有商家信息，则使用商家主页
     if (merchantUrl === post.link && merchantInfo.homepageUrl) {
-      console.log(`ℹ️  No merchant link found, using homepage: ${merchantInfo.homepageUrl}`)
+      logger.debug('No merchant link found, using homepage', {
+        homepage: merchantInfo.homepageUrl
+      })
       merchantUrl = merchantInfo.homepageUrl
     }
 
@@ -583,7 +594,11 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       const merchantInfo = merchantTagPatterns[slug]
 
       if (merchantInfo) {
-        console.log(`✅ Found merchant from tag: ${tag.name} (slug: ${slug})`)
+        logger.debug('Found merchant from tag', {
+          tagName: tag.name,
+          slug,
+          merchant: merchantInfo.name
+        })
         return {
           name: merchantInfo.name,
           logo: `https://www.google.com/s2/favicons?domain=${merchantInfo.domain}&sz=64`,
@@ -597,7 +612,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
         // 排除明显不是商家的 tags（如 "Black Friday", "Sale" 等）
         const excludePatterns = ['black', 'friday', 'sale', 'deal', 'rabatt', 'aktion', 'gewinnspiel']
         if (!excludePatterns.some(pattern => tagName.toLowerCase().includes(pattern))) {
-          console.log(`ℹ️  Using capitalized tag as potential merchant: ${tagName}`)
+          logger.debug('Using capitalized tag as potential merchant', { tagName })
           // 尝试从 tag slug 生成 domain (如 "Deichmann" -> "deichmann.com")
           const possibleDomain = `${slug}.com`
           return {
@@ -608,7 +623,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       }
     }
 
-    console.log(`⚠️  No merchant tag found for post ${post.id}`)
+    logger.warn('No merchant tag found for post', { postId: post.id })
     return {}
   }
 

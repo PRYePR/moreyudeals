@@ -5,6 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import DealCard from '@/components/DealCard'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('app:deals-page')
 
 interface Deal {
   id: string
@@ -80,7 +83,7 @@ function DealsContent() {
       }
     } catch (err) {
       setError('Network error occurred')
-      console.error('Error fetching deals:', err)
+      logger.error('Error fetching deals', err as Error)
     } finally {
       setLoading(false)
     }

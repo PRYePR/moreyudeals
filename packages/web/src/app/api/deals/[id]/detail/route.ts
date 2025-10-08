@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { detailPageFetcher } from '@/lib/detail-page-fetcher'
 import { Deal } from '@/lib/fetchers/types'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('api:deals:detail')
 
 export async function POST(
   request: NextRequest,
@@ -20,7 +23,10 @@ export async function POST(
       )
     }
 
-    console.log(`🔍 Generating detail content for deal ${dealId}: ${deal.translatedTitle}`)
+    logger.info('Generating detail content for deal', {
+      dealId,
+      title: deal.translatedTitle
+    })
 
     // 从 deal 对象生成详细内容
     const detailContent = await detailPageFetcher.fetchDetailContent(deal)
@@ -33,7 +39,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Error generating deal details:', error)
+    logger.error('Error generating deal details', error as Error)
 
     return NextResponse.json(
       {

@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('components:search-bar')
 
 export default function SearchBar() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -18,7 +21,7 @@ export default function SearchBar() {
       const encodedQuery = encodeURIComponent(searchQuery.trim())
       router.push(`/search?q=${encodedQuery}`)
     } catch (error) {
-      console.error('Search error:', error)
+      logger.error('Search error', error as Error)
     } finally {
       setIsLoading(false)
     }

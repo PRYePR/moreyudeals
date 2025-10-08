@@ -1,4 +1,7 @@
 import { Deal } from './fetchers/types'
+import { createModuleLogger } from './logger'
+
+const logger = createModuleLogger('detail-page-fetcher')
 
 export interface DetailContent {
   fullDescription: string
@@ -28,7 +31,7 @@ export class DetailPageFetcher {
    */
   async fetchDetailContent(deal: Deal): Promise<DetailContent> {
     try {
-      console.log(`🔍 Fetching detail content for deal: ${deal.id}`)
+      logger.info('Fetching detail content for deal', { dealId: deal.id })
 
       // 从 deal.content 中提取图片
       const images = this.extractImagesFromContent(deal.content)
@@ -89,7 +92,7 @@ export class DetailPageFetcher {
         additionalContent: this.generateAdditionalContent(deal)
       }
     } catch (error) {
-      console.error('Error generating detail content:', error)
+      logger.error('Error generating detail content', error as Error, { dealId: deal.id })
       return this.getEmptyDetailContent(deal)
     }
   }

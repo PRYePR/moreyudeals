@@ -34,6 +34,12 @@ export interface Deal {
   featured?: boolean
   voucherCode?: string
   shippingCost?: string
+
+  // 链接追踪相关字段
+  affiliateUrl?: string     // 你自己的联盟链接（优先使用）
+  originalUrl?: string      // 原始商品链接（无联盟参数）
+  trackingUrl?: string      // 内部追踪链接 /api/go/:dealId
+  merchantHomepage?: string // 商家主页（fallback）
 }
 
 // 数据源配置

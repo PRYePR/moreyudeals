@@ -13,6 +13,9 @@ import {
   TranslationError,
   QuotaExceededError
 } from '../types';
+import { createModuleLogger } from '../../logger';
+
+const logger = createModuleLogger('translation:deepl');
 
 interface DeepLConfig {
   apiKey: string;
@@ -65,7 +68,7 @@ export class DeepLProvider implements TranslationProvider {
       const response = await this.client.get('/usage');
       return response.status === 200;
     } catch (error) {
-      console.error('DeepL健康检查失败:', error);
+      logger.error('DeepL健康检查失败', error as Error);
       return false;
     }
   }
@@ -157,7 +160,7 @@ export class DeepLProvider implements TranslationProvider {
         costToday: this.calculateCost(usage.character_count)
       };
     } catch (error) {
-      console.warn('获取DeepL使用统计失败:', error);
+      logger.warn('获取DeepL使用统计失败', { error });
       return {
         requestsToday: this.dailyUsage,
         quotaLimit: 500000, // 免费版默认限制

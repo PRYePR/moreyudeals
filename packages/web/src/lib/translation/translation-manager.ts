@@ -17,6 +17,9 @@ import {
   TranslationError,
   QuotaExceededError
 } from './types';
+import { createModuleLogger } from '../logger';
+
+const logger = createModuleLogger('translation');
 
 export class CoreTranslationManager implements TranslationManager {
   private providers = new Map<ProviderName, TranslationProvider>();
@@ -50,9 +53,9 @@ export class CoreTranslationManager implements TranslationManager {
     try {
       this.redisClient = createClient({ url: redisUrl });
       await this.redisClient.connect();
-      console.log('✅ Redis连接成功');
+      logger.info('Redis连接成功');
     } catch (error) {
-      console.warn('⚠️ Redis连接失败，禁用缓存功能:', error);
+      logger.warn('Redis连接失败，禁用缓存功能', { error });
       this.redisClient = null;
     }
   }
@@ -62,7 +65,7 @@ export class CoreTranslationManager implements TranslationManager {
    */
   addProvider(provider: TranslationProvider): void {
     this.providers.set(provider.name, provider);
-    console.log(`📝 添加翻译Provider: ${provider.name}`);
+    logger.info('添加翻译Provider', { provider: provider.name });
   }
 
   /**
@@ -70,7 +73,7 @@ export class CoreTranslationManager implements TranslationManager {
    */
   removeProvider(name: ProviderName): void {
     if (this.providers.delete(name)) {
-      console.log(`🗑️ 移除翻译Provider: ${name}`);
+      logger.info('移除翻译Provider', { provider: name });
     }
   }
 
@@ -84,7 +87,7 @@ export class CoreTranslationManager implements TranslationManager {
     if (this.config.cacheEnabled) {
       const cached = await this.getFromCache(input);
       if (cached) {
-        console.log(`💾 缓存命中: ${input.text.substring(0, 50)}...`);
+        logger.debug('缓存命中', { textPreview: input.text.substring(0, 50) });
         return cached;
       }
     }
@@ -101,17 +104,20 @@ export class CoreTranslationManager implements TranslationManager {
         // 检查Provider健康状态
         const isHealthy = await provider.isHealthy();
         if (!isHealthy) {
-          console.warn(`⚠️ Provider ${providerName} 不健康，跳过`);
+          logger.warn('Provider不健康，跳过', { provider: providerName });
           continue;
         }
 
         // 执行翻译
-        console.log(`🔄 使用 ${providerName} 翻译: ${input.text.substring(0, 50)}...`);
+        logger.debug('使用Provider翻译', {
+          provider: providerName,
+          textPreview: input.text.substring(0, 50)
+        });
         const result = await provider.translate(input);
 
         // 记录翻译时间
         const duration = Date.now() - startTime;
-        console.log(`✅ 翻译完成 (${duration}ms): ${providerName}`);
+        logger.info('翻译完成', { provider: providerName, duration });
 
         // 缓存结果
         if (this.config.cacheEnabled) {
@@ -122,11 +128,11 @@ export class CoreTranslationManager implements TranslationManager {
 
       } catch (error) {
         lastError = error as Error;
-        console.error(`❌ Provider ${providerName} 翻译失败:`, error);
+        logger.error('Provider翻译失败', error as Error, { provider: providerName });
 
         // 如果是配额错误，记录但继续尝试其他Provider
         if (error instanceof QuotaExceededError) {
-          console.warn(`📊 ${providerName} 配额超限，尝试备用Provider`);
+          logger.warn('Provider配额超限，尝试备用Provider', { provider: providerName });
           continue;
         }
 
@@ -188,7 +194,7 @@ export class CoreTranslationManager implements TranslationManager {
         return result;
       }
     } catch (error) {
-      console.warn('⚠️ 缓存读取失败:', error);
+      logger.warn('缓存读取失败', { error });
     }
 
     return null;
@@ -210,7 +216,7 @@ export class CoreTranslationManager implements TranslationManager {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.warn('⚠️ 缓存保存失败:', error);
+      logger.warn('缓存保存失败', { error });
     }
   }
 
@@ -252,7 +258,7 @@ export class CoreTranslationManager implements TranslationManager {
    */
   updateConfig(config: Partial<TranslationRouteConfig>): void {
     this.config = { ...this.config, ...config };
-    console.log('⚙️ 翻译配置已更新:', this.config);
+    logger.info('翻译配置已更新', { config: this.config });
   }
 
   /**
@@ -261,7 +267,7 @@ export class CoreTranslationManager implements TranslationManager {
   async close(): Promise<void> {
     if (this.redisClient) {
       await this.redisClient.quit();
-      console.log('🔌 Redis连接已关闭');
+      logger.info('Redis连接已关闭');
     }
   }
 }

@@ -1,5 +1,8 @@
 import { CoreTranslationManager } from '../translation/translation-manager'
 import type { Deal, FetcherConfig, FetchResult } from './types'
+import { createModuleLogger } from '../logger'
+
+const logger = createModuleLogger('fetcher:base')
 
 /**
  * 抽象基类：所有数据源 Fetcher 的统一接口
@@ -34,7 +37,9 @@ export abstract class BaseFetcher {
       })
       return result.translatedText
     } catch (error) {
-      console.error(`Translation failed for text: "${text.substring(0, 50)}..."`, error)
+      logger.error('Translation failed', error as Error, {
+        textPreview: text.substring(0, 50)
+      })
       return text // 翻译失败时返回原文
     }
   }
@@ -119,7 +124,7 @@ export abstract class BaseFetcher {
       const url = dealLinkMatch[1]
       // 过滤掉非http开头的链接（如 javascript:; 或页面内锚点）
       if (url.startsWith('http')) {
-        console.log(`🔗 Found merchant URL with keyword: ${url}`)
+        logger.debug('Found merchant URL with keyword', { url })
         return url
       }
     }
@@ -129,7 +134,9 @@ export abstract class BaseFetcher {
     const forwardLinkMatches = Array.from(content.matchAll(forwardLinkPattern))
 
     if (forwardLinkMatches.length > 0) {
-      console.log(`🔍 Found ${forwardLinkMatches.length} forward URLs, filtering for best match...`)
+      logger.debug('Found forward URLs, filtering for best match', {
+        count: forwardLinkMatches.length
+      })
 
       // 应该跳过的链接文本关键词（这些通常是比价链接，不是主要购买链接）
       const skipLinkTexts = ['vergleichspreis', 'preisvergleich', 'preis vergleichen', 'vergleich']
@@ -178,14 +185,21 @@ export abstract class BaseFetcher {
 
       // 选择得分最高的 URL
       const bestUrl = scoredUrls[0].url
-      console.log(`🔗 Selected best forward URL (score: ${scoredUrls[0].score}, text: "${scoredUrls[0].linkText}"): ${bestUrl}`)
+      logger.debug('Selected best forward URL', {
+        url: bestUrl,
+        score: scoredUrls[0].score,
+        linkText: scoredUrls[0].linkText
+      })
 
       // 如果有多个 URL，显示被跳过的
       if (scoredUrls.length > 1) {
-        console.log(`   Skipped URLs:`)
-        for (let i = 1; i < scoredUrls.length; i++) {
-          console.log(`   - ${scoredUrls[i].url} (score: ${scoredUrls[i].score}, text: "${scoredUrls[i].linkText}")`)
-        }
+        logger.debug('Skipped URLs', {
+          skipped: scoredUrls.slice(1).map(u => ({
+            url: u.url,
+            score: u.score,
+            linkText: u.linkText
+          }))
+        })
       }
 
       return bestUrl
@@ -197,13 +211,13 @@ export abstract class BaseFetcher {
       const url = match[1]
       // 排除主站链接，但保留 forward 子域名
       if (!url.includes('www.sparhamster.at') && !url.match(/^https?:\/\/sparhamster\.at\//)) {
-        console.log(`🔗 Found external merchant URL: ${url}`)
+        logger.debug('Found external merchant URL', { url })
         return url
       }
     }
 
     // 如果以上方法都找不到，则返回原始的文章链接作为备用方案
-    console.log(`⚠️ No merchant URL found, using fallback: ${fallbackUrl}`)
+    logger.debug('No merchant URL found, using fallback', { fallbackUrl })
     return fallbackUrl
   }
 
@@ -220,7 +234,7 @@ export abstract class BaseFetcher {
       return currentUrl
     }
 
-    console.log(`🔎 Resolving redirect for: ${currentUrl}`)
+    logger.debug('Resolving redirect for URL', { url: currentUrl })
 
     while (redirectCount < maxRedirects) {
       try {
@@ -242,7 +256,7 @@ export abstract class BaseFetcher {
           if (location) {
             // 'Location' 头可能是相对路径，需要解析为绝对路径
             const nextUrl = new URL(location, currentUrl).href
-            console.log(`↪️ HTTP redirect to: ${nextUrl}`)
+            logger.debug('HTTP redirect', { from: currentUrl, to: nextUrl })
             currentUrl = nextUrl
             redirectCount++
             continue
@@ -256,7 +270,7 @@ export abstract class BaseFetcher {
           const metaRefreshMatch = html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^"']*URL=([^"']+)["']/i)
           if (metaRefreshMatch && metaRefreshMatch[1]) {
             const nextUrl = metaRefreshMatch[1]
-            console.log(`↪️ Meta refresh redirect to: ${nextUrl}`)
+            logger.debug('Meta refresh redirect', { from: currentUrl, to: nextUrl })
             currentUrl = nextUrl
             redirectCount++
             continue
@@ -266,14 +280,17 @@ export abstract class BaseFetcher {
         // 不是重定向，已到达最终页面
         break
       } catch (error) {
-        console.error(`❌ Error resolving redirect for ${currentUrl}:`, error)
+        logger.error('Error resolving redirect', error as Error, { url: currentUrl })
         // 出现错误时，返回最后一个已知的 URL
         return currentUrl
       }
     }
 
     if (redirectCount > 0) {
-      console.log(`✅ Final URL after ${redirectCount} redirects: ${currentUrl}`)
+      logger.debug('Final URL after redirects', {
+        url: currentUrl,
+        redirectCount
+      })
     }
 
     return currentUrl

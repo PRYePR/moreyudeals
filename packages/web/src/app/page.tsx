@@ -1,6 +1,9 @@
 import DealCard from '@/components/DealCard'
 import SearchBar from '@/components/SearchBar'
 import TranslationDisclaimer from '@/components/TranslationDisclaimer'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('app:home-page')
 
 async function getLatestDeals() {
   try {
@@ -19,7 +22,7 @@ async function getLatestDeals() {
     const data = await response.json()
     return data.deals || []
   } catch (error) {
-    console.error('Error fetching deals:', error)
+    logger.error('Error fetching deals', error as Error)
     return []
   }
 }

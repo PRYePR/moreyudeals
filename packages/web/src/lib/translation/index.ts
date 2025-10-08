@@ -12,9 +12,6 @@ export { CoreTranslationManager } from './translation-manager';
 // 导出Provider实现
 export { DeepLProvider } from './providers/deepl';
 
-// 便捷工厂函数
-export { createTranslationManager } from './factory';
-
 /**
  * 快速创建翻译管理器的工厂函数
  */

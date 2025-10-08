@@ -27,14 +27,6 @@ interface DealPageClientProps {
 export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   const [detailContent, setDetailContent] = useState<DetailContent | null>(null)
 
-  const formatPrice = (price: string, currency: string) => {
-    const number = parseFloat(price)
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: currency,
-    }).format(number)
-  }
-
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date
     return new Intl.DateTimeFormat('zh-CN', {
@@ -50,11 +42,20 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
     const now = new Date()
     const expirationDate = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt
     const diffTime = expirationDate.getTime() - now.getTime()
+    if (Number.isNaN(diffTime)) return 0
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+    return Math.max(diffDays, 0)
   }
 
-  const daysRemaining = getDaysRemaining(deal.expiresAt)
+  const calculatedDays = typeof deal.daysRemaining === 'number'
+    ? Math.max(deal.daysRemaining, 0)
+    : getDaysRemaining(deal.expiresAt)
+  const isExpired = typeof deal.isExpired === 'boolean'
+    ? deal.isExpired
+    : calculatedDays <= 0
+  const daysRemaining = isExpired ? 0 : calculatedDays
+  const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
+  const hasPurchaseLink = typeof purchaseUrl === 'string' && purchaseUrl.startsWith('http')
 
   return (
     <TranslationProvider>
@@ -85,6 +86,22 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
             </div>
           </div>
         </div>
+
+        {isExpired && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <EnhancedCard className="bg-red-50 border border-red-200 text-red-700 p-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">⚠️</span>
+                <div>
+                  <div className="font-semibold">优惠可能已过期</div>
+                  <div className="text-sm text-red-600">
+                    该优惠可能已结束，请在商家页面再次确认价格与库存信息
+                  </div>
+                </div>
+              </div>
+            </EnhancedCard>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -137,7 +154,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                 stats={[
                   {
                     label: '节省',
-                    value: `${deal.discountPercentage || 0}%`,
+                    value: `${deal.discountPercentage ?? 0}%`,
                     icon: '💰',
                     trend: 'up'
                   },
@@ -149,13 +166,13 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                   },
                   {
                     label: '剩余',
-                    value: `${daysRemaining}天`,
+                    value: isExpired ? '已过期' : `${daysRemaining}天`,
                     icon: '⏳',
-                    trend: daysRemaining > 7 ? 'neutral' : 'down'
+                    trend: isExpired ? 'down' : daysRemaining > 7 ? 'neutral' : 'down'
                   },
                   {
                     label: '来源',
-                    value: deal.source,
+                    value: deal.source || 'Sparhamster.at',
                     icon: '🏪'
                   }
                 ]}
@@ -219,17 +236,23 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
               <EnhancedCard className="p-6" delay={700}>
                 <div className="space-y-4">
                   <a
-                    href={deal.dealUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                    href={hasPurchaseLink ? purchaseUrl : undefined}
+                    target={hasPurchaseLink ? '_blank' : undefined}
+                    rel={hasPurchaseLink ? 'noopener noreferrer' : undefined}
+                    className={`block w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform ${hasPurchaseLink ? 'hover:scale-[1.02]' : 'opacity-60 cursor-not-allowed pointer-events-none'}`}
                   >
                     <span className="flex items-center justify-center space-x-2">
                       <span>🛒</span>
                       <span>前往购买</span>
-                      <span className="text-sm opacity-75">({deal.source})</span>
+                      <span className="text-sm opacity-75">({deal.source || 'Sparhamster.at'})</span>
                     </span>
                   </a>
+
+                  {!hasPurchaseLink && (
+                    <p className="text-xs text-gray-500 text-center">
+                      暂未提供直接跳转链接，请查看详情信息或稍后再试
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <Tooltip content="收藏此优惠，稍后查看">
@@ -301,8 +324,12 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
         <FloatingActionButton
           icon="🛒"
           label="立即购买"
-          onClick={() => window.open(deal.dealUrl, '_blank')}
-          variant="primary"
+          onClick={() => {
+            if (hasPurchaseLink) {
+              window.open(purchaseUrl, '_blank', 'noopener,noreferrer')
+            }
+          }}
+          variant={hasPurchaseLink ? 'primary' : 'secondary'}
         />
 
         {/* Back to top button - positioned differently to avoid overlap */}

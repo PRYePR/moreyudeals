@@ -1,6 +1,9 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import DealPageClient from './DealPageClient'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('app:deal-page')
 
 // 服务端获取单个deal的函数
 async function getDeal(id: string) {
@@ -9,9 +12,8 @@ async function getDeal(id: string) {
       ? 'https://your-domain.com'
       : 'http://localhost:3000'
 
-    const url = `${baseUrl}/api/deals/live?limit=50`
-    console.log(`[Server] Fetching deals from: ${url}`)
-    console.log(`[Server] Looking for deal with ID: ${id}`)
+    const url = `${baseUrl}/api/deals/${encodeURIComponent(id)}`
+    logger.debug('Fetching deal from API', { url, dealId: id })
 
     const response = await fetch(url, {
       cache: 'no-store',
@@ -20,29 +22,25 @@ async function getDeal(id: string) {
       }
     })
 
+    if (response.status === 404) {
+      logger.warn('Deal not found in API response', { dealId: id })
+      return null
+    }
+
     if (!response.ok) {
-      console.error(`[Server] Response not OK: ${response.status} ${response.statusText}`)
+      logger.error('Response not OK', new Error(`Status ${response.status}`), {
+        status: response.status,
+        statusText: response.statusText
+      })
       throw new Error(`Failed to fetch deals: ${response.status}`)
     }
 
-    const data = await response.json()
-    console.log(`[Server] Fetched ${data.deals?.length || 0} deals`)
-
-    if (data.deals && data.deals.length > 0) {
-      console.log(`[Server] Available deal IDs: ${data.deals.map((d: any) => d.id).slice(0, 5).join(', ')}...`)
-    }
-
-    const deal = data.deals?.find((d: any) => d.id === id)
-
-    if (deal) {
-      console.log(`[Server] Found deal: ${deal.translatedTitle}`)
-    } else {
-      console.log(`[Server] Deal with ID ${id} not found`)
-    }
+    const deal = await response.json()
+    logger.info('Fetched deal', { dealId: id, title: deal?.translatedTitle })
 
     return deal || null
   } catch (error) {
-    console.error('[Server] Error fetching deal:', error)
+    logger.error('Error fetching deal', error as Error, { dealId: id })
     return null
   }
 }

@@ -1,4 +1,8 @@
 // 简单的内存缓存实现
+import { createModuleLogger } from './logger'
+
+const logger = createModuleLogger('legacy-cache')
+
 interface CacheEntry<T> {
   data: T
   timestamp: number
@@ -110,7 +114,7 @@ if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const deleted = dealsCache.cleanup()
     if (deleted > 0) {
-      console.log(`🧹 Cleaned up ${deleted} expired cache entries`)
+      logger.debug('Cleaned up expired cache entries', { count: deleted })
     }
   }, 5 * 60 * 1000)
 }

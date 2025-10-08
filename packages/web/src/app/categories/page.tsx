@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createModuleLogger } from '@/lib/logger'
+
+const logger = createModuleLogger('app:categories-page')
 
 interface Deal {
   id: string
@@ -61,7 +64,7 @@ export default function CategoriesPage() {
         setCategories(categoriesData)
       }
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      logger.error('Error fetching categories', error as Error)
     } finally {
       setLoading(false)
     }

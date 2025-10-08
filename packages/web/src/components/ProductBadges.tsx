@@ -126,9 +126,9 @@ export function RetailerBadge({
 }
 
 interface PriceBadgeProps {
-  currentPrice: string
+  currentPrice?: string
   originalPrice?: string
-  currency: string
+  currency?: string
   discount?: number
   className?: string
 }
@@ -148,30 +148,44 @@ export function PriceBadge({
     }).format(number)
   }
 
+  const currencyCode = currency || 'EUR'
+  const hasCurrentPrice = typeof currentPrice === 'string' && currentPrice.trim() !== ''
+  const parsedCurrentPrice = hasCurrentPrice ? parseFloat(currentPrice!.replace(',', '.')) : NaN
+  const parsedOriginalPrice = typeof originalPrice === 'string' ? parseFloat(originalPrice.replace(',', '.')) : NaN
+  const showDiscount = !Number.isNaN(parsedCurrentPrice) && !Number.isNaN(parsedOriginalPrice) && parsedOriginalPrice > parsedCurrentPrice
+
   return (
     <div className={`bg-white border border-gray-200 rounded-lg px-4 py-3 ${className}`}>
-      <div className="flex items-baseline space-x-3">
-        <span className="text-2xl font-bold text-green-600">
-          {formatPrice(currentPrice, currency)}
-        </span>
-
-        {originalPrice && parseFloat(originalPrice) > parseFloat(currentPrice) && (
-          <>
-            <span className="text-lg text-gray-400 line-through">
-              {formatPrice(originalPrice, currency)}
+      {hasCurrentPrice && !Number.isNaN(parsedCurrentPrice) ? (
+        <>
+          <div className="flex items-baseline space-x-3">
+            <span className="text-2xl font-bold text-green-600">
+              {formatPrice(parsedCurrentPrice.toString(), currencyCode)}
             </span>
-            {discount && (
-              <Badge variant="success" size="sm">
-                省 {discount}%
-              </Badge>
-            )}
-          </>
-        )}
-      </div>
 
-      {originalPrice && parseFloat(originalPrice) > parseFloat(currentPrice) && (
-        <div className="mt-1 text-sm text-green-600">
-          💰 节省 {formatPrice((parseFloat(originalPrice) - parseFloat(currentPrice)).toString(), currency)}
+            {showDiscount && (
+              <>
+                <span className="text-lg text-gray-400 line-through">
+                  {formatPrice(parsedOriginalPrice.toString(), currencyCode)}
+                </span>
+                {typeof discount === 'number' && (
+                  <Badge variant="success" size="sm">
+                    省 {discount}%
+                  </Badge>
+                )}
+              </>
+            )}
+          </div>
+
+          {showDiscount && (
+            <div className="mt-1 text-sm text-green-600">
+              💰 节省 {formatPrice((parsedOriginalPrice - parsedCurrentPrice).toString(), currencyCode)}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-sm text-gray-500">
+          当前价格暂未提供，请查看商家页面获取最新价格信息
         </div>
       )}
     </div>
@@ -236,11 +250,12 @@ interface ProductBadgesProps {
     discountPercentage?: number
     category: string
     source: string
-    price: string
+    price?: string
     originalPrice?: string
-    currency: string
+    currency?: string
     isTranslated?: boolean
     translationProvider?: string
+    dealUrl?: string
   }
   detailContent?: {
     pricing: {
@@ -268,7 +283,7 @@ export function ProductBadges({ deal, detailContent, className = '' }: ProductBa
           discount={deal.discountPercentage}
         />
 
-        {deal.discountPercentage && (
+        {typeof deal.discountPercentage === 'number' && (
           <DiscountBadge percentage={deal.discountPercentage} />
         )}
       </div>
