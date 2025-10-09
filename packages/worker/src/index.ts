@@ -5,13 +5,13 @@
 import 'dotenv/config';
 import { CronJob } from 'cron';
 import { DatabaseManager } from './database';
-import { RSSFetcher } from './rss-fetcher';
 import { TranslationWorker } from './translation-worker';
+import { SparhamsterApiFetcher } from './sparhamster-api-fetcher';
 import { WorkerConfig } from './types';
 
 class WorkerService {
   private database: DatabaseManager;
-  private rssFetcher: RSSFetcher;
+  private apiFetcher: SparhamsterApiFetcher;
   private translationWorker: TranslationWorker;
   private config: WorkerConfig;
   private fetchJob?: CronJob;
@@ -19,7 +19,7 @@ class WorkerService {
   constructor() {
     this.config = this.loadConfig();
     this.database = new DatabaseManager(this.config.database);
-    this.rssFetcher = new RSSFetcher(this.database);
+    this.apiFetcher = new SparhamsterApiFetcher(this.database);
     this.translationWorker = new TranslationWorker(this.database, this.config.translation);
   }
 
@@ -52,7 +52,7 @@ class WorkerService {
   }
 
   async start(): Promise<void> {
-    console.log('🚀 启动RSS抓取和翻译Worker服务');
+    console.log('🚀 启动API抓取与翻译Worker服务');
 
     try {
       // 连接数据库
@@ -64,11 +64,11 @@ class WorkerService {
         await this.translationWorker.start();
       }
 
-      // 设置RSS抓取定时任务
-      this.setupRSSFetchJob();
+      // 设置 API 抓取定时任务
+      this.setupApiFetchJob();
 
-      // 立即执行一次RSS抓取
-      await this.fetchAllRSSFeeds();
+      // 立即执行一次抓取
+      await this.fetchLatestDeals();
 
       console.log('✅ Worker服务启动完成');
 
@@ -81,48 +81,49 @@ class WorkerService {
     }
   }
 
-  private setupRSSFetchJob(): void {
+  private setupApiFetchJob(): void {
     const cronPattern = `0 */${this.config.fetchInterval} * * * *`; // 每N分钟执行一次
 
     this.fetchJob = new CronJob(cronPattern, async () => {
-      console.log('⏰ 定时RSS抓取任务开始');
-      await this.fetchAllRSSFeeds();
+      // 添加随机延迟 0-5分钟，避免被识别为爬虫
+      const randomDelay = Math.floor(Math.random() * 5 * 60 * 1000); // 0-5分钟的毫秒数
+      const delayMinutes = Math.floor(randomDelay / 60000);
+      const delaySeconds = Math.floor((randomDelay % 60000) / 1000);
+
+      console.log(`⏰ 定时API抓取任务触发，随机延迟 ${delayMinutes}分${delaySeconds}秒后开始...`);
+
+      await new Promise(resolve => setTimeout(resolve, randomDelay));
+
+      console.log('🔄 开始执行抓取任务');
+      await this.fetchLatestDeals();
     });
 
     this.fetchJob.start();
-    console.log(`⏰ RSS抓取定时任务已设置: 每${this.config.fetchInterval}分钟执行一次`);
+    console.log(`⏰ API抓取定时任务已设置: 每${this.config.fetchInterval}分钟执行一次 (含0-5分钟随机延迟)`);
   }
 
-  private async fetchAllRSSFeeds(): Promise<void> {
+  private async fetchLatestDeals(): Promise<void> {
     try {
-      console.log('🔄 开始RSS抓取任务');
+      console.log('🔄 开始通过官方API抓取最新优惠');
       const startTime = Date.now();
 
-      const results = await this.rssFetcher.fetchAllFeeds();
-
-      const totalNew = results.reduce((sum, r) => sum + r.newItems, 0);
-      const totalUpdated = results.reduce((sum, r) => sum + r.updatedItems, 0);
-      const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
+      const result = await this.apiFetcher.fetchLatest();
 
       const duration = Date.now() - startTime;
 
-      console.log('📊 RSS抓取任务完成:');
-      console.log(`  - 新增条目: ${totalNew}`);
-      console.log(`  - 更新条目: ${totalUpdated}`);
-      console.log(`  - 错误数量: ${totalErrors}`);
+      console.log('📊 API抓取任务完成:');
+      console.log(`  - 新增条目: ${result.inserted}`);
+      console.log(`  - 更新条目: ${result.updated}`);
+      console.log(`  - 错误数量: ${result.errors.length}`);
       console.log(`  - 耗时: ${duration}ms`);
 
-      if (totalErrors > 0) {
-        console.warn('⚠️ RSS抓取过程中发生错误:');
-        results.forEach(result => {
-          if (result.errors.length > 0) {
-            console.warn(`  Feed ${result.feedId}: ${result.errors.join(', ')}`);
-          }
-        });
+      if (result.errors.length > 0) {
+        console.warn('⚠️ API抓取过程中发生错误:');
+        result.errors.forEach((err) => console.warn(`  - ${err}`));
       }
 
     } catch (error) {
-      console.error('❌ RSS抓取任务失败:', error);
+      console.error('❌ API抓取任务失败:', error);
     }
   }
 
@@ -133,7 +134,7 @@ class WorkerService {
       try {
         if (this.fetchJob) {
           this.fetchJob.stop();
-          console.log('⏰ RSS抓取定时任务已停止');
+          console.log('⏰ 抓取定时任务已停止');
         }
 
         await this.database.close();
@@ -154,7 +155,7 @@ class WorkerService {
     const translationStats = await this.translationWorker.getTranslationStats();
 
     return {
-      service: 'RSS Worker',
+      service: 'Deals Worker',
       status: 'running',
       uptime: process.uptime(),
       memory: process.memoryUsage(),
