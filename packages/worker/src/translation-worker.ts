@@ -42,6 +42,7 @@ export class TranslationWorker {
       const untranslatedItems = await this.database.getUntranslatedItems(10);
 
       if (untranslatedItems.length === 0) {
+        await this.processTranslationQueue();
         return;
       }
 
@@ -96,7 +97,7 @@ export class TranslationWorker {
   }
 
   private async processTranslationQueue(): Promise<void> {
-    const jobs = await this.database.getPendingTranslationJobs(5);
+    const jobs = await this.database.getPendingTranslationJobs(20);
 
     if (jobs.length === 0) {
       return;
@@ -191,19 +192,19 @@ export class TranslationWorker {
 
   private async updateItemTranslationStatus(results: TranslationResult[]): Promise<void> {
     // 按条目ID分组结果
-    const itemResults = new Map<string, TranslationResult[]>();
+    const groupedResults = new Map<string, TranslationResult[]>();
 
     for (const result of results) {
-      if (!itemResults.has(result.itemId)) {
-        itemResults.set(result.itemId, []);
+      if (!groupedResults.has(result.itemId)) {
+        groupedResults.set(result.itemId, []);
       }
-      itemResults.get(result.itemId)!.push(result);
+      groupedResults.get(result.itemId)!.push(result);
     }
 
     // 更新每个条目的状态
-    for (const [itemId, itemResults] of itemResults) {
-      const allSuccess = itemResults.every(r => r.success);
-      const hasFailure = itemResults.some(r => !r.success);
+    for (const [itemId, itemResultsForItem] of groupedResults.entries()) {
+      const allSuccess = itemResultsForItem.every(r => r.success);
+      const hasFailure = itemResultsForItem.some(r => !r.success);
 
       let status: 'completed' | 'failed' | 'processing' = 'processing';
 

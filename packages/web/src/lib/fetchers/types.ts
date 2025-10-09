@@ -17,11 +17,12 @@ export interface Deal {
   source: string
   publishedAt: Date
   expiresAt: Date
-  language: 'de' | 'en'
+  language: 'de' | 'en' | 'zh'
   translationProvider: 'deepl' | 'microsoft' | 'google'
   isTranslated: boolean
   categories: string[]
   content: string
+  contentHtml?: string
 
   // 可选的扩展字段
   wordpressId?: number

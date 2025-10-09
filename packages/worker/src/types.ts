@@ -31,6 +31,15 @@ export interface RSSItem {
   discount?: number;
   isTranslated: boolean;
   translationStatus: 'pending' | 'processing' | 'completed' | 'failed';
+  translationProvider?: string | null;
+  translationLanguage?: string | null;
+  translationDetectedLanguage?: string | null;
+  contentHtml?: string | null;
+  contentText?: string | null;
+  merchantName?: string | null;
+  merchantLogo?: string | null;
+  currency?: string | null;
+  expiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +76,13 @@ export interface WorkerConfig {
     enabled: boolean;
     targetLanguages: string[];
     providers: string[];
+    deepl?: {
+      apiKey: string;
+      endpoint?: string;
+    };
+    redis?: {
+      url: string;
+    };
   };
 }
 
@@ -81,4 +97,10 @@ export interface TranslationResult {
   itemId: string;
   success: boolean;
   error?: string;
+}
+
+export interface ApiFetchResult {
+  inserted: number;
+  updated: number;
+  errors: string[];
 }

@@ -33,8 +33,12 @@ export class DetailPageFetcher {
     try {
       logger.info('Fetching detail content for deal', { dealId: deal.id })
 
-      // 从 deal.content 中提取图片
-      const images = this.extractImagesFromContent(deal.content)
+      const contentHtml = deal.contentHtml || ''
+      const sanitizedHtml = this.sanitizeHtml(contentHtml)
+      const fallbackContent = deal.content || deal.translatedDescription || deal.description || ''
+
+      // 从 HTML 内容中提取图片
+      const images = this.extractImagesFromContent(contentHtml)
 
       // 如果没有从 content 中提取到图片，使用 deal.imageUrl
       if (images.length === 0 && deal.imageUrl) {
@@ -70,10 +74,10 @@ export class DetailPageFetcher {
       }
 
       // 提取特性列表
-      const features = this.extractFeaturesFromContent(deal.content)
+      const features = this.extractFeaturesFromContent(contentHtml || fallbackContent)
 
       return {
-        fullDescription: deal.content || deal.translatedDescription || deal.description,
+        fullDescription: sanitizedHtml || fallbackContent,
         specifications,
         features,
         images,
@@ -124,6 +128,20 @@ export class DetailPageFetcher {
 
     // 去重
     return [...new Set(images)]
+  }
+
+  /**
+   * 对 HTML 内容进行基础清理，移除潜在的危险标签和属性
+   */
+  private sanitizeHtml(content: string): string {
+    if (!content) return ''
+
+    return content
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+      .replace(/on[a-z]+="[^"]*"/gi, '')
+      .replace(/on[a-z]+='[^']*'/gi, '')
+      .replace(/javascript:/gi, '')
   }
 
   /**

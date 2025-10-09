@@ -125,15 +125,16 @@ export class SparhamsterApiFetcher extends BaseFetcher {
 
     const originalTitle = this.cleanHtml(post.title.rendered)
     const originalDescription = this.cleanHtml(post.excerpt.rendered).substring(0, 300)
-    const content = post.content.rendered
+    const rawContent = post.content.rendered || ''
+    const sanitizedContent = this.cleanHtml(rawContent)
 
     // 提取价格信息
-    const priceInfo = this.extractPriceInfo(originalTitle, content)
+    const priceInfo = this.extractPriceInfo(originalTitle, rawContent)
 
     // 提取图片
     let imageUrl = this.extractImageFromEmbedded(post)
     if (!imageUrl) {
-      imageUrl = this.extractImageFromContent(content)
+      imageUrl = this.extractImageFromContent(rawContent)
     }
     if (!imageUrl) {
       imageUrl = this.getPlaceholderImage(this.getCategoryNames(post))
@@ -175,7 +176,7 @@ export class SparhamsterApiFetcher extends BaseFetcher {
     // 提取商家链接（作为 dealUrl）
     // 直接使用 forward 链接，不进行解析（性能优化）
     // 用户点击时由浏览器处理跳转
-    let merchantUrl = this.extractMerchantUrl(content, post.link)
+    let merchantUrl = this.extractMerchantUrl(rawContent, post.link)
 
     // 如果没有找到有效的商家链接，且我们有商家信息，则使用商家主页
     if (merchantUrl === post.link && merchantInfo.homepageUrl) {
@@ -214,7 +215,8 @@ export class SparhamsterApiFetcher extends BaseFetcher {
       translationProvider: 'deepl',
       isTranslated: true,
       categories: categoryNames,
-      content: this.cleanHtml(content),
+      content: sanitizedContent,
+      contentHtml: rawContent,
       wordpressId: post.id,
       merchantName,
       merchantLogo

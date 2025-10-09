@@ -1,5 +1,9 @@
 /**
  * RSS Feed抓取器
+ *
+ * 说明：
+ *  - 默认情况下我们使用官方 API 进行抓取（见 sparhamster-api-fetcher.ts）
+ *  - 该模块仅作为备用方案保留，必要时可以手动调用
  */
 
 import Parser from 'rss-parser';

@@ -1,42 +1,13 @@
-import { SparhamsterApiFetcher } from '../fetchers/sparhamster-api'
-import type { Deal } from '../fetchers/types'
 import { defaultCache, cacheKeys, CACHE_TTL } from '../cache'
 import { createModuleLogger } from '../logger'
-import { createTranslationManager } from '../translation-setup'
+import {
+  fetchRecentDeals,
+  fetchDealByIdentifier,
+  DealRow
+} from '../data/deals-repository'
+import type { Deal } from '../fetchers/types'
 
 const logger = createModuleLogger('service:deals')
-
-const MAX_FETCH_LIMIT = 100
-const ENV_LIMIT = Number(process.env.SPARHAMSTER_FETCH_LIMIT || '60')
-const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 60 : ENV_LIMIT, 20), MAX_FETCH_LIMIT)
-
-const translationManager = createTranslationManager({
-  deepl: process.env.DEEPL_API_KEY
-    ? {
-        apiKey: process.env.DEEPL_API_KEY,
-        endpoint: process.env.DEEPL_ENDPOINT || 'https://api-free.deepl.com/v2'
-      }
-    : undefined,
-  redis: process.env.REDIS_URL
-    ? {
-        url: process.env.REDIS_URL
-      }
-    : undefined,
-  routing: {
-    primary: 'deepl',
-    fallback: [],
-    cacheEnabled: true,
-    cacheTTL: 24 * 60 * 60
-  }
-})
-
-const sparhamsterFetcher = new SparhamsterApiFetcher(translationManager)
-
-interface DealsCacheEntry {
-  deals: Deal[]
-  fetchedAt: string
-  source: string
-}
 
 export type DealSortField = 'price' | 'discount' | 'publishedAt' | 'expiresAt' | 'relevance'
 
@@ -68,7 +39,6 @@ export interface DealsListResult {
   }
   meta: {
     fetchedAt: string
-    source: string
     cacheHit: boolean
   }
 }
@@ -79,10 +49,7 @@ export interface CategoriesSummary {
     name: string
     translatedName: string
     count: number
-    icon?: string
-    description?: string
-    translatedDescription?: string
-    subcategories?: Array<{
+    subcategories: Array<{
       id: string
       name: string
       translatedName: string
@@ -98,28 +65,97 @@ export interface CategoriesSummary {
   cacheHit: boolean
 }
 
-const cacheKey = cacheKeys.allDeals()
-
-function normaliseText(value?: string | null): string {
-  if (!value) return ''
-  return value.trim().toLowerCase()
+interface DatasetCacheEntry {
+  deals: Deal[]
+  fetchedAt: string
 }
 
-function toNumber(value?: string): number {
-  if (!value) return 0
-  const parsed = parseFloat(value.replace(',', '.'))
-  return Number.isNaN(parsed) ? 0 : parsed
+// ---- Domain mapping helpers ------------------------------------------------
+
+const loggerContext = { module: 'service:deals' }
+
+function parseCategories(value: any): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value.map(String)
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.map(String)
+    }
+  } catch {
+    // ignore
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+  return []
 }
 
-function computeDaysRemaining(expiresAt: Date): number {
-  const now = new Date()
-  const diff = expiresAt.getTime() - now.getTime()
-  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-  return days < 0 ? 0 : days
+function normalizePrice(value: any): string | undefined {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === 'number') return value.toFixed(2)
+  if (typeof value === 'string') {
+    const numeric = Number(value.replace(',', '.'))
+    if (!Number.isNaN(numeric)) {
+      return numeric.toFixed(2)
+    }
+    return value
+  }
+  return undefined
+}
+
+function mapRowToDeal(row: DealRow): Deal {
+  const categories = parseCategories((row as any).categories)
+  const publishedAt = row.pub_date ? new Date(row.pub_date) : new Date(row.created_at)
+  const fallbackExpiry = new Date(publishedAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const expiresAt = row.expires_at ? new Date(row.expires_at) : fallbackExpiry
+
+  const translatedTitle = row.title || row.original_title || ''
+  const translatedDescription = row.description || row.original_description || ''
+
+  const contentText = (row as any).content_text || row.original_description || ''
+  const contentHtml = (row as any).content_html || undefined
+
+  return {
+    id: String(row.id),
+    title: translatedTitle,
+    originalTitle: row.original_title || translatedTitle,
+    translatedTitle: translatedTitle,
+    description: translatedDescription,
+    originalDescription: row.original_description || translatedDescription,
+    translatedDescription: translatedDescription,
+    price: normalizePrice(row.price),
+    originalPrice: normalizePrice(row.original_price),
+    currency: row.currency || 'EUR',
+    discountPercentage: row.discount !== null && row.discount !== undefined
+      ? Number(row.discount)
+      : undefined,
+    imageUrl: row.image_url || '',
+    dealUrl: row.link,
+    category: categories[0] || 'General',
+    source: (row as any).source || 'Sparhamster.at',
+    publishedAt,
+    expiresAt,
+    language: ((row.translation_language as any) || 'de') as Deal['language'],
+    translationProvider: ((row.translation_provider as any) || 'deepl') as Deal['translationProvider'],
+    isTranslated: row.is_translated ?? translatedDescription !== row.original_description,
+    categories,
+    content: contentText || translatedDescription,
+    contentHtml,
+    merchantName: (row as any).merchant_name || undefined,
+    merchantLogo: (row as any).merchant_logo || undefined,
+    tags: parseCategories((row as any).tags),
+    affiliateUrl: (row as any).affiliate_url || undefined,
+    originalUrl: row.link
+  }
 }
 
 function computeRelevanceScore(deal: Deal, query: string): number {
-  const terms = query.split(/\s+/).filter(Boolean)
+  const terms = query
+    .split(/\s+/)
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean)
+
   if (terms.length === 0) return 0
 
   const textTargets = [
@@ -132,16 +168,15 @@ function computeRelevanceScore(deal: Deal, query: string): number {
     { value: deal.merchantName ?? '', weight: 3 }
   ]
 
-  const tagTargets = (deal.tags ?? []).map(tag => ({ value: tag, weight: 3 }))
+  const tagTargets = (deal.tags ?? []).map((tag) => ({ value: tag, weight: 3 }))
   const allTargets = [...textTargets, ...tagTargets]
 
   let score = 0
 
   for (const term of terms) {
-    const lowerTerm = term.toLowerCase()
     for (const target of allTargets) {
       if (!target.value) continue
-      if (target.value.toLowerCase().includes(lowerTerm)) {
+      if (target.value.toLowerCase().includes(term)) {
         score += target.weight
       }
     }
@@ -150,57 +185,40 @@ function computeRelevanceScore(deal: Deal, query: string): number {
   return score
 }
 
-function translateCategoryName(category: string): string {
-  const mapping: Record<string, string> = {
-    'electronics': '电子产品',
-    'fashion': '时尚服饰',
-    'home & kitchen': '家居用品',
-    'home and kitchen': '家居用品',
-    'home &amp; kitchen': '家居用品',
-    'gaming': '游戏娱乐',
-    'sports & outdoor': '运动户外',
-    'sports and outdoor': '运动户外',
-    'beauty & health': '美妆护肤',
-    'beauty and health': '美妆护肤',
-    'automotive': '汽车用品',
-    'food & drinks': '食品饮料',
-    'food and drinks': '食品饮料',
-    'general': '综合'
-  }
-
-  const key = normaliseText(category)
-  return mapping[key] || category
+function computeDaysRemaining(expiresAt: Date): number {
+  const now = new Date()
+  const diff = expiresAt.getTime() - now.getTime()
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+  return days < 0 ? 0 : days
 }
 
-export class DealsService {
-  private readonly datasetLimit: number
+// ---- Service implementation -------------------------------------------------
 
-  constructor(datasetLimit: number = DATASET_LIMIT) {
-    this.datasetLimit = datasetLimit
-  }
+class DealsService {
+  private datasetCacheKey = cacheKeys.allDeals()
 
   async getDeals(options: DealsListOptions = {}): Promise<DealsListResult> {
     const page = Math.max(options.page ?? 1, 1)
     const limit = Math.min(Math.max(options.limit ?? 12, 1), 100)
     const sortBy: DealSortField = options.sortBy ?? (options.search ? 'relevance' : 'publishedAt')
     const sortOrder: 'asc' | 'desc' = options.sortOrder ?? 'desc'
-    const searchTerm = normaliseText(options.search ?? '')
-    const categoryFilter = normaliseText(options.category ?? '')
+    const searchTerm = (options.search ?? '').trim().toLowerCase()
+    const categoryFilter = (options.category ?? '').trim().toLowerCase()
 
-    const { entry, cacheHit } = await this.loadDeals(options.forceRefresh === true)
-    let workingList = [...entry.deals]
+    const { deals, cacheHit, fetchedAt } = await this.loadDataset(options.forceRefresh === true)
+    let workingList = [...deals]
 
     if (categoryFilter && categoryFilter !== 'all') {
-      workingList = workingList.filter(deal => {
-        const mainCategory = normaliseText(deal.category)
-        const extraCategories = (deal.categories ?? []).map(normaliseText)
+      workingList = workingList.filter((deal) => {
+        const mainCategory = deal.category.toLowerCase()
+        const extraCategories = deal.categories.map((cat) => cat.toLowerCase())
         return mainCategory === categoryFilter || extraCategories.includes(categoryFilter)
       })
     }
 
     let relevanceScores: Map<string, number> | null = null
     if (searchTerm) {
-      workingList = workingList.filter(deal => {
+      workingList = workingList.filter((deal) => {
         const fields = [
           deal.translatedTitle,
           deal.originalTitle,
@@ -210,32 +228,32 @@ export class DealsService {
           deal.source,
           deal.merchantName ?? '',
           ...(deal.tags ?? [])
-        ].map(value => value.toLowerCase())
+        ].map((value) => value.toLowerCase())
 
-        return fields.some(value => value.includes(searchTerm))
+        return fields.some((value) => value.includes(searchTerm))
       })
 
       relevanceScores = new Map(
-        workingList.map(deal => [deal.id, computeRelevanceScore(deal, searchTerm)])
+        workingList.map((deal) => [deal.id, computeRelevanceScore(deal, searchTerm)])
       )
     }
 
     workingList.sort((a, b) => {
-      let aValue: number | string = 0
-      let bValue: number | string = 0
+      let aValue: number
+      let bValue: number
 
       switch (sortBy) {
         case 'price':
-          aValue = toNumber(a.price)
-          bValue = toNumber(b.price)
+          aValue = Number(a.price || 0)
+          bValue = Number(b.price || 0)
           break
         case 'discount':
           aValue = a.discountPercentage ?? 0
           bValue = b.discountPercentage ?? 0
           break
         case 'expiresAt':
-          aValue = new Date(a.expiresAt).getTime()
-          bValue = new Date(b.expiresAt).getTime()
+          aValue = a.expiresAt.getTime()
+          bValue = b.expiresAt.getTime()
           break
         case 'relevance':
           aValue = relevanceScores?.get(a.id) ?? 0
@@ -243,20 +261,13 @@ export class DealsService {
           break
         case 'publishedAt':
         default:
-          aValue = new Date(a.publishedAt).getTime()
-          bValue = new Date(b.publishedAt).getTime()
-          break
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortOrder === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
+          aValue = a.publishedAt.getTime()
+          bValue = b.publishedAt.getTime()
       }
 
       return sortOrder === 'asc'
-        ? (aValue as number) - (bValue as number)
-        : (bValue as number) - (aValue as number)
+        ? aValue - bValue
+        : bValue - aValue
     })
 
     const total = workingList.length
@@ -264,23 +275,21 @@ export class DealsService {
     const safePage = Math.min(page, totalPages)
     const startIndex = (safePage - 1) * limit
     const endIndex = startIndex + limit
-    const pageItems = workingList.slice(startIndex, endIndex)
 
-    const preparedDeals = pageItems.map(deal => {
-      const expiresAt = new Date(deal.expiresAt)
-      const daysRemaining = computeDaysRemaining(expiresAt)
+    const paginatedDeals = workingList.slice(startIndex, endIndex).map((deal) => {
+      const daysRemaining = computeDaysRemaining(deal.expiresAt)
       const relevanceScore = relevanceScores?.get(deal.id)
 
       return {
         ...deal,
-        isExpired: expiresAt.getTime() < Date.now(),
+        isExpired: daysRemaining === 0 && new Date(deal.expiresAt) < new Date(),
         daysRemaining,
         relevanceScore
       }
     })
 
     return {
-      deals: preparedDeals,
+      deals: paginatedDeals,
       pagination: {
         page: safePage,
         limit,
@@ -296,91 +305,66 @@ export class DealsService {
         sortOrder
       },
       meta: {
-        fetchedAt: entry.fetchedAt,
-        source: entry.source,
+        fetchedAt,
         cacheHit
       }
     }
   }
 
   async getDealById(id: string, opts: { forceRefresh?: boolean } = {}): Promise<Deal | null> {
-    const { entry } = await this.loadDeals(opts.forceRefresh === true)
-    const match = entry.deals.find(deal => deal.id === id || deal.wordpressId?.toString() === id)
+    const { deals } = await this.loadDataset(opts.forceRefresh === true)
+    const match = deals.find((deal) => deal.id === id || deal.originalUrl === id)
+    if (match) return match
 
-    if (match) {
-      return match
-    }
-
-    const { entry: refreshedEntry } = await this.loadDeals(true)
-    return refreshedEntry.deals.find(deal => deal.id === id || deal.wordpressId?.toString() === id) ?? null
+    const row = await fetchDealByIdentifier(id)
+    return row ? mapRowToDeal(row) : null
   }
 
   async getCategories(): Promise<CategoriesSummary> {
-    const { entry, cacheHit } = await this.loadDeals(false)
-    const categoryMap = new Map<string, { count: number; translatedName: string }>()
-    const subcategoryMap = new Map<string, Map<string, number>>()
+    const { deals, cacheHit, fetchedAt } = await this.loadDataset(false)
 
-    for (const deal of entry.deals) {
-      const mainKey = normaliseText(deal.category || 'General')
-      const translated = translateCategoryName(deal.category || 'General')
+    const categoryMap = new Map<string, number>()
+    const subCategoryMap = new Map<string, Map<string, number>>()
 
-      const mainEntry = categoryMap.get(mainKey) ?? { count: 0, translatedName: translated }
-      mainEntry.count += 1
-      categoryMap.set(mainKey, mainEntry)
+    for (const deal of deals) {
+      const main = deal.category
+      categoryMap.set(main, (categoryMap.get(main) || 0) + 1)
 
-      const secondaryCategories = deal.categories ?? []
-      if (secondaryCategories.length > 0) {
-        if (!subcategoryMap.has(mainKey)) {
-          subcategoryMap.set(mainKey, new Map())
+      if (deal.categories.length > 1) {
+        if (!subCategoryMap.has(main)) {
+          subCategoryMap.set(main, new Map())
         }
-        const bucket = subcategoryMap.get(mainKey)!
-        for (const subcat of secondaryCategories) {
-          const subKey = normaliseText(subcat)
-          bucket.set(subKey, (bucket.get(subKey) ?? 0) + 1)
+        const bucket = subCategoryMap.get(main)!
+        for (const sub of deal.categories.slice(1)) {
+          bucket.set(sub, (bucket.get(sub) || 0) + 1)
         }
       }
     }
 
-    const categories = Array.from(categoryMap.entries()).map(([key, info]) => {
-      const readableName = key
-        .split('-')
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
+    const categories = Array.from(categoryMap.entries())
+      .map(([name, count]) => ({
+        id: name.toLowerCase(),
+        name,
+        translatedName: translateCategory(name),
+        count,
+        subcategories: Array.from(subCategoryMap.get(name)?.entries() ?? [])
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([sub, subCount]) => ({
+            id: sub.toLowerCase(),
+            name: sub,
+            translatedName: translateCategory(sub),
+            count: subCount
+          }))
+      }))
+      .sort((a, b) => b.count - a.count)
 
-      const subcategoriesRaw = Array.from(subcategoryMap.get(key)?.entries() ?? [])
-      const subcategories = subcategoriesRaw
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([subKey, count]) => {
-          const originalName = subKey
-            .split('-')
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ')
-          return {
-            id: subKey,
-            name: originalName,
-            translatedName: translateCategoryName(originalName),
-            count
-          }
-        })
-
-      return {
-        id: key || 'general',
-        name: readableName,
-        translatedName: info.translatedName,
-        description: undefined,
-        translatedDescription: undefined,
-        icon: undefined,
-        count: info.count,
-        subcategories
-      }
-    })
-
-    categories.sort((a, b) => b.count - a.count)
-
-    const totalDeals = entry.deals.length
+    const totalDeals = deals.length
     const totalCategories = categories.length
-    const totalSubcategories = categories.reduce((sum, category) => sum + (category.subcategories?.length ?? 0), 0)
+    const totalSubcategories = categories.reduce(
+      (sum, category) => sum + category.subcategories.length,
+      0
+    )
 
     return {
       categories,
@@ -389,44 +373,51 @@ export class DealsService {
         totalCategories,
         totalSubcategories
       },
-      fetchedAt: entry.fetchedAt,
+      fetchedAt,
       cacheHit
     }
   }
 
-  private async loadDeals(forceRefresh: boolean): Promise<{ entry: DealsCacheEntry; cacheHit: boolean }> {
+  private async loadDataset(forceRefresh: boolean): Promise<{ deals: Deal[]; cacheHit: boolean; fetchedAt: string }> {
     if (!forceRefresh) {
-      const cached = await defaultCache.get<DealsCacheEntry>(cacheKey)
+      const cached = await defaultCache.get<DatasetCacheEntry>(this.datasetCacheKey)
       if (cached) {
-        logger.debug('Loaded deals from cache', { count: cached.deals.length })
-        return { entry: cached, cacheHit: true }
+        logger.debug('Loaded deals dataset from cache', { count: cached.deals.length }, loggerContext)
+        return { deals: cached.deals, cacheHit: true, fetchedAt: cached.fetchedAt }
       }
     }
 
-    const fresh = await this.fetchFreshDeals(this.datasetLimit)
-    await defaultCache.set(cacheKey, fresh, CACHE_TTL.DEALS_LIST)
-    logger.info('Fetched fresh deals dataset', {
-      count: fresh.deals.length,
-      fetchedAt: fresh.fetchedAt
-    })
+    const rows = await fetchRecentDeals()
+    const deals = rows.map(mapRowToDeal)
+    const fetchedAt = new Date().toISOString()
 
-    return { entry: fresh, cacheHit: false }
+    const cacheEntry: DatasetCacheEntry = { deals, fetchedAt }
+    await defaultCache.set(this.datasetCacheKey, cacheEntry, CACHE_TTL.DEALS_LIST)
+
+    logger.info('Fetched deals dataset from database', { count: deals.length }, loggerContext)
+
+    return { deals, cacheHit: false, fetchedAt }
+  }
+}
+
+function translateCategory(category: string): string {
+  const mapping: Record<string, string> = {
+    'electronics': '电子产品',
+    'fashion': '时尚服饰',
+    'home & kitchen': '家居用品',
+    'home and kitchen': '家居用品',
+    'gaming': '游戏娱乐',
+    'sports': '运动户外',
+    'sports & outdoor': '运动户外',
+    'beauty': '美妆护肤',
+    'beauty & health': '美妆护肤',
+    'automotive': '汽车用品',
+    'food': '食品饮料',
+    'general': '综合'
   }
 
-  private async fetchFreshDeals(limit: number): Promise<DealsCacheEntry> {
-    const safeLimit = Math.min(Math.max(limit, 20), MAX_FETCH_LIMIT)
-
-    const result = await sparhamsterFetcher.fetchDeals({
-      limit: safeLimit,
-      page: 1
-    })
-
-    return {
-      deals: result.deals,
-      fetchedAt: result.fetchedAt.toISOString(),
-      source: result.source
-    }
-  }
+  const key = category.trim().toLowerCase()
+  return mapping[key] || category
 }
 
 export const dealsService = new DealsService()

@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = categories.find(cat => cat.id === categoryId)
+    const summary = await dealsService.getCategories()
+    const category = summary.categories.find(cat => cat.id === categoryId)
 
     if (!category) {
       return NextResponse.json(

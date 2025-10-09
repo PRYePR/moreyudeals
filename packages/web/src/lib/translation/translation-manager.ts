@@ -101,13 +101,6 @@ export class CoreTranslationManager implements TranslationManager {
       if (!provider) continue;
 
       try {
-        // 检查Provider健康状态
-        const isHealthy = await provider.isHealthy();
-        if (!isHealthy) {
-          logger.warn('Provider不健康，跳过', { provider: providerName });
-          continue;
-        }
-
         // 执行翻译
         logger.debug('使用Provider翻译', {
           provider: providerName,

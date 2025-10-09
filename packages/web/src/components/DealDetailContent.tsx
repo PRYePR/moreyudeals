@@ -1,37 +1,37 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { DetailContent } from '@/lib/detail-page-fetcher'
 import { createModuleLogger } from '@/lib/logger'
 
 const logger = createModuleLogger('components:deal-detail-content')
 
 interface DealDetailContentProps {
-  deal: any  // 完整的 Deal 对象
+  deal: any
   dealId: string
   initialContent?: string
   onContentLoaded?: (content: DetailContent) => void
 }
 
-export default function DealDetailContent({ deal, dealId, initialContent, onContentLoaded }: DealDetailContentProps) {
+export default function DealDetailContent({
+  deal,
+  dealId,
+  initialContent,
+  onContentLoaded
+}: DealDetailContentProps) {
   const [detailContent, setDetailContent] = useState<DetailContent | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
 
-  const fetchDetailContent = async () => {
-    if (detailContent || loading) return
-
+  const fetchDetailContent = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
-      // 使用 POST 方法，发送完整的 deal 对象
       const response = await fetch(`/api/deals/${dealId}/detail`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(deal)
       })
 
@@ -40,194 +40,192 @@ export default function DealDetailContent({ deal, dealId, initialContent, onCont
       }
 
       const data = await response.json()
-
-      if (data.success) {
-        setDetailContent(data.content)
-        setExpanded(true)
-        onContentLoaded?.(data.content)
-      } else {
-        throw new Error(data.message || 'Failed to generate detail content')
+      if (!data.success) {
+        throw new Error(data.message || '无法生成详情内容')
       }
+
+      setDetailContent(data.content)
+      onContentLoaded?.(data.content)
     } catch (err) {
-      logger.error('Error generating detail content', err as Error)
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      logger.error('Failed to fetch deal detail content', err as Error)
+      setError(err instanceof Error ? err.message : '发生未知错误')
     } finally {
       setLoading(false)
     }
-  }
+  }, [deal, dealId, onContentLoaded])
 
-  if (!expanded) {
-    return (
-      <div className="bg-white rounded-lg p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">详细产品信息</h2>
-          <button
-            onClick={fetchDetailContent}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-          >
-            {loading ? '正在加载...' : '查看详细信息'}
-          </button>
-        </div>
+  useEffect(() => {
+    fetchDetailContent()
+  }, [fetchDetailContent])
 
-        {initialContent && (
-          <div className="text-gray-700 text-sm">
-            <p className="line-clamp-3">{initialContent}</p>
-            <p className="text-gray-500 mt-2">点击上方按钮获取完整的产品详细信息</p>
-          </div>
-        )}
+  const displayDescription = useMemo(() => {
+    const html = detailContent?.fullDescription?.trim()
+    if (html) {
+      return html
+    }
+    return initialContent || deal.translatedDescription || deal.description || ''
+  }, [deal.description, deal.translatedDescription, detailContent?.fullDescription, initialContent])
 
-        {error && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-600 text-sm">
-              ❌ 获取详细信息失败: {error}
-            </p>
-          </div>
-        )}
-      </div>
-    )
-  }
+  const hasHtmlMarkup = useMemo(() => /<[a-z][\s\S]*>/i.test(displayDescription), [displayDescription])
+
+  const featureList = useMemo(() => {
+    if (!detailContent?.features?.length) return []
+    if (detailContent.features.length === 1 && /查看原始页面/.test(detailContent.features[0])) {
+      return []
+    }
+    return detailContent.features
+  }, [detailContent?.features])
+
+  const specificationEntries = useMemo(() => {
+    if (!detailContent?.specifications) return []
+    return Object.entries(detailContent.specifications).filter(([, value]) => Boolean(value))
+  }, [detailContent?.specifications])
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-lg">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-            <div className="h-4 bg-gray-200 rounded w-4/6"></div>
-          </div>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 rounded-full bg-slate-200"></div>
+          <div className="h-4 rounded-full bg-slate-200"></div>
+          <div className="h-4 rounded-full bg-slate-200 w-5/6"></div>
+          <div className="h-4 rounded-full bg-slate-200 w-2/3"></div>
         </div>
-      </div>
+      </section>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg p-6 shadow-lg">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">详细产品信息</h2>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">
-            ❌ 无法获取详细信息: {error}
-          </p>
-          <button
-            onClick={() => {
-              setError(null)
-              setExpanded(false)
-            }}
-            className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
-          >
-            重试
-          </button>
+      <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">😢</span>
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">无法加载详细内容</h2>
+              <p className="text-sm text-rose-600/80">{error}</p>
+            </div>
+            <button
+              onClick={fetchDetailContent}
+              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-rose-700"
+            >
+              <span>↻</span>
+              <span>重新加载</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
     )
   }
 
-  if (!detailContent) {
-    return null
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Full Description */}
-      {detailContent.fullDescription && (
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">产品详细描述</h2>
-          <div
-            className="prose max-w-none text-gray-700"
-            dangerouslySetInnerHTML={{ __html: detailContent.fullDescription }}
-          />
-        </div>
-      )}
+    <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:p-8">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">产品详细介绍</h2>
+            <div className="mt-4 text-sm leading-relaxed text-slate-700">
+              {hasHtmlMarkup ? (
+                <div
+                  className="prose prose-sm max-w-none text-slate-700"
+                  dangerouslySetInnerHTML={{ __html: displayDescription }}
+                />
+              ) : (
+                <p className="whitespace-pre-line">{displayDescription}</p>
+              )}
+            </div>
+          </div>
 
-      {/* Product Features */}
-      {detailContent.features.length > 0 && (
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">产品特性</h2>
-          <ul className="space-y-2">
-            {detailContent.features.map((feature, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-700">{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Specifications */}
-      {Object.keys(detailContent.specifications).length > 0 && (
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">产品规格</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(detailContent.specifications).map(([key, value]) => (
-              <div key={key} className="border-b border-gray-200 pb-2">
-                <div className="font-medium text-gray-900">{key}</div>
-                <div className="text-gray-600 text-sm">{value}</div>
+          {detailContent?.additionalContent && (
+            <div className="rounded-2xl bg-slate-50/80 p-4 text-sm text-slate-700">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                补充信息
               </div>
-            ))}
+              <p className="leading-relaxed whitespace-pre-line">
+                {detailContent.additionalContent}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          {featureList.length > 0 && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-slate-800">产品亮点</h3>
+              <ul className="space-y-2 text-sm text-slate-700">
+                {featureList.map((feature, index) => (
+                  <li key={`${feature}-${index}`} className="flex items-start gap-2">
+                    <span className="mt-1 text-emerald-500">•</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {specificationEntries.length > 0 && (
+            <div className="rounded-2xl border border-slate-100 bg-white p-4">
+              <h3 className="mb-3 text-sm font-semibold text-slate-800">规格参数</h3>
+              <dl className="grid gap-3 text-sm text-slate-700">
+                {specificationEntries.map(([key, value]) => (
+                  <div key={key} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      {key}
+                    </dt>
+                    <dd className="mt-1">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-slate-800">商家信息</h3>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl text-primary-600 shadow-sm">
+                🛍️
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="font-semibold text-slate-900">
+                  {detailContent?.retailer?.name || deal.merchantName || '未知商家'}
+                </div>
+                <div className="text-slate-500">
+                  {detailContent?.retailer?.url || deal.dealUrl}
+                </div>
+              </div>
+              {detailContent?.retailer?.logo && (
+                <Image
+                  src={detailContent.retailer.logo}
+                  alt={detailContent.retailer.name}
+                  width={40}
+                  height={40}
+                  className="ml-auto rounded-lg bg-white object-contain shadow-sm"
+                />
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Additional Images */}
-      {detailContent.images.length > 0 && (
-        <div className="bg-white rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">更多图片</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {detailContent?.images?.length ? (
+        <div>
+          <h3 className="mb-4 text-sm font-semibold text-slate-800">图像素材</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
             {detailContent.images.slice(0, 6).map((image, index) => (
-              <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                <img
+              <div
+                key={`${image}-${index}`}
+                className="relative aspect-video overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
+              >
+                <Image
                   src={image}
-                  alt={`产品图片 ${index + 1}`}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
-                  }}
+                  alt={`Deal asset ${index + 1}`}
+                  fill
+                  className="object-cover"
                 />
               </div>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Retailer Information */}
-      <div className="bg-white rounded-lg p-6 shadow-lg">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">商家信息</h2>
-        <div className="flex items-center space-x-4">
-          {detailContent.retailer.logo && (
-            <img
-              src={detailContent.retailer.logo}
-              alt={detailContent.retailer.name}
-              className="w-12 h-12 object-contain"
-            />
-          )}
-          <div>
-            <div className="font-medium text-gray-900">{detailContent.retailer.name}</div>
-            <div className="text-sm text-gray-600">
-              库存状态: {detailContent.pricing.availability}
-            </div>
-            {detailContent.pricing.shippingInfo && (
-              <div className="text-sm text-gray-600">
-                配送: {detailContent.pricing.shippingInfo}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Collapse Button */}
-      <div className="text-center">
-        <button
-          onClick={() => setExpanded(false)}
-          className="text-gray-500 hover:text-gray-700 text-sm underline"
-        >
-          收起详细信息
-        </button>
-      </div>
-    </div>
+      ) : null}
+    </section>
   )
 }

@@ -33,6 +33,7 @@ export interface SparhamsterDeal {
   isTranslated: boolean
   categories: string[]
   content: string
+  contentHtml?: string
   merchantName?: string
   merchantLogo?: string
 }
@@ -124,15 +125,16 @@ export class SparhamsterFetcher {
 
     const originalTitle = post.title.rendered
     const originalDescription = textCleaner.cleanDescription(post.excerpt.rendered || '')
-    const content = post.content.rendered || ''
+    const rawContent = post.content.rendered || ''
+    const sanitizedContent = textCleaner.cleanHtml(rawContent)
 
     // 提取价格信息
-    const priceInfo = priceParser.extractPriceInfo(originalTitle, content)
+    const priceInfo = priceParser.extractPriceInfo(originalTitle, rawContent)
 
     // 提取图片 - 优先使用 WordPress 特色图片
     let imageUrl = this.extractFeaturedImage(post)
     if (!imageUrl) {
-      imageUrl = imageParser.extractImageUrl(content)
+      imageUrl = imageParser.extractImageUrl(rawContent)
     }
     if (!imageUrl && post.link) {
       imageUrl = await imageParser.extractImageFromDealPage(post.link)
@@ -170,7 +172,7 @@ export class SparhamsterFetcher {
     const translationProvider = translationResult.provider
 
     // 提取商家信息
-    const merchantInfo = this.extractMerchantInfo(content, post.link, categoryNames)
+    const merchantInfo = this.extractMerchantInfo(rawContent, post.link, categoryNames)
 
     return {
       id: this.generateId(post.link),
@@ -194,7 +196,8 @@ export class SparhamsterFetcher {
       translationProvider: translationProvider,
       isTranslated: true,
       categories: categoryNames,
-      content: textCleaner.cleanHtml(content),
+      content: sanitizedContent,
+      contentHtml: rawContent,
       merchantName: merchantInfo.merchantName,
       merchantLogo: merchantInfo.merchantLogo
     }
