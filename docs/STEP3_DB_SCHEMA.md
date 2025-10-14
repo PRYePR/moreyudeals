@@ -1705,3 +1705,485 @@ T1-T6 (测试) → D1-D3 (演练) → E1-E6 (执行) → V1-V5 (验证)
 2. 所有 SQL 脚本需先在测试环境验证
 3. 生产迁移需在维护窗口执行
 4. 保留旧表 30 天以备回滚
+
+---
+
+## 十四、后续迁移计划 (Future Migration Plan)
+
+### 14.1 rss_feeds 表重命名计划
+
+**当前状态**:
+- 表名: `rss_feeds`
+- 用途: RSS 数据源配置
+- 记录数: 5 条
+- **问题**: 表名与字段设计绑定 RSS,不适用于 API/Scraper 数据源
+
+**目标状态**:
+- 表名: `data_sources`
+- 用途: 通用数据源配置 (支持 RSS/API/Scraper 等多种类型)
+- 保留现有所有列,新增扩展字段
+
+### 14.2 重命名策略
+
+**设计原则**:
+1. **向后兼容**: 保留现有所有字段和数据
+2. **扩展性**: 新增 `source_type` 字段区分数据源类型
+3. **灵活性**: 新增 `api_url` / `api_config` 等字段支持 API 数据源
+4. **索引同步**: 重命名相关索引和外键约束
+
+**字段调整思路**:
+
+| 字段名 | 当前类型 | 调整方案 | 说明 |
+|--------|----------|----------|------|
+| id | UUID | **保留** | 主键不变 |
+| name | VARCHAR(255) | **保留** | 数据源名称 |
+| url | TEXT | **重命名** → `rss_url` | 明确为 RSS URL |
+| category | VARCHAR(100) | **保留** | 分类 |
+| language | VARCHAR(5) | **保留** | 语言 |
+| enabled | BOOLEAN | **保留** | 是否启用 |
+| last_fetched | TIMESTAMP | **保留** | 最后抓取时间 |
+| created_at | TIMESTAMP | **保留** | 创建时间 |
+| updated_at | TIMESTAMP | **保留** | 更新时间 |
+| - | - | **新增** `source_type` | VARCHAR(20), 默认 'rss', CHECK IN ('rss', 'api', 'scraper') |
+| - | - | **新增** `api_url` | TEXT, 可空, API 端点地址 |
+| - | - | **新增** `api_config` | JSONB, 可空, API 配置 (headers, params 等) |
+| - | - | **新增** `fetch_interval` | INTEGER, 默认 30, 抓取间隔(分钟) |
+| - | - | **新增** `priority` | INTEGER, 默认 0, 优先级 |
+
+**迁移 SQL 概要** (将在新的迁移脚本中实现):
+
+```sql
+BEGIN;
+
+-- 1. 重命名表
+ALTER TABLE rss_feeds RENAME TO data_sources;
+
+-- 2. 重命名 url 字段
+ALTER TABLE data_sources RENAME COLUMN url TO rss_url;
+
+-- 3. 新增扩展字段
+ALTER TABLE data_sources ADD COLUMN source_type VARCHAR(20) DEFAULT 'rss' NOT NULL;
+ALTER TABLE data_sources ADD COLUMN api_url TEXT;
+ALTER TABLE data_sources ADD COLUMN api_config JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE data_sources ADD COLUMN fetch_interval INTEGER DEFAULT 30 NOT NULL;
+ALTER TABLE data_sources ADD COLUMN priority INTEGER DEFAULT 0 NOT NULL;
+
+-- 4. 添加约束
+ALTER TABLE data_sources ADD CONSTRAINT data_sources_source_type_check
+  CHECK (source_type IN ('rss', 'api', 'scraper'));
+
+-- 5. 更新现有数据的 source_type
+UPDATE data_sources SET source_type = 'rss' WHERE rss_url IS NOT NULL;
+
+-- 6. 重命名索引
+ALTER INDEX IF EXISTS rss_feeds_pkey RENAME TO data_sources_pkey;
+ALTER INDEX IF EXISTS idx_rss_feeds_enabled RENAME TO idx_data_sources_enabled;
+
+-- 7. 创建新索引
+CREATE INDEX idx_data_sources_source_type ON data_sources(source_type);
+CREATE INDEX idx_data_sources_priority ON data_sources(priority DESC) WHERE enabled = true;
+
+-- 8. 更新外键约束名称
+ALTER TABLE deals DROP CONSTRAINT IF EXISTS rss_items_feed_id_fkey;
+ALTER TABLE deals ADD CONSTRAINT deals_feed_id_fkey
+  FOREIGN KEY (feed_id) REFERENCES data_sources(id) ON DELETE SET NULL;
+
+-- 9. 验证迁移
+DO $$
+DECLARE
+  record_count INT;
+BEGIN
+  SELECT COUNT(*) INTO record_count FROM data_sources;
+  RAISE NOTICE 'Migration successful: % data sources migrated', record_count;
+END $$;
+
+COMMIT;
+```
+
+**影响评估**:
+- **代码更新**: 需更新 `DatabaseManager` 中的表名引用:
+  - `getRSSFeeds()` → `getDataSources()`
+  - SQL 查询中的 `rss_feeds` → `data_sources`
+- **测试更新**: 更新所有测试用例中的表名和方法名
+- **配置更新**: 无需更新环境变量 (内部表名变更)
+
+**回滚方案**:
+```sql
+-- 回滚到 rss_feeds
+BEGIN;
+ALTER TABLE data_sources RENAME TO rss_feeds;
+ALTER TABLE rss_feeds RENAME COLUMN rss_url TO url;
+ALTER TABLE rss_feeds DROP COLUMN IF EXISTS source_type;
+ALTER TABLE rss_feeds DROP COLUMN IF EXISTS api_url;
+ALTER TABLE rss_feeds DROP COLUMN IF EXISTS api_config;
+ALTER TABLE rss_feeds DROP COLUMN IF EXISTS fetch_interval;
+ALTER TABLE rss_feeds DROP COLUMN IF EXISTS priority;
+-- 恢复索引和外键名称...
+COMMIT;
+```
+
+### 14.3 迁移时机
+
+**建议迁移顺序**:
+1. ✅ **第一阶段**: `rss_items` → `deals` (当前 STEP3)
+2. ⏳ **第二阶段**: `rss_feeds` → `data_sources` (建议在 deals 表稳定运行 1 周后)
+3. ⏳ **第三阶段**: 接入新的数据源 (Sparhamster API / 其他网站)
+
+**时间估算**:
+- 迁移脚本编写: 2 小时
+- 测试验证: 1 小时
+- 代码适配: 2 小时
+- 执行迁移: 5 分钟
+- **总计**: ~5 小时 (不含决策和审核时间)
+
+---
+
+## 十五、数据库权限分离 (Database Access Control)
+
+### 15.1 权限分离策略
+
+**当前状态**:
+- 使用单一超级用户 `moreyu_admin` 进行所有操作
+- **风险**:
+  - Web 服务拥有写权限 (不需要)
+  - 缺少审计日志
+  - 密码泄露影响面大
+
+**目标状态**:
+- 按最小权限原则创建专用账号
+- Worker 服务: 读写权限
+- Web 服务: 只读权限
+- 管理账号: 仅用于迁移和运维
+
+### 15.2 账号规划
+
+| 账号名 | 角色 | 权限范围 | 用途 | 密码策略 |
+|--------|------|----------|------|----------|
+| **moreyu_admin** | 超级用户 | ALL PRIVILEGES | 数据库迁移、表结构变更、紧急修复 | 复杂密码 + 定期轮换 (90天) |
+| **worker_user** | 应用用户 | SELECT, INSERT, UPDATE | Worker 服务日常读写 | 复杂密码 + 定期轮换 (90天) |
+| **web_user** | 只读用户 | SELECT | Web 服务查询数据 | 复杂密码 + 定期轮换 (90天) |
+| **backup_user** | 备份用户 | SELECT (ALL TABLES) | 自动化备份脚本 | 复杂密码,存储在密钥管理服务 |
+
+### 15.3 权限明细
+
+#### A. worker_user 权限
+
+```sql
+-- 1. 创建用户
+CREATE USER worker_user WITH PASSWORD '<strong_password>';
+
+-- 2. 授予 deals 表权限
+GRANT SELECT, INSERT, UPDATE ON deals TO worker_user;
+GRANT USAGE, SELECT ON SEQUENCE deals_id_seq TO worker_user;  -- 如果使用 SERIAL
+
+-- 3. 授予 data_sources 表权限
+GRANT SELECT ON data_sources TO worker_user;
+
+-- 4. 授予 translation_jobs 表权限
+GRANT SELECT, INSERT, UPDATE ON translation_jobs TO worker_user;
+GRANT USAGE, SELECT ON SEQUENCE translation_jobs_id_seq TO worker_user;
+
+-- 5. 授予 merchants 表权限 (只读)
+GRANT SELECT ON merchants TO worker_user;
+GRANT SELECT ON merchant_logo_mappings TO worker_user;
+
+-- 6. 设置默认权限 (对未来新表自动生效)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE ON TABLES TO worker_user;
+
+-- 7. 限制连接数
+ALTER USER worker_user CONNECTION LIMIT 10;
+```
+
+#### B. web_user 权限
+
+```sql
+-- 1. 创建用户
+CREATE USER web_user WITH PASSWORD '<strong_password>';
+
+-- 2. 授予只读权限
+GRANT SELECT ON deals TO web_user;
+GRANT SELECT ON merchants TO web_user;
+GRANT SELECT ON merchant_logo_mappings TO web_user;
+GRANT SELECT ON data_sources TO web_user;
+
+-- 3. 启用行级安全策略 (可选,限制查询范围)
+ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY deals_web_read_policy ON deals
+  FOR SELECT
+  TO web_user
+  USING (
+    translation_status = 'completed' AND
+    published_at <= NOW() AND
+    (expires_at IS NULL OR expires_at > NOW())
+  );
+
+-- 4. 限制连接数
+ALTER USER web_user CONNECTION LIMIT 20;
+```
+
+#### C. backup_user 权限
+
+```sql
+-- 1. 创建用户
+CREATE USER backup_user WITH PASSWORD '<strong_password>';
+
+-- 2. 授予所有表的只读权限
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO backup_user;
+
+-- 3. 授予对未来新表的只读权限
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO backup_user;
+
+-- 4. 限制连接数
+ALTER USER backup_user CONNECTION LIMIT 2;
+```
+
+### 15.4 环境变量更新
+
+**迁移前** (.env 配置):
+```bash
+# 所有服务使用同一账号
+DB_USER=moreyu_admin
+DB_PASSWORD=<admin_password>
+DB_HOST=43.157.22.182
+DB_PORT=5432
+DB_NAME=moreyudeals
+```
+
+**迁移后** (需分别配置):
+
+**Worker 配置** (`packages/worker/.env`):
+```bash
+# Worker 服务使用读写账号
+DB_USER=worker_user
+DB_PASSWORD=<worker_password>
+DB_HOST=43.157.22.182
+DB_PORT=5432
+DB_NAME=moreyudeals
+```
+
+**Web 配置** (`packages/web/.env`):
+```bash
+# Web 服务使用只读账号
+DB_USER=web_user
+DB_PASSWORD=<web_password>
+DB_HOST=43.157.22.182
+DB_PORT=5432
+DB_NAME=moreyudeals
+```
+
+### 15.5 迁移步骤
+
+**执行顺序** (建议在 deals 表迁移完成后执行):
+
+```bash
+# Step 1: 在数据库中创建新用户
+psql -h 43.157.22.182 -U moreyu_admin -d moreyudeals -f scripts/create_users.sql
+
+# Step 2: 验证权限
+psql -h 43.157.22.182 -U worker_user -d moreyudeals -c "SELECT COUNT(*) FROM deals;"
+psql -h 43.157.22.182 -U web_user -d moreyudeals -c "SELECT COUNT(*) FROM deals;"
+
+# Step 3: 测试权限限制 (应该失败)
+psql -h 43.157.22.182 -U web_user -d moreyudeals -c "INSERT INTO deals (guid, link) VALUES ('test', 'test');"
+# 预期错误: ERROR: permission denied for table deals
+
+# Step 4: 更新 Worker .env
+cd packages/worker
+cp .env .env.backup
+echo "DB_USER=worker_user" > .env
+echo "DB_PASSWORD=<worker_password>" >> .env
+# ... 其他配置
+
+# Step 5: 更新 Web .env
+cd packages/web
+cp .env .env.backup
+echo "DB_USER=web_user" > .env
+echo "DB_PASSWORD=<web_password>" >> .env
+# ... 其他配置
+
+# Step 6: 重启服务
+yarn workspace @moreyudeals/worker dev  # 测试 Worker
+yarn workspace @moreyudeals/web dev     # 测试 Web
+
+# Step 7: 验证功能正常
+curl http://localhost:3000/api/deals    # 测试 Web 只读
+# 观察 Worker 日志,确认可以写入
+```
+
+### 15.6 验证清单
+
+**权限测试脚本** (`scripts/verify_permissions.sql`):
+
+```sql
+-- 测试 1: worker_user 应该可以读写 deals
+SET ROLE worker_user;
+SELECT COUNT(*) FROM deals;  -- 应该成功
+INSERT INTO deals (source_site, guid, link, language)
+VALUES ('test', 'test-guid', 'http://test.com', 'de');  -- 应该成功
+UPDATE deals SET title = 'test' WHERE guid = 'test-guid';  -- 应该成功
+DELETE FROM deals WHERE guid = 'test-guid';  -- 应该失败 (无 DELETE 权限)
+
+-- 测试 2: web_user 应该只读
+SET ROLE web_user;
+SELECT COUNT(*) FROM deals;  -- 应该成功
+INSERT INTO deals (guid, link) VALUES ('test2', 'test');  -- 应该失败
+
+-- 测试 3: backup_user 应该只读所有表
+SET ROLE backup_user;
+SELECT COUNT(*) FROM deals;  -- 应该成功
+SELECT COUNT(*) FROM translation_jobs;  -- 应该成功
+INSERT INTO deals (guid, link) VALUES ('test3', 'test');  -- 应该失败
+
+-- 重置角色
+RESET ROLE;
+```
+
+### 15.7 回滚方案
+
+如果权限配置导致服务异常,回滚步骤:
+
+```bash
+# Step 1: 恢复原来的 .env 配置
+cd packages/worker && mv .env.backup .env
+cd packages/web && mv .env.backup .env
+
+# Step 2: 重启服务
+yarn workspace @moreyudeals/worker dev
+yarn workspace @moreyudeals/web dev
+
+# Step 3: (可选) 删除新建的用户
+psql -h 43.157.22.182 -U moreyu_admin -d moreyudeals -c "DROP USER IF EXISTS worker_user;"
+psql -h 43.157.22.182 -U moreyu_admin -d moreyudeals -c "DROP USER IF EXISTS web_user;"
+psql -h 43.157.22.182 -U moreyu_admin -d moreyudeals -c "DROP USER IF EXISTS backup_user;"
+```
+
+### 15.8 密码管理建议
+
+**密码生成**:
+```bash
+# 使用 openssl 生成强密码
+openssl rand -base64 32
+```
+
+**密码存储**:
+- ❌ 不要: 硬编码在代码中
+- ❌ 不要: 提交到 Git 仓库
+- ✅ 推荐: 使用环境变量 (.env 文件,添加到 .gitignore)
+- ✅ 推荐: 使用密钥管理服务 (如 AWS Secrets Manager, HashiCorp Vault)
+
+**密码轮换周期**:
+- 管理员密码: 每 90 天
+- 应用密码: 每 90 天
+- 备份密码: 每 180 天
+
+### 15.9 监控与审计
+
+**连接监控**:
+```sql
+-- 查看当前活跃连接
+SELECT
+  usename,
+  application_name,
+  client_addr,
+  state,
+  COUNT(*)
+FROM pg_stat_activity
+WHERE datname = 'moreyudeals'
+GROUP BY usename, application_name, client_addr, state;
+
+-- 查看异常连接 (长时间空闲)
+SELECT
+  usename,
+  pid,
+  state,
+  query,
+  NOW() - state_change AS idle_duration
+FROM pg_stat_activity
+WHERE datname = 'moreyudeals'
+  AND state = 'idle'
+  AND NOW() - state_change > INTERVAL '10 minutes';
+```
+
+**审计日志启用** (可选):
+```sql
+-- 启用 PostgreSQL 审计扩展 (pgaudit)
+CREATE EXTENSION IF NOT EXISTS pgaudit;
+
+-- 审计所有 DML 操作
+ALTER SYSTEM SET pgaudit.log = 'write';
+ALTER SYSTEM SET pgaudit.log_level = 'log';
+
+-- 重新加载配置
+SELECT pg_reload_conf();
+```
+
+---
+
+## 十六、迁移计划总结
+
+### 16.1 完整迁移路线图
+
+```
+阶段一: deals 表迁移 (当前 STEP3)
+├── 创建 deals, merchants, merchant_logo_mappings 表
+├── 数据迁移: rss_items → deals
+├── 更新代码引用
+├── 验证功能正常
+└── 保留 rss_items_old 30 天
+
+阶段二: data_sources 表重命名 (本节第十四章)
+├── 重命名: rss_feeds → data_sources
+├── 新增扩展字段: source_type, api_url, api_config 等
+├── 更新索引和外键
+├── 更新代码引用
+└── 验证功能正常
+
+阶段三: 权限分离 (本节第十五章)
+├── 创建专用用户: worker_user, web_user, backup_user
+├── 配置细粒度权限
+├── 更新 .env 配置
+├── 验证权限生效
+└── 监控服务运行
+
+阶段四: 多数据源接入 (STEP4)
+├── 利用 data_sources 表配置新数据源
+├── 开发新的 Fetcher (API/Scraper)
+├── 测试去重逻辑
+└── 上线新数据源
+```
+
+### 16.2 关键决策点
+
+| 决策点 | 问题 | 推荐方案 | 影响 |
+|--------|------|----------|------|
+| DP1 | data_sources 表何时迁移? | 在 deals 表稳定运行 1 周后 | 降低风险,分步实施 |
+| DP2 | 权限分离何时执行? | 在 data_sources 表迁移后 | 确保表结构稳定 |
+| DP3 | 是否启用行级安全策略? | 可选,建议先不启用 | 简化初期配置,后续优化 |
+| DP4 | 密码轮换周期? | 90 天 | 平衡安全性和运维成本 |
+
+### 16.3 预期时间线
+
+| 阶段 | 工作量 | 日历时间 | 完成标志 |
+|------|--------|----------|----------|
+| 阶段一 (deals 表) | 15-20 小时 | 5-7 天 | deals 表稳定运行 7 天 |
+| 阶段二 (data_sources 表) | 5 小时 | 2 天 | data_sources 表稳定运行 3 天 |
+| 阶段三 (权限分离) | 3 小时 | 1 天 | 所有服务使用专用账号 |
+| **总计** | **23-28 小时** | **8-10 天** | 完整迁移完成 |
+
+### 16.4 风险评估
+
+| 风险 | 影响 | 概率 | 缓解措施 |
+|------|------|------|----------|
+| deals 表迁移失败 | 高 | 低 | 完整备份 + 回滚脚本 |
+| data_sources 表迁移失败 | 中 | 低 | 回滚脚本 + 测试环境验证 |
+| 权限配置错误导致服务中断 | 高 | 中 | 分步验证 + 快速回滚 |
+| 密码泄露 | 高 | 低 | 定期轮换 + 访问审计 |
+
+---
+
+**更新记录**:
+- 2025-10-14: 新增第十四章 "后续迁移计划" (data_sources 表重命名)
+- 2025-10-14: 新增第十五章 "数据库权限分离" (专用账号规划)
+- 2025-10-14: 新增第十六章 "迁移计划总结" (完整路线图)

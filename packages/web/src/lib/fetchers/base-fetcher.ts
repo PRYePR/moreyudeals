@@ -30,15 +30,30 @@ export abstract class BaseFetcher {
     }
 
     try {
+      logger.debug('Attempting translation', {
+        textPreview: text.substring(0, 50),
+        from,
+        to,
+        hasTranslationManager: !!this.translationManager
+      })
+
       const result = await this.translationManager.translate({
         text,
         from,
         to
       })
+
+      logger.debug('Translation succeeded', {
+        provider: result.provider,
+        translatedPreview: result.translatedText.substring(0, 50)
+      })
+
       return result.translatedText
     } catch (error) {
       logger.error('Translation failed', error as Error, {
-        textPreview: text.substring(0, 50)
+        textPreview: text.substring(0, 50),
+        errorMessage: (error as Error).message,
+        errorStack: (error as Error).stack?.substring(0, 200)
       })
       return text // 翻译失败时返回原文
     }

@@ -191,19 +191,19 @@ export class TranslationWorker {
 
   private async updateItemTranslationStatus(results: TranslationResult[]): Promise<void> {
     // 按条目ID分组结果
-    const itemResults = new Map<string, TranslationResult[]>();
+    const itemResultsMap = new Map<string, TranslationResult[]>();
 
     for (const result of results) {
-      if (!itemResults.has(result.itemId)) {
-        itemResults.set(result.itemId, []);
+      if (!itemResultsMap.has(result.itemId)) {
+        itemResultsMap.set(result.itemId, []);
       }
-      itemResults.get(result.itemId)!.push(result);
+      itemResultsMap.get(result.itemId)!.push(result);
     }
 
     // 更新每个条目的状态
-    for (const [itemId, itemResults] of itemResults) {
-      const allSuccess = itemResults.every(r => r.success);
-      const hasFailure = itemResults.some(r => !r.success);
+    for (const [itemId, itemResults] of itemResultsMap) {
+      const allSuccess = itemResults.every((r: TranslationResult) => r.success);
+      const hasFailure = itemResults.some((r: TranslationResult) => !r.success);
 
       let status: 'completed' | 'failed' | 'processing' = 'processing';
 

@@ -138,16 +138,17 @@ describe('TranslationAdapter', () => {
       const updateCall = mockDatabase.updateDealTranslation.mock.calls[0];
       const translatedBlocks = updateCall[1].contentBlocks;
 
+      expect(translatedBlocks).toBeDefined();
       expect(translatedBlocks).toHaveLength(3);
-      expect(translatedBlocks[0]).toEqual({
+      expect(translatedBlocks![0]).toEqual({
         type: 'heading',
         content: '翻译后的标题文本',
       });
-      expect(translatedBlocks[1]).toEqual({
+      expect(translatedBlocks![1]).toEqual({
         type: 'text',
         content: '翻译后的段落',
       });
-      expect(translatedBlocks[2]).toEqual({
+      expect(translatedBlocks![2]).toEqual({
         type: 'image',
         content: 'https://example.com/image.jpg', // 图片不翻译
       });
@@ -326,8 +327,9 @@ describe('TranslationAdapter', () => {
       const updateCall = mockDatabase.updateDealTranslation.mock.calls[0];
       const translatedBlocks = updateCall[1].contentBlocks;
 
-      expect(translatedBlocks[0].content).toBe('翻译1');
-      expect(translatedBlocks[1].content).toBe('Text 2'); // 保留原文
+      expect(translatedBlocks).toBeDefined();
+      expect(translatedBlocks![0].content).toBe('翻译1');
+      expect(translatedBlocks![1].content).toBe('Text 2'); // 保留原文
     });
 
     it('处理空 contentBlocks', async () => {
