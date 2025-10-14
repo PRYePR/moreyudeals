@@ -165,6 +165,71 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.originalPrice).not.toBe(134.51);
     });
 
+    it('应正确清理标题末尾的中文价格描述', async () => {
+      const testCases = [
+        {
+          input: '产品名称原价 167,99 欧元，现价 64,99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称原价 167,99 欧元，现价 64,99 欧元',
+        },
+        {
+          input: '产品名称，原价 167.99 欧元，现价 64.99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称，原价 167.99 欧元，现价 64.99 欧元',
+        },
+        {
+          input: '产品名称现价 64,99 欧元，原价 167,99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称现价 64,99 欧元，原价 167,99 欧元',
+        },
+        {
+          input: '产品名称，原价 167,99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称，原价 167,99 欧元',
+        },
+        {
+          input: '产品名称，现价 64,99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称，现价 64,99 欧元',
+        },
+        {
+          input: '产品名称，价格：64,99 欧元',
+          expectedTitle: '产品名称',
+          expectedOriginalTitle: '产品名称，价格：64,99 欧元',
+        },
+      ];
+
+      for (const { input, expectedTitle, expectedOriginalTitle } of testCases) {
+        const post = createMockPost({ title: input });
+        const deal = await normalizer.normalize(post);
+        expect(deal.title).toBe(expectedTitle);
+        expect(deal.originalTitle).toBe(expectedOriginalTitle);
+      }
+    });
+
+    it('标题中间的价格描述不应被清理', async () => {
+      const testCases = [
+        {
+          input: '产品 原价 100 欧元 something现价 50 欧元',
+          expected: '产品 原价 100 欧元 something现价 50 欧元',
+        },
+        {
+          input: '原价 100 的产品名称',
+          expected: '原价 100 的产品名称',
+        },
+        {
+          input: '现价优惠的产品',
+          expected: '现价优惠的产品',
+        },
+      ];
+
+      for (const { input, expected } of testCases) {
+        const post = createMockPost({ title: input });
+        const deal = await normalizer.normalize(post);
+        expect(deal.title).toBe(expected);
+      }
+    });
+
     it('应正确提取折扣百分比', async () => {
       const post = createMockPost({
         content: '<p>Save 50% on this deal!</p>',
