@@ -165,45 +165,59 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.originalPrice).not.toBe(134.51);
     });
 
-    it('应正确清理标题末尾的中文价格描述', async () => {
+    it('应正确清理标题末尾的完整价格对', async () => {
       const testCases = [
         {
           input: '产品名称原价 167,99 欧元，现价 64,99 欧元',
           expectedTitle: '产品名称',
           expectedOriginalTitle: '产品名称原价 167,99 欧元，现价 64,99 欧元',
+          description: '原价...现价 完整价格对（无逗号分隔）',
         },
         {
           input: '产品名称，原价 167.99 欧元，现价 64.99 欧元',
           expectedTitle: '产品名称',
           expectedOriginalTitle: '产品名称，原价 167.99 欧元，现价 64.99 欧元',
+          description: '原价...现价 完整价格对（带逗号分隔）',
         },
         {
           input: '产品名称现价 64,99 欧元，原价 167,99 欧元',
           expectedTitle: '产品名称',
           expectedOriginalTitle: '产品名称现价 64,99 欧元，原价 167,99 欧元',
-        },
-        {
-          input: '产品名称，原价 167,99 欧元',
-          expectedTitle: '产品名称',
-          expectedOriginalTitle: '产品名称，原价 167,99 欧元',
-        },
-        {
-          input: '产品名称，现价 64,99 欧元',
-          expectedTitle: '产品名称',
-          expectedOriginalTitle: '产品名称，现价 64,99 欧元',
-        },
-        {
-          input: '产品名称，价格：64,99 欧元',
-          expectedTitle: '产品名称',
-          expectedOriginalTitle: '产品名称，价格：64,99 欧元',
+          description: '现价...原价 完整价格对（顺序相反）',
         },
       ];
 
-      for (const { input, expectedTitle, expectedOriginalTitle } of testCases) {
+      for (const { input, expectedTitle, expectedOriginalTitle, description } of testCases) {
         const post = createMockPost({ title: input });
         const deal = await normalizer.normalize(post);
         expect(deal.title).toBe(expectedTitle);
         expect(deal.originalTitle).toBe(expectedOriginalTitle);
+      }
+    });
+
+    it('单独的价格标签（非完整价格对）应保留', async () => {
+      const testCases = [
+        {
+          input: '产品名称，原价 167,99 欧元',
+          expected: '产品名称，原价 167,99 欧元',
+          description: '仅原价，无现价配对',
+        },
+        {
+          input: '产品名称，现价 64,99 欧元',
+          expected: '产品名称，现价 64,99 欧元',
+          description: '仅现价，无原价配对',
+        },
+        {
+          input: '产品名称，价格：64,99 欧元',
+          expected: '产品名称，价格：64,99 欧元',
+          description: '仅价格标签',
+        },
+      ];
+
+      for (const { input, expected, description } of testCases) {
+        const post = createMockPost({ title: input });
+        const deal = await normalizer.normalize(post);
+        expect(deal.title).toBe(expected);
       }
     });
 
