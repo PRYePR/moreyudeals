@@ -57,8 +57,8 @@ yarn install
 ### 1. 连接信息
 编辑环境变量文件 `.env`:
 ```env
-# PostgreSQL 配置
-DB_HOST=43.157.22.182
+# PostgreSQL 配置 - 新服务器
+DB_HOST=43.157.40.96
 DB_PORT=5432
 DB_NAME=moreyudeals
 DB_USER=moreyu_admin
@@ -93,7 +93,7 @@ PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c 
 创建 `packages/worker/.env`:
 ```env
 # 数据库配置
-DB_HOST=43.157.22.182
+DB_HOST=43.157.40.96
 DB_PORT=5432
 DB_NAME=moreyudeals
 DB_USER=moreyu_admin
@@ -179,7 +179,7 @@ pm2 restart moreyudeals-worker
 创建 `packages/web/.env.local`:
 ```env
 # 数据库配置
-DATABASE_URL=postgresql://moreyu_admin:bTXsPFtiLb7tNH87@43.157.22.182:5432/moreyudeals
+DATABASE_URL=postgresql://moreyu_admin:bTXsPFtiLb7tNH87@43.157.40.96:5432/moreyudeals
 
 # Next.js 配置
 NEXT_PUBLIC_APP_URL=http://localhost:3000

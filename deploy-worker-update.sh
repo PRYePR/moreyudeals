@@ -114,7 +114,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       TRANSLATION_ENABLED: 'false',
-      DB_HOST: '43.157.22.182',
+      DB_HOST: '43.157.40.96',
       DB_PORT: '5432',
       DB_NAME: 'moreyudeals',
       DB_USER: 'moreyu_admin',
