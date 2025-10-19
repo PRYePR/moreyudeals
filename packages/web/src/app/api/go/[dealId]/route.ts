@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SparhamsterApiFetcher } from '@/lib/fetchers/sparhamster-api'
-import { CoreTranslationManager } from '@/lib/translation/translation-manager'
 import { clickTracker } from '@/lib/tracking/click-tracker'
 import { createModuleLogger } from '@/lib/logger'
+import { dealsService } from '@/lib/services/deals-service'
 
 const logger = createModuleLogger('api:go')
 
@@ -58,20 +57,13 @@ export async function GET(
 /**
  * 根据ID获取deal信息
  *
- * 当前实现：从API实时获取
- * 未来优化：添加缓存层（Redis/内存缓存）
+ * 当前实现：从数据库获取
+ * 使用dealsService（已包含缓存层）
  */
 async function getDealById(dealId: string) {
   try {
-    // 创建fetcher实例
-    const translationManager = new CoreTranslationManager()
-    const fetcher = new SparhamsterApiFetcher(translationManager)
-
-    // 获取最新的deals
-    const result = await fetcher.fetchDeals({ limit: 50 })
-
-    // 查找匹配的deal
-    return result.deals.find(d => d.id === dealId)
+    // 从数据库获取deal（包含缓存）
+    return await dealsService.getDealById(dealId)
   } catch (error) {
     logger.error('Error fetching deal', error as Error, { dealId })
     return null

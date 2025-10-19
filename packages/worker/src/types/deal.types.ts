@@ -48,7 +48,8 @@ export interface Deal {
   // 商家信息
   merchant?: string;             // 商家名称
   merchantLogo?: string;         // 商家 Logo URL
-  merchantLink?: string;         // 商家原始链接
+  merchantLink?: string;         // 商家原始链接 (从首页HTML获取)
+  fallbackLink?: string;         // 临时回退链接 (文章URL,当merchantLink未抓到时使用)
 
   // 联盟链接 (STEP6 实现)
   affiliateLink?: string;        // 替换后的联盟链接
@@ -61,6 +62,8 @@ export interface Deal {
   discount?: number;             // 折扣百分比
   currency: string;              // 货币代码 (如 'EUR', 'USD')
   couponCode?: string;           // 优惠码
+  priceUpdateNote?: string;      // 价格更新说明（如 "Der Preis fällt auf..."）
+  previousPrice?: number;        // 上次观察到的价格
 
   // 分类与标签
   categories?: string[];         // 分类列表
@@ -128,6 +131,7 @@ export interface DealRow {
   merchant?: string;
   merchant_logo?: string;
   merchant_link?: string;
+  fallback_link?: string;
 
   affiliate_link?: string;
   affiliate_enabled: boolean;
@@ -138,6 +142,8 @@ export interface DealRow {
   discount?: number;
   currency: string;
   coupon_code?: string;
+  price_update_note?: string;
+  previous_price?: number;
 
   categories?: string; // JSON array string
   tags?: string; // JSON array string

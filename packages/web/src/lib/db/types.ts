@@ -54,6 +54,7 @@ export interface Deal {
   merchant: string | null
   merchantLogo: string | null
   merchantLink: string | null
+  fallbackLink: string | null
 
   // Deal metadata
   dealUrl: string | null
@@ -76,6 +77,16 @@ export interface Deal {
   duplicateCount: number
   viewsCount: number
   clicksCount: number
+
+  // Additional fields
+  sourcePostUrl: string | null
+  isExpired: boolean
+  isActive: boolean
+  isFeatured: boolean
+  clicks: number
+  views: number
+  priceUpdateNote: string | null
+  previousPrice: number | null
 
   // Raw data
   rawPayload: any | null
@@ -120,6 +131,7 @@ export interface DealRow {
   merchant: string | null
   merchant_logo: string | null
   merchant_link: string | null
+  fallback_link: string | null
 
   deal_url: string | null
   affiliate_url: string | null
@@ -138,6 +150,15 @@ export interface DealRow {
   duplicate_count: number
   views_count: number
   clicks_count: number
+
+  source_post_url: string | null
+  is_expired: boolean
+  is_active: boolean
+  is_featured: boolean
+  clicks: number
+  views: number
+  price_update_note: string | null
+  previous_price: string | null
 
   raw_payload: any | null
 }
@@ -182,6 +203,7 @@ export function mapRowToDeal(row: DealRow): Deal {
     merchant: row.merchant,
     merchantLogo: row.merchant_logo,
     merchantLink: row.merchant_link,
+    fallbackLink: row.fallback_link,
 
     dealUrl: row.deal_url,
     affiliateUrl: row.affiliate_url,
@@ -200,6 +222,15 @@ export function mapRowToDeal(row: DealRow): Deal {
     duplicateCount: row.duplicate_count,
     viewsCount: row.views_count,
     clicksCount: row.clicks_count,
+
+    sourcePostUrl: row.source_post_url,
+    isExpired: row.is_expired,
+    isActive: row.is_active,
+    isFeatured: row.is_featured,
+    clicks: row.clicks,
+    views: row.views,
+    priceUpdateNote: row.price_update_note,
+    previousPrice: row.previous_price ? parseFloat(row.previous_price) : null,
 
     rawPayload: row.raw_payload,
   }

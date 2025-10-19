@@ -1,8 +1,8 @@
-import { SparhamsterApiFetcher } from '../fetchers/sparhamster-api'
 import type { Deal } from '../fetchers/types'
 import { defaultCache, cacheKeys, CACHE_TTL } from '../cache'
 import { createModuleLogger } from '../logger'
-import { createTranslationManager } from '../translation-setup'
+import { Deal as DbDeal } from '../db/types'
+import { DealsRepository } from '../db/deals-repository'
 
 const logger = createModuleLogger('service:deals')
 
@@ -10,27 +10,49 @@ const MAX_FETCH_LIMIT = 100
 const ENV_LIMIT = Number(process.env.SPARHAMSTER_FETCH_LIMIT || '60')
 const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 60 : ENV_LIMIT, 20), MAX_FETCH_LIMIT)
 
-const translationManager = createTranslationManager({
-  deepl: process.env.DEEPL_API_KEY
-    ? {
-        apiKey: process.env.DEEPL_API_KEY,
-        endpoint: process.env.DEEPL_ENDPOINT || 'https://api-free.deepl.com/v2'
-      }
-    : undefined,
-  redis: process.env.REDIS_URL
-    ? {
-        url: process.env.REDIS_URL
-      }
-    : undefined,
-  routing: {
-    primary: 'deepl',
-    fallback: [],
-    cacheEnabled: true,
-    cacheTTL: 24 * 60 * 60
-  }
-})
+/**
+ * Convert database Deal to fetcher Deal format
+ */
+function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
+  return {
+    id: dbDeal.id,
+    title: dbDeal.titleZh || dbDeal.title,
+    originalTitle: dbDeal.title,
+    translatedTitle: dbDeal.titleZh || dbDeal.title,
+    description: dbDeal.descriptionZh || dbDeal.description || '',
+    originalDescription: dbDeal.description || '',
+    translatedDescription: dbDeal.descriptionZh || dbDeal.description || '',
+    price: dbDeal.price?.toString() || undefined,
+    originalPrice: dbDeal.originalPrice?.toString() || undefined,
+    currency: dbDeal.currency,
+    discountPercentage: dbDeal.discount || undefined,
+    imageUrl: dbDeal.imageUrl || '',
+    dealUrl: dbDeal.merchantLink || dbDeal.fallbackLink || dbDeal.dealUrl || '',
+    category: dbDeal.categories?.[0] || 'General',
+    source: dbDeal.sourceSite,
+    publishedAt: dbDeal.publishedAt,
+    expiresAt: dbDeal.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+    language: 'de' as const,
+    translationProvider: 'deepl' as const,
+    isTranslated: !!dbDeal.titleZh,
+    categories: dbDeal.categories || [],
+    content: dbDeal.contentHtmlZh || dbDeal.contentHtml || '',
 
-const sparhamsterFetcher = new SparhamsterApiFetcher(translationManager)
+    // Extended fields
+    wordpressId: dbDeal.sourcePostId ? parseInt(dbDeal.sourcePostId) : undefined,
+    merchantName: dbDeal.merchant || undefined,
+    merchantLogo: dbDeal.merchantLogo || undefined,
+    tags: dbDeal.tags || [],
+    featured: dbDeal.isFeatured,
+    voucherCode: dbDeal.couponCode || undefined,
+
+    // Link tracking
+    affiliateUrl: dbDeal.affiliateUrl || undefined,
+    originalUrl: dbDeal.fallbackLink || dbDeal.dealUrl || undefined,
+    trackingUrl: dbDeal.merchantLink || undefined,
+    merchantHomepage: dbDeal.merchant ? `https://${dbDeal.merchant}` : undefined
+  }
+}
 
 interface DealsCacheEntry {
   deals: Deal[]
@@ -416,15 +438,26 @@ export class DealsService {
   private async fetchFreshDeals(limit: number): Promise<DealsCacheEntry> {
     const safeLimit = Math.min(Math.max(limit, 20), MAX_FETCH_LIMIT)
 
-    const result = await sparhamsterFetcher.fetchDeals({
+    // Query database instead of WordPress API
+    const dealsRepo = new DealsRepository()
+    const result = await dealsRepo.getDeals({
       limit: safeLimit,
-      page: 1
+      page: 1,
+      sortBy: 'latest'
+    })
+
+    // Convert database deals to fetcher format
+    const convertedDeals = result.deals.map(convertDbDealToFetcherDeal)
+
+    logger.info('Fetched deals from database', {
+      count: convertedDeals.length,
+      limit: safeLimit
     })
 
     return {
-      deals: result.deals,
-      fetchedAt: result.fetchedAt.toISOString(),
-      source: result.source
+      deals: convertedDeals,
+      fetchedAt: new Date().toISOString(),
+      source: 'Database (PostgreSQL)'
     }
   }
 }

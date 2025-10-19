@@ -291,11 +291,16 @@ export abstract class BaseNormalizer<TSource, TTarget> implements INormalizer<TS
   private extractSinglePrice(text: string): number | null {
     // 排除常见的干扰模式（带上下文）
     const excludePatterns = [
-      /versand(?:kosten)?.*?(\d+(?:[.,]\d+)?)\s*€/gi,  // 运费
-      /shipping.*?(\d+(?:[.,]\d+)?)\s*€/gi,             // shipping cost
-      /porto.*?(\d+(?:[.,]\d+)?)\s*€/gi,                // 邮费
-      /gebühr.*?(\d+(?:[.,]\d+)?)\s*€/gi,               // 费用
-      /vergleichspreis.*?(\d+(?:[.,]\d+)?)\s*€/gi,      // 比较价
+      /versand(?:kosten|pauschale)?.*?(\d+(?:[.,]\d+)?)\s*€/gi,  // 运费、邮费固定费用
+      /(?:bis\s+zu\s+)?(\d+(?:[.,]\d+)?)\s*€\s*versand(?:kosten|pauschale)?/gi,  // "2,99 € Versandkosten" 或 "bis zu 69 € Versandkosten"
+      /speditions(?:kosten|gebühr).*?(\d+(?:[.,]\d+)?)\s*€/gi,   // 物流费用
+      /(?:bis\s+zu\s+)?(\d+(?:[.,]\d+)?)\s*€\s*speditions(?:kosten|gebühr)/gi,  // "bis zu 69 € Speditionskosten"
+      /shipping.*?(\d+(?:[.,]\d+)?)\s*€/gi,                      // shipping cost
+      /porto.*?(\d+(?:[.,]\d+)?)\s*€/gi,                         // 邮费
+      /gebühr.*?(\d+(?:[.,]\d+)?)\s*€/gi,                        // 费用
+      /vergleichspreis.*?(\d+(?:[.,]\d+)?)\s*€/gi,               // 比较价
+      /liefer(?:kosten|gebühr).*?(\d+(?:[.,]\d+)?)\s*€/gi,       // 配送费
+      /(?:bis\s+zu\s+)?(\d+(?:[.,]\d+)?)\s*€\s*liefer(?:kosten|gebühr)/gi,  // "2,99 € Lieferkosten"
     ];
 
     let cleanText = text;

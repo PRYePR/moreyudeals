@@ -1,3 +1,18 @@
+/**
+ * @deprecated This file is deprecated since 2025-10-19
+ *
+ * DEPRECATION NOTICE:
+ * The Web frontend has been migrated to read deals directly from the PostgreSQL database
+ * instead of calling the Sparhamster WordPress API.
+ *
+ * New data flow:
+ * - Worker fetches from WordPress API → stores in database
+ * - Web reads from database (via DealsRepository and DealsService)
+ *
+ * This file is kept for reference only and should NOT be used.
+ * Use dealsService.getDeals() or dealsRepository.getDeals() instead.
+ */
+
 import { BaseFetcher } from './base-fetcher'
 import { CoreTranslationManager } from '../translation/translation-manager'
 import type { Deal, FetcherConfig, FetchResult } from './types'

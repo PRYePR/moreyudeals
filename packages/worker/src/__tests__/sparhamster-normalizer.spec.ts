@@ -99,8 +99,8 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.categories).toContain('Electronics');
       expect(deal.categories).toContain('Amazon');
 
-      // 商家
-      expect(deal.merchant).toBe('Amazon');
+      // 商家（无 /shop/ 链接时为 undefined）
+      expect(deal.merchant).toBeUndefined();
 
       // 翻译状态
       expect(deal.language).toBe('de');
@@ -163,6 +163,45 @@ describe('SparhamsterNormalizer', () => {
       // 不应该被运费 (4.95€) 或比较价 (134.51€) 干扰
       expect(deal.price).not.toBe(4.95);
       expect(deal.originalPrice).not.toBe(134.51);
+    });
+
+    it('应忽略运费价格 (Versandkosten 2,99 €)', async () => {
+      const post = createMockPost({
+        title: 'Product Deal',
+        content: '<p>Preis: 12,99 €</p><p>Versandkosten 2,99 €</p>',
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      expect(deal.price).toBe(12.99);
+      // 不应提取运费作为价格
+      expect(deal.price).not.toBe(2.99);
+    });
+
+    it('应忽略物流费用 (Speditionskosten bis zu 69 €)', async () => {
+      const post = createMockPost({
+        title: 'MediaMarkt Deal',
+        content: '<p>Ihr spart euch so die 2,99 € Versandkosten sowie auch bis zu 69 € Speditionskosten.</p>',
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 免运费优惠不应提取任何价格
+      expect(deal.price).toBeUndefined();
+      expect(deal.originalPrice).toBeUndefined();
+    });
+
+    it('应忽略 Versandpauschale 和 Lieferkosten', async () => {
+      const post = createMockPost({
+        title: 'Product um 19,97 €',
+        content: '<p>Versandpauschale: 3,50 €</p><p>Lieferkosten: 2,99 €</p>',
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      expect(deal.price).toBe(19.97);
+      expect(deal.price).not.toBe(3.50);
+      expect(deal.price).not.toBe(2.99);
     });
 
     it('应正确清理标题末尾的完整价格对', async () => {
@@ -342,8 +381,9 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.couponCode).toBeUndefined();
     });
 
-    it('应正确提取商家名称 (来自标签)', async () => {
+    it('应只从 /shop/ 链接提取商家，不使用标签', async () => {
       const post = createMockPost({
+        content: '<p>普通内容，无 /shop/ 链接</p>',
         _embedded: {
           'wp:term': [
             [],
@@ -356,7 +396,8 @@ describe('SparhamsterNormalizer', () => {
 
       const deal = await normalizer.normalize(post);
 
-      expect(deal.merchant).toBe('MediaMarkt');
+      // 即使标签中有 MediaMarkt，也不应提取为商家（需要 /shop/ 链接）
+      expect(deal.merchant).toBeUndefined();
     });
 
     it('应正确提取商家链接 (forward 链接)', async () => {
@@ -402,6 +443,17 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.merchantLink).toBeUndefined();
     });
 
+    it('应正确解码 HTML 实体的 forward 链接', async () => {
+      const post = createMockPost({
+        content: '<a href="https://forward.sparhamster.at/out.php?hash=test&amp;name=SH">Zum Angebot</a>',
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 链接中的 &amp; 应被解码为 &
+      expect(deal.merchantLink).toBe('https://forward.sparhamster.at/out.php?hash=test&name=SH');
+    });
+
     it('应正确提取特色图片', async () => {
       const post = createMockPost({
         _embedded: {
@@ -430,15 +482,15 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.imageUrl).toBe('https://example.com/featured.jpg');
     });
 
-    it('没有特色图片时应提取内容中的图片', async () => {
+    it('没有特色图片时应提取内容中的图片（wp-content）', async () => {
       const post = createMockPost({
-        content: '<p>Text</p><img src="https://example.com/content-image.jpg">',
+        content: '<p>Text</p><img src="https://www.sparhamster.at/wp-content/uploads/2025/10/product.jpg">',
         _embedded: {},
       });
 
       const deal = await normalizer.normalize(post);
 
-      expect(deal.imageUrl).toBe('https://example.com/content-image.jpg');
+      expect(deal.imageUrl).toBe('https://www.sparhamster.at/wp-content/uploads/2025/10/product.jpg');
     });
 
     it('应正确计算过期时间 (30天后)', async () => {
@@ -451,6 +503,523 @@ describe('SparhamsterNormalizer', () => {
 
       const expectedExpiry = new Date(publishDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       expect(deal.expiresAt?.getTime()).toBe(expectedExpiry.getTime());
+    });
+
+    /**
+     * 基于人工标注数据的测试用例
+     * 商品：Gardena RollUp M Wand-Schlauchbox 20m + gratis Brause
+     */
+    it('应正确提取 Gardena 商品的所有字段（基于标注数据）', async () => {
+      const post = createMockPost({
+        id: 338859,
+        date: '2025-10-15T09:52:40+02:00',
+        link: 'https://www.sparhamster.at/gardena-rollup-m-wand-schlauchbox-20m/',
+        title: 'Gardena RollUp M Wand-Schlauchbox 20m + gratis Brause',
+        content: `
+          <div class="uk-overflow-hidden uk-margin-top">
+            <div class="uk-flex uk-flex-column uk-flex-center uk-flex-middle">
+              <div class="uk-flex uk-flex-row uk-flex-middle uk-flex-center uk-width-1-1 uk-width-5-6@s">
+                <div class="uk-flex uk-flex-column uk-width-1-1">
+                  <div class="uk-margin-xs-bottom">
+                    <a href="/shop/amazon-de/" title="Amazon Gutscheine & Angebote">
+                      <img width="150" height="100" style="height: 50px; width: auto"
+                           src="https://www.sparhamster.at/wp-content/uploads/images/shops/1.png"
+                           alt="Amazon Gutscheine & Angebote">
+                    </a>
+                  </div>
+                  <div class="uk-text-center uk-width-1-1@s">
+                    <div class="max-height-300">
+                      <a href="https://forward.sparhamster.at/out.php?hash=Qr9O9h1eijhleUvThJfI4KXMAvofM56MpDQUtTLkAlZxwxE%3D&name=SH&token=0ccb1264cd81ad8e20f27dd146dfa37d">
+                        <img width="300px" height="300px" property="url"
+                             alt="Gardena RollUp M Wand-Schlauchbox 20m + gratis Brause um 88,84 € statt 115,97 €"
+                             src="https://www.sparhamster.at/wp-content/uploads/2025/10/gardena-rollup-m-wand-schlauchbox-20m-grau-weiss-18612-20-um-9680-e-statt-11597-e.jpg">
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="uk-flex uk-flex-column uk-flex-center uk-width-1-1 uk-width-7-10@s">
+                <div>
+                  <h1 property="headline" class="uk-margin-top@s uk-margin-remove-bottom">
+                    Gardena RollUp M Wand-Schlauchbox 20m + gratis Brause
+                  </h1>
+                </div>
+
+                <div class="uk-flex uk-flex-column uk-flex-right">
+                  <div class="uk-flex uk-flex-row uk-flex-center uk-margin-small-bottom">
+                    <span class="has-blue-color">23% Ersparnis</span>
+                    <span class="uk-margin-left uk-text-italic has-gray-color line-through">115,97 €</span>
+                  </div>
+
+                  <div class="uk-flex uk-flex-row uk-flex-center uk-flex-right@s text-xl uk-font-bold has-blue-color">
+                    88,84 €
+                  </div>
+                </div>
+
+                <div class="uk-width-1-1">
+                  <div class="uk-flex uk-flex-row uk-flex-middle uk-flex-center uk-flex-right@s uk-margin-top">
+                    <div class="uk-text-right">
+                      <a class="uk-button uk-button-primary uk-text-bold"
+                         href="https://forward.sparhamster.at/out.php?hash=Qr9O9h1eijhleUvThJfI4KXMAvofM56MpDQUtTLkAlZxwxE%3D&amp;name=SH&amp;token=0ccb1264cd81ad8e20f27dd146dfa37d">
+                        Zum Angebot
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="uk-width-1-1 uk-margin-small-bottom" id="content">
+              <hr>
+              <div class="box-info">Der Preis fällt auf <strong>88,84 €</strong> <del>93,64 €</del>!</div>
+              <p>Die<strong> Gardena Wand-Schlauchbox RollUp M 20 m </strong> gibt es bei Amazon zum Preis von <strong>96,80 €</strong>.</p>
+              <p>Der nächste Vergleichspreis liegt bei 115,97 €.</p>
+            </div>
+
+            <div class="uk-margin-small-top">
+              <div class="uk-badge uk-padding-small">
+                <a href="https://www.sparhamster.at/amazon-prime-day/" rel="category tag">Amazon Prime Day 2025</a>
+              </div>
+              <div class="uk-badge uk-padding-small">
+                <a href="https://www.sparhamster.at/werkzeug-baumarkt/" rel="category tag">Werkzeug & Baumarkt</a>
+              </div>
+              <div class="uk-badge uk-padding-small has-white-background-color has-blue-color">
+                <a class="has-blue-color" href="/shop/amazon-de">Amazon Gutscheine & Angebote</a>
+              </div>
+              <p class="uk-article-meta">
+                Deal von <a href="https://www.sparhamster.at/author/joker/">joker</a> am
+                <time datetime="2025-10-15T09:52:40+02:00">Mittwoch, 15. Oktober 2025</time> um 09:52 Uhr.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 标题
+      expect(deal.title).toBe('Gardena RollUp M Wand-Schlauchbox 20m + gratis Brause');
+
+      // 价格信息（从 hero 区块提取）
+      expect(deal.price).toBe(88.84);
+      expect(deal.originalPrice).toBe(115.97);
+      expect(deal.discount).toBe(23);
+
+      // 商品图片（只取 wp-content 直链）
+      expect(deal.imageUrl).toBe(
+        'https://www.sparhamster.at/wp-content/uploads/2025/10/gardena-rollup-m-wand-schlauchbox-20m-grau-weiss-18612-20-um-9680-e-statt-11597-e.jpg'
+      );
+
+      // 商家信息（从 hero 区块提取 - 优先使用 title 中的商家名）
+      expect(deal.merchant).toBe('Amazon'); // 从 "Amazon Gutscheine & Angebote" 提取
+      expect(deal.merchantLogo).toBe('https://www.sparhamster.at/wp-content/uploads/images/shops/1.png');
+
+      // 联盟链接（保留 forward URL）
+      expect(deal.merchantLink).toContain('forward.sparhamster.at');
+      expect(deal.merchantLink).toContain('token=0ccb1264cd81ad8e20f27dd146dfa37d');
+      expect(deal.affiliateEnabled).toBe(true);
+      expect(deal.affiliateNetwork).toBe('amazon');
+
+      // 分类（只保留 rel="category tag"）
+      expect(deal.categories).toContain('Amazon Prime Day 2025');
+      expect(deal.categories).toContain('Werkzeug & Baumarkt');
+      expect(deal.categories).not.toContain('Amazon Gutscheine & Angebote'); // 这是商家徽章
+
+      // 发布时间（ISO 格式）
+      expect(deal.publishedAt?.toISOString()).toBe('2025-10-15T07:52:40.000Z');
+    });
+
+    it('应正确提取 .box-info 中的价格更新信息', async () => {
+      const post = createMockPost({
+        content: `
+          <div class="box-info">Der Preis fällt auf <strong>88,84 €</strong> <del>93,64 €</del>!</div>
+          <p>Product description</p>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // .box-info 的价格应该被识别
+      expect(deal.price).toBe(88.84);
+    });
+
+    it('应优先使用 hero 区块的价格而不是 .box-info', async () => {
+      const post = createMockPost({
+        content: `
+          <div class="uk-flex uk-flex-row uk-flex-center uk-flex-right@s text-xl uk-font-bold has-blue-color">
+            88,84 €
+          </div>
+          <span class="uk-margin-left uk-text-italic has-gray-color line-through">115,97 €</span>
+
+          <div class="box-info">Der Preis fällt auf <strong>99,99 €</strong> <del>93,64 €</del>!</div>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该使用 hero 区块的价格（88.84），而不是 .box-info 的价格（99.99）
+      expect(deal.price).toBe(88.84);
+      expect(deal.originalPrice).toBe(115.97);
+    });
+
+    it('应只提取 wp-content 图片链接，忽略 forward 链接', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="https://forward.sparhamster.at/out.php?hash=xxx">
+            <img src="https://www.sparhamster.at/wp-content/uploads/2025/10/product.jpg" alt="Product">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该提取 wp-content 图片，而不是 forward 链接
+      expect(deal.imageUrl).toBe('https://www.sparhamster.at/wp-content/uploads/2025/10/product.jpg');
+    });
+
+    it('应从 title 中提取商家名称（优先于 slug）', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="/shop/mediamarkt-at/" title="MediaMarkt Gutscheine & Angebote">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/2.png" alt="MediaMarkt">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应提取 "MediaMarkt"（title 中关键词前的内容），而不是 "mediamarkt.at"（slug 转换）
+      expect(deal.merchant).toBe('MediaMarkt');
+      expect(deal.merchantLogo).toBe('https://www.sparhamster.at/wp-content/uploads/images/shops/2.png');
+    });
+
+    it('应正确提取各种 title 格式中的商家名称', async () => {
+      const testCases = [
+        { title: 'we-are.travel Gutscheine & Angebote', expected: 'we-are.travel' },
+        { title: 'MediaMarkt Gutscheine & Angebote', expected: 'MediaMarkt' },
+        { title: 'Amazon Deals', expected: 'Amazon' },
+        { title: 'Saturn Sale 2025', expected: 'Saturn' },
+        { title: 'IKEA Shop', expected: 'IKEA' },
+        { title: 'Notebooksbilliger Angebote', expected: 'Notebooksbilliger' },
+      ];
+
+      for (const { title, expected } of testCases) {
+        const post = createMockPost({
+          content: `<a href="/shop/test-shop/" title="${title}"><img src="https://www.sparhamster.at/wp-content/uploads/images/shops/test.png"></a>`,
+        });
+
+        const deal = await normalizer.normalize(post);
+        expect(deal.merchant).toBe(expected);
+      }
+    });
+
+    it('title 无关键词时应 fallback 到 slug 转换（只转换最后一个 -）', async () => {
+      const testCases = [
+        { slug: 'amazon-de', title: '', expected: 'amazon.de' },
+        { slug: 'mediamarkt-at', title: 'Just a title', expected: 'mediamarkt.at' },
+        { slug: 'we-are-travel', title: '', expected: 'we-are.travel' },
+        { slug: 'blue-tomato', title: '', expected: 'blue.tomato' },
+        { slug: 'tink', title: '', expected: 'tink' }, // 无 - 时保留原值
+      ];
+
+      for (const { slug, title, expected } of testCases) {
+        const post = createMockPost({
+          content: `<a href="/shop/${slug}/" title="${title}"><img src="https://www.sparhamster.at/wp-content/uploads/images/shops/test.png"></a>`,
+        });
+
+        const deal = await normalizer.normalize(post);
+        expect(deal.merchant).toBe(expected);
+      }
+    });
+
+    it('title 为空且 slug 有多个 - 时应只转换最后一个 -', async () => {
+      const post = createMockPost({
+        content: `<a href="/shop/we-are-travel/" title=""><img src="https://www.sparhamster.at/wp-content/uploads/images/shops/test.png"></a>`,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // we-are-travel → we-are.travel（保留前面的 -，只转换最后一个）
+      expect(deal.merchant).toBe('we-are.travel');
+    });
+
+    it('应跳过 sparhamster 内部链接，选择真实商家', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- 第一个链接是 sparhamster 内部链接，应被跳过 -->
+          <a href="/shop/sparhamster-at/" title="Sparhamster.at Deals">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/sparhamster.png">
+          </a>
+
+          <!-- 第二个链接是真实商家 tink -->
+          <a href="/shop/tink/" title="tink Gutscheine & Angebote">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/tink.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该识别为 tink，而不是 Sparhamster.at
+      expect(deal.merchant).toBe('tink');
+    });
+
+    it('应跳过 sparhamster 链接并从 title 提取真实商家名称', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- sparhamster 内部链接 -->
+          <a href="/shop/sparhamster/" title="Sparhamster Shop">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/sh.png">
+          </a>
+
+          <!-- mömax 商家链接 -->
+          <a href="/shop/moemax-at/" title="mömax Gutscheine & Angebote">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/89.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该从 title 提取 mömax，而不是 Sparhamster
+      expect(deal.merchant).toBe('mömax');
+    });
+
+    it('只考虑带有商家 logo 的 /shop/ 链接', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- 没有 logo 的链接应被忽略 -->
+          <a href="/shop/some-shop/" title="Some Shop">Text Link</a>
+
+          <!-- 有 logo 但不是 /images/shops/ 路径的也被忽略 -->
+          <a href="/shop/another-shop/" title="Another Shop">
+            <img src="https://example.com/logo.png">
+          </a>
+
+          <!-- 有正确 logo 路径的链接 -->
+          <a href="/shop/amazon-de/" title="Amazon Gutscheine">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/1.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该识别为 Amazon
+      expect(deal.merchant).toBe('Amazon');
+    });
+
+    it('应优先使用 fullHtml 而不是 content.rendered 提取商家', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- content.rendered 中没有 /shop/ 链接 -->
+          <p>普通内容，没有商家链接</p>
+        `,
+      });
+
+      const fullHtml = `
+        <!-- fullHtml 中包含商家链接 -->
+        <a href="/shop/moemax-at/" title="mömax Gutscheine & Angebote">
+          <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/89.png" alt="mömax">
+        </a>
+      `;
+
+      const deal = await normalizer.normalize(post, { fullHtml });
+
+      // 应该从 fullHtml 提取 mömax
+      expect(deal.merchant).toBe('mömax');
+    });
+
+    it('fullHtml 中先出现 sparhamster，后出现真实商家时应正确跳过', async () => {
+      const post = createMockPost({
+        content: '<p>No shop links in content</p>',
+      });
+
+      const fullHtml = `
+        <!-- 第一个是 sparhamster 内部链接 -->
+        <a href="/shop/sparhamster-at/" title="Sparhamster Deals">
+          <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/sh.png">
+        </a>
+
+        <!-- 第二个是真实商家 tink -->
+        <a href="/shop/tink/" title="tink Gutscheine & Angebote">
+          <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/tink.png">
+        </a>
+      `;
+
+      const deal = await normalizer.normalize(post, { fullHtml });
+
+      // 应该跳过 sparhamster，提取 tink
+      expect(deal.merchant).toBe('tink');
+    });
+
+    it('fullHtml 为 null 时应退回到 content.rendered', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="/shop/amazon-de/" title="Amazon Gutscheine">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/1.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post, { fullHtml: null });
+
+      // 应该从 content.rendered 提取
+      expect(deal.merchant).toBe('Amazon');
+    });
+
+    it('fullHtml 和 content.rendered 都没有 /shop/ 链接时应返回 undefined', async () => {
+      const post = createMockPost({
+        content: '<p>普通内容，无商家链接</p>',
+      });
+
+      const fullHtml = '<p>完整HTML，也无商家链接</p>';
+
+      const deal = await normalizer.normalize(post, { fullHtml });
+
+      expect(deal.merchant).toBeUndefined();
+    });
+
+    it('无 /shop/ 链接时商家应为 undefined', async () => {
+      const post = createMockPost({
+        content: `
+          <p>这是一个没有商家链接的优惠</p>
+          <a href="https://example.com">外部链接</a>
+        `,
+        _embedded: {
+          'wp:term': [
+            [],
+            [
+              { id: 1, name: 'SomeTag', slug: 'sometag', taxonomy: 'post_tag', link: '' },
+            ],
+          ],
+        },
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      expect(deal.merchant).toBeUndefined();
+    });
+
+    it('应过滤黑名单商家（geizhals）', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- geizhals 黑名单链接应被跳过 -->
+          <a href="/shop/geizhals-at/" title="Geizhals Preisvergleich">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/gh.png">
+          </a>
+
+          <!-- Amazon 真实商家 -->
+          <a href="/shop/amazon-de/" title="Amazon Angebote">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/1.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应跳过 geizhals，选择 Amazon
+      expect(deal.merchant).toBe('Amazon');
+    });
+
+    it('应过滤黑名单商家（idealo）', async () => {
+      const post = createMockPost({
+        content: `
+          <!-- idealo 黑名单链接 -->
+          <a href="/shop/idealo-de/" title="idealo Deals">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/idealo.png">
+          </a>
+
+          <!-- tink 真实商家 -->
+          <a href="/shop/tink/" title="tink Gutscheine">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/404.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      expect(deal.merchant).toBe('tink');
+    });
+
+    it('title 包含黑名单关键词时应跳过，使用 slug', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="/shop/mediamarkt-at/" title="Geizhals Vergleich MediaMarkt">
+            <img src="https://www.sparhamster.at/wp-content/uploads/images/shops/mm.png">
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // title 包含 "Geizhals"，被过滤，应使用 slug 转换
+      expect(deal.merchant).toBe('mediamarkt.at');
+    });
+
+    it('title 和 slug 都无效时应 fallback 到图片 alt', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="/shop/sparhamster-special/" title="Sparhamster Deals">
+            <img
+              src="https://www.sparhamster.at/wp-content/uploads/images/shops/mm.png"
+              alt="MediaMarkt Angebote"
+            >
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // title 包含 sparhamster 被过滤，slug 也包含 sparhamster，最后用 alt
+      expect(deal.merchant).toBe('MediaMarkt');
+    });
+
+    it('应支持懒加载图片（data-lazy-src）提取 alt', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="/shop/geizhals/" title="Geizhals Shop">
+            <img
+              data-lazy-src="https://www.sparhamster.at/wp-content/uploads/images/shops/404.png"
+              alt="tink Smart Home Angebote"
+            >
+          </a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // title/slug 都是 geizhals 黑名单，应使用 alt (截取 "Angebote" 前的内容)
+      expect(deal.merchant).toBe('tink Smart Home');
+    });
+
+    it('应正确检测 Amazon 联盟链接', async () => {
+      const post = createMockPost({
+        content: `
+          <a href="https://forward.sparhamster.at/out.php?hash=xxx&name=SH&token=abc123">Zum Angebot</a>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      expect(deal.affiliateEnabled).toBe(true);
+      expect(deal.affiliateLink).toContain('forward.sparhamster.at');
+      expect(deal.merchantLink).toContain('token=abc123');
+    });
+
+    it('应从 <time datetime> 提取 ISO 时间', async () => {
+      const post = createMockPost({
+        date: '2025-10-13T10:00:00',
+        content: `
+          <time datetime="2025-10-15T09:52:40+02:00">Mittwoch, 15. Oktober 2025</time>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应该使用 HTML 中的 <time datetime>，而不是 post.date
+      expect(deal.publishedAt?.toISOString()).toBe('2025-10-15T07:52:40.000Z');
     });
   });
 

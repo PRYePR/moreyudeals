@@ -7,6 +7,7 @@ import * as cheerio from '@moreyudeals/shared-html';
 import { BaseNormalizer } from './base-normalizer';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal, ContentBlock } from '../types/deal.types';
+import { getMerchantLogo } from '../config/merchant-logos';
 
 /**
  * Sparhamster 数据标准化器
@@ -15,16 +16,49 @@ import { Deal, ContentBlock } from '../types/deal.types';
 export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
   /**
    * 将 WordPress Post 转换为 Deal
+   * @param post WordPress API 返回的帖子数据
+   * @param options 可选参数
+   * @param options.fullHtml 完整页面HTML（用于提取API数据中不包含的信息，如商家链接）
    */
-  async normalize(post: WordPressPost): Promise<Deal> {
+  async normalize(post: WordPressPost, options?: { fullHtml?: string | null }): Promise<Deal> {
     // 提取文本内容
     const rawTitle = this.extractText(post.title?.rendered || '');
     const originalDescription = this.extractText(post.excerpt?.rendered || '');
     const contentHtml = post.content?.rendered || '';
     const contentText = this.extractText(contentHtml);
 
-    // 提取价格信息
-    const priceInfo = this.extractPriceInfo(`${rawTitle} ${contentText}`);
+    // 提取 .box-info 价格更新信息（最高优先级）
+    const priceUpdate = this.extractPriceUpdate(contentHtml);
+
+    // 优先从 hero 区块提取价格信息
+    let priceInfo = this.extractPriceFromHero(contentHtml);
+
+    // 如果 hero 区块没有找到价格，但 .box-info 有，使用 .box-info
+    if (!priceInfo.currentPrice && !priceInfo.originalPrice && priceUpdate?.current) {
+      priceInfo = {
+        currentPrice: priceUpdate.current,
+        originalPrice: priceUpdate.previous,
+      };
+
+      // 回退后重新计算折扣
+      if (priceInfo.currentPrice && priceInfo.originalPrice) {
+        priceInfo.discountPercentage = Math.round(
+          ((priceInfo.originalPrice - priceInfo.currentPrice) / priceInfo.originalPrice) * 100
+        );
+      }
+    }
+
+    // 如果都没有找到，使用全文提取
+    if (!priceInfo.currentPrice && !priceInfo.originalPrice) {
+      priceInfo = this.extractPriceInfo(`${rawTitle} ${contentText}`);
+    }
+
+    // 统一计算折扣百分比（如果还没有但有现价和原价）
+    if (!priceInfo.discountPercentage && priceInfo.currentPrice && priceInfo.originalPrice) {
+      priceInfo.discountPercentage = Math.round(
+        ((priceInfo.originalPrice - priceInfo.currentPrice) / priceInfo.originalPrice) * 100
+      );
+    }
 
     // 清理标题：移除末尾的价格段落
     const cleanedTitle = this.cleanPriceSuffix(rawTitle);
@@ -39,25 +73,49 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
       price: priceInfo.currentPrice,
     });
 
-    // 提取商家信息
-    const merchant = this.extractMerchantName(post);
-    const merchantLink = this.extractMerchantLink(contentHtml);
+    // 提取商家信息（新优先级）
+    // 1. 优先从 _embedded['wp:term'] 提取（最准确）
+    let merchantInfo = this.extractMerchantFromEmbedded(post);
+
+    // 2. 如果 _embedded 没找到，从 content.rendered 提取（Bei <strong>商家</strong> 模式）
+    if (!merchantInfo) {
+      merchantInfo = this.extractMerchantFromContent(contentHtml);
+    }
+
+    const merchant = merchantInfo?.merchant;
+    const merchantLogo = merchantInfo?.logo;
+
+    // 不再从 content.rendered 提取 forward 链接
+    // merchantLink 和 merchantLogo 将从首页 HTML 获取，此处初始化为 undefined
+    const merchantLink = undefined;
+
+    // fallbackLink 使用文章 URL 作为临时跳转
+    const fallbackLink = post.link;
+
+    // 检测联盟信息（传入商家名称以帮助判断）
+    const affiliateInfo = this.detectAffiliateInfo(merchantLink || undefined, merchant);
 
     // 生成结构化内容块
     const contentBlocks = this.generateContentBlocks(contentHtml);
 
-    // 提取图片
-    const imageUrl = this.extractFeaturedImage(post) || this.extractImageFromHtml(contentHtml);
+    // 提取图片（只取 wp-content 直链）
+    const imageUrl = this.extractProductImage(contentHtml) ||
+                    this.extractFeaturedImage(post);
     const images = imageUrl ? [imageUrl] : [];
 
-    // 提取分类
-    const categories = this.extractCategories(post);
+    // 提取分类（优先从 HTML 提取，否则从 _embedded 提取）
+    let categories = this.extractCategoriesFromHtml(contentHtml);
+    if (categories.length === 0) {
+      categories = this.extractCategories(post);
+    }
 
     // 提取优惠码
     const couponCode = this.extractCouponCode(contentHtml);
 
+    // 提取发布时间（优先使用 ISO 格式）
+    const publishedAt = this.extractPublishTime(contentHtml) || new Date(post.date);
+
     // 计算过期时间 (默认 30 天)
-    const publishedAt = new Date(post.date);
     const expiresAt = new Date(publishedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     return {
@@ -83,18 +141,21 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
       images,
 
       merchant,
-      merchantLogo: undefined, // 待 STEP6 实现 (logo 识别)
+      merchantLogo,
       merchantLink: merchantLink || undefined,
+      fallbackLink,
 
-      affiliateLink: undefined,
-      affiliateEnabled: false,
-      affiliateNetwork: undefined,
+      affiliateLink: affiliateInfo?.affiliateLink,
+      affiliateEnabled: affiliateInfo?.enabled || false,
+      affiliateNetwork: affiliateInfo?.network,
 
       price: priceInfo.currentPrice,
       originalPrice: priceInfo.originalPrice,
       discount: priceInfo.discountPercentage,
       currency: 'EUR',
       couponCode,
+      priceUpdateNote: priceUpdate?.note,
+      previousPrice: priceUpdate?.previous,
 
       categories,
       tags: [],
@@ -189,103 +250,59 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     return Array.from(new Set(result));
   }
 
+
   /**
-   * 提取商家名称
-   * 策略: 查找以大写字母开头的标签名
+   * 解码 HTML 实体
+   * 处理 &amp;, &lt;, &gt;, &quot; 等
    */
-  private extractMerchantName(post: WordPressPost): string | undefined {
-    const tags = post._embedded?.['wp:term']?.[1]; // 第二组通常是 tags
-
-    if (!tags) return undefined;
-
-    // 查找以大写字母开头的标签 (通常是商家名)
-    const capitalized = tags.find((tag) => /^[A-Z][A-Za-z0-9]+/.test(tag.name));
-    return capitalized?.name;
+  private decodeHtmlEntities(text: string): string {
+    const $ = cheerio.load(`<div>${text}</div>`);
+    return $('div').text();
   }
 
   /**
    * 提取商家购买链接
    * 多策略提取: forward 链接 > 优惠按钮链接 > 直接商家链接
    */
-  private extractMerchantLink(content: string): string | null {
-    if (!content) return null;
+  /**
+   * 提取商家链接
+   * 优先级：
+   * 1. fullHtml 中的 forward.sparhamster.at 链接（原始加密跳转）
+   * 2. content.rendered 中的 forward.sparhamster.at 链接
+   * 3. CTA 按钮链接（包含特定关键词）
+   * 4. 其他外链（排除 geizhals 等中间联盟链）
+   */
+  /**
+   * 从 content.rendered 提取商家购买链接
+   *
+   * 策略:
+   * 1. 查找 forward.sparhamster.at 链接
+   * 2. 解码 HTML 实体 (&amp; → &)
+   * 3. 如果链接缺少 token 参数，添加默认 token
+   */
+  private extractMerchantLink(contentHtml: string): string | null {
+    if (!contentHtml) return null;
 
-    const $ = cheerio.load(content);
+    // 默认 token（可配置）
+    const DEFAULT_TOKEN = process.env.SPARHAMSTER_TOKEN || '0ccb1264cd81ad8e20f27dd146dfa37d';
 
-    // 策略1: 查找 forward.sparhamster.at 转发链接 (最常见)
+    const $ = cheerio.load(contentHtml);
     const forwardLinks = $('a[href*="forward.sparhamster.at"]');
+
     if (forwardLinks.length > 0) {
-      const href = $(forwardLinks[0]).attr('href');
-      if (href) {
-        return href; // 保留转发链接,它会重定向到真实商家
+      let href = $(forwardLinks[0]).attr('href');
+      if (!href) return null;
+
+      // 解码 HTML 实体 (&amp; → &)
+      href = this.decodeHtmlEntities(href);
+
+      // 如果链接缺少 token 参数，添加默认 token
+      if (!href.includes('token=')) {
+        const separator = href.includes('?') ? '&' : '?';
+        href = `${href}${separator}token=${DEFAULT_TOKEN}`;
       }
-    }
 
-    // 策略2: 查找包含 "Zum Angebot" (前往优惠) 的链接
-    const dealLinks = $('a').filter((_, el) => {
-      const text = $(el).text().toLowerCase();
-      const href = $(el).attr('href') || '';
-
-      // 匹配常见的购买/优惠按钮文本
-      const keywords = [
-        'zum angebot',
-        'zum deal',
-        'jetzt kaufen',
-        'direkt zum angebot',
-        'hier bestellen',
-        'zum shop',
-      ];
-
-      const hasKeyword = keywords.some((keyword) => text.includes(keyword));
-
-      // 确保不是 sparhamster 自己的链接
-      const isExternalLink = Boolean(
-        href &&
-          !href.includes('sparhamster.at/') && // 注意斜杠,允许 forward.sparhamster.at
-          !href.startsWith('#') &&
-          !href.startsWith('mailto:')
-      );
-
-      return hasKeyword && isExternalLink;
-    });
-
-    if (dealLinks.length > 0) {
-      const href = $(dealLinks[0]).attr('href');
-      if (href) {
-        return href;
-      }
-    }
-
-    // 策略3: 查找直接的外部商家链接 (亚马逊等)
-    const directLinks = $('a').filter((_, el) => {
-      const href = $(el).attr('href') || '';
-
-      // 常见电商域名
-      const merchantDomains = [
-        'amazon.',
-        'mediamarkt.',
-        'saturn.',
-        'otto.',
-        'ebay.',
-        'alternate.',
-        'notebooksbilliger.',
-      ];
-
-      const isMerchantLink = merchantDomains.some((domain) => href.includes(domain));
-      const notSocialLink =
-        !href.includes('facebook.com') &&
-        !href.includes('twitter.com') &&
-        !href.includes('instagram.com') &&
-        !href.includes('youtube.com');
-
-      return isMerchantLink && notSocialLink;
-    });
-
-    if (directLinks.length > 0) {
-      const href = $(directLinks[0]).attr('href');
-      if (href) {
-        return this.normalizeUrl(href);
-      }
+      return href;
     }
 
     return null;
@@ -393,6 +410,473 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     // 策略2: 正则匹配常见格式
     const match = html.match(/(?:Code|Gutschein|Rabatt)[:\s]*([A-Z0-9]{5,})/i);
     return match ? match[1] : undefined;
+  }
+
+  /**
+   * 从 hero 区块提取价格信息
+   * 优先级：hero 区块 > .box-info > 全文提取
+   */
+  private extractPriceFromHero(html: string): {
+    currentPrice?: number;
+    originalPrice?: number;
+    discountPercentage?: number;
+  } {
+    if (!html) return {};
+
+    const $ = cheerio.load(html);
+
+    // 提取现价：.uk-font-bold.has-blue-color 中的价格（不在 .box-info 内）
+    let currentPrice: number | undefined;
+    $('.uk-font-bold.has-blue-color').each((_, el) => {
+      // 排除在 .box-info 内的元素
+      if ($(el).closest('.box-info').length === 0) {
+        const text = $(el).text().trim();
+        const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+        if (match && !currentPrice) {
+          currentPrice = parseFloat(match[1].replace(',', '.'));
+        }
+      }
+    });
+
+    // 提取原价：.line-through.has-gray-color
+    let originalPrice: number | undefined;
+    $('.line-through.has-gray-color, span.line-through').each((_, el) => {
+      const text = $(el).text().trim();
+      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      if (match && !originalPrice) {
+        originalPrice = parseFloat(match[1].replace(',', '.'));
+      }
+    });
+
+    // 提取折扣百分比：.has-blue-color 中包含 "Ersparnis"
+    let discountPercentage: number | undefined;
+    $('.has-blue-color').each((_, el) => {
+      const text = $(el).text().trim();
+      const match = text.match(/(\d+)\s*%\s*Ersparnis/i);
+      if (match && !discountPercentage) {
+        discountPercentage = parseInt(match[1]);
+      }
+    });
+
+    // 如果同时有现价和原价，计算折扣（如果还没有）
+    if (currentPrice && originalPrice && !discountPercentage) {
+      discountPercentage = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+    }
+
+    return {
+      currentPrice,
+      originalPrice,
+      discountPercentage,
+    };
+  }
+
+  /**
+   * 提取 .box-info 中的价格更新信息
+   * 格式: "Der Preis fällt auf <strong>88,84 €</strong> <del>93,64 €</del>!"
+   * 注意：<strong> 是新价格，<del> 是旧价格
+   */
+  private extractPriceUpdate(html: string): {
+    current?: number;
+    previous?: number;
+    note?: string;
+  } | null {
+    if (!html) return null;
+
+    const $ = cheerio.load(html);
+    const boxInfo = $('.box-info');
+
+    if (boxInfo.length === 0) return null;
+
+    const fullText = boxInfo.text().trim();
+    const prices: number[] = [];
+
+    // 先提取 strong 中的价格（新价格）
+    boxInfo.find('strong').each((_, el) => {
+      const text = $(el).text().trim();
+      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      if (match) {
+        prices.push(parseFloat(match[1].replace(',', '.')));
+      }
+    });
+
+    // 然后提取 del 中的价格（旧价格）
+    boxInfo.find('del').each((_, el) => {
+      const text = $(el).text().trim();
+      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      if (match) {
+        prices.push(parseFloat(match[1].replace(',', '.')));
+      }
+    });
+
+    // 如果只有一个价格，当作现价
+    if (prices.length === 1) {
+      return {
+        current: prices[0],
+        note: fullText,
+      };
+    }
+
+    // 如果有两个价格，第一个是新价，第二个是旧价
+    if (prices.length >= 2) {
+      return {
+        current: prices[0],
+        previous: prices[1],
+        note: fullText,
+      };
+    }
+
+    return {
+      note: fullText,
+    };
+  }
+
+  /**
+   * 提取商品图片（只取 wp-content/uploads 直链）
+   * 排除商家 logo（/images/shops/）
+   */
+  private extractProductImage(html: string): string | null {
+    if (!html) return null;
+
+    const $ = cheerio.load(html);
+
+    // 查找 src 包含 wp-content/uploads 的图片，但排除商家 logo
+    const productImage = $('img').filter((_, el) => {
+      const src = $(el).attr('src') || '';
+      return src.includes('wp-content/uploads') && !src.includes('/images/shops/');
+    });
+
+    if (productImage.length > 0) {
+      return $(productImage[0]).attr('src') || null;
+    }
+
+    return null;
+  }
+
+  /**
+   * 从 WordPress API 的 _embedded['wp:term'] 提取商家信息（最准确）
+   *
+   * 策略:
+   * 1. 遍历 _embedded['wp:term'] 中的所有 term 数组
+   * 2. 查找 link 包含 "/shop/" 的 term（商家标签）
+   * 3. 优先使用 name 字段，如果没有则使用 slug
+   * 4. 从 slug 提取商家域名（将 mediamarkt-at → mediamarkt.at）
+   * 5. 过滤黑名单：sparhamster, geizhals, idealo
+   * 6. 使用 Google Favicon 服务生成 logo URL
+   */
+  private extractMerchantFromEmbedded(post: WordPressPost): {
+    merchant?: string;
+    logo?: string;
+    domain?: string;
+  } | null {
+    // 黑名单：永远不能作为商家名
+    const blacklist = ['sparhamster', 'geizhals', 'idealo'];
+
+    const isBlacklisted = (name: string): boolean => {
+      const lower = name.toLowerCase();
+      return blacklist.some(blocked => lower.includes(blocked));
+    };
+
+    // 从 slug 提取域名（例如：mediamarkt-at → mediamarkt.at）
+    const extractDomainFromSlug = (slug: string): string => {
+      const lastDashIndex = slug.lastIndexOf('-');
+      if (lastDashIndex !== -1) {
+        return slug.substring(0, lastDashIndex) + '.' + slug.substring(lastDashIndex + 1);
+      }
+      return slug + '.com'; // 默认添加 .com
+    };
+
+    // 获取 _embedded['wp:term']
+    const embedded = (post as any)._embedded;
+    if (!embedded || !embedded['wp:term']) {
+      return null;
+    }
+
+    const termGroups = embedded['wp:term'];
+    if (!Array.isArray(termGroups)) {
+      return null;
+    }
+
+    // 遍历所有 term 组（可能包含 categories 和 tags）
+    for (const termGroup of termGroups) {
+      if (!Array.isArray(termGroup)) continue;
+
+      for (const term of termGroup) {
+        const link = term.link || '';
+
+        // 只处理 /shop/ 链接
+        if (!link.includes('/shop/')) continue;
+
+        // 优先使用 name，fallback 到 slug
+        let merchantName = term.name || term.slug || '';
+        if (!merchantName) continue;
+
+        // 过滤黑名单
+        if (isBlacklisted(merchantName)) continue;
+
+        // 从 slug 提取域名（用于生成 favicon）
+        const slug = term.slug || '';
+        const domain = extractDomainFromSlug(slug);
+
+        // 使用商家 logo 映射表（支持自定义覆盖，默认使用 Google Favicon）
+        const logo = getMerchantLogo(merchantName, domain);
+
+        // 找到了符合条件的商家
+        return {
+          merchant: merchantName,
+          logo: logo,
+          domain: domain,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从 content.rendered 提取商家信息
+   * 解析 "Bei <strong>商家名</strong>" 模式
+   *
+   * 策略:
+   * 1. 查找 "Bei <strong>...</strong>" 或 "bei <strong>...</strong>" 模式
+   * 2. 提取 <strong> 标签中的商家名称
+   * 3. 过滤黑名单
+   */
+  private extractMerchantFromContent(html: string): {
+    merchant?: string;
+    logo?: string;
+    link?: string;
+  } | null {
+    if (!html) return null;
+
+    const blacklist = ['sparhamster', 'geizhals', 'idealo'];
+    const isBlacklisted = (name: string): boolean => {
+      const lower = name.toLowerCase();
+      return blacklist.some(blocked => lower.includes(blocked));
+    };
+
+    const $ = cheerio.load(html);
+
+    // 查找 "Bei <strong>商家</strong>" 模式
+    // 匹配 "Bei" 或 "bei" 开头的文本节点，后面紧跟 <strong>
+    const beiPattern = /\b[Bb]ei\s+/;
+
+    let result: { merchant?: string; logo?: string; link?: string } | null = null;
+
+    $('p, div').each((_, elem) => {
+      const text = $(elem).text();
+      if (beiPattern.test(text)) {
+        const strong = $(elem).find('strong').first();
+        if (strong.length > 0) {
+          const merchantName = strong.text().trim();
+          if (merchantName && !isBlacklisted(merchantName)) {
+            result = {
+              merchant: merchantName,
+              link: undefined,
+              logo: undefined,
+            };
+            return false; // 停止遍历
+          }
+        }
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * 从 hero 区块提取商家信息
+   * 通过 <a href="/shop/{slug}/"> 提取商家名称和 logo
+   *
+   * 策略:
+   * 1. 遍历所有包含 /shop/ 的链接，只考虑带有商家 logo 的链接
+   * 2. 跳过任何包含 "sparhamster" 的链接（这些是内部链接）
+   * 3. 优先从 title 属性中提取：截取 "Gutscheine"/"Angebote"/"Sale"/"Shop"/"Deals" 等关键词前的内容
+   * 4. 如果 title 为空或不含关键词，使用 slug 转换：将 slug 中最后一个 - 改成 .，保持其余 - 原样
+   * 5. 返回第一个符合条件的商家信息
+   */
+  private extractMerchantFromHero(html: string): {
+    merchant?: string;
+    logo?: string;
+  } | null {
+    if (!html) return null;
+
+    const $ = cheerio.load(html);
+
+    // 黑名单：永远不能作为商家名
+    const blacklist = ['sparhamster', 'geizhals', 'idealo'];
+
+    // 关键词列表：用于从 title/alt 中截取商家名
+    const keywords = ['Gutscheine', 'Angebote', 'Sale', 'Shop', 'Deals'];
+    const keywordPattern = new RegExp(`\\s*(${keywords.join('|')})`, 'i');
+
+    // 检查是否在黑名单中
+    const isBlacklisted = (name: string): boolean => {
+      const lower = name.toLowerCase();
+      return blacklist.some(blocked => lower.includes(blocked));
+    };
+
+    // 从文本中截取关键词前的内容
+    const extractBeforeKeywords = (text: string): string => {
+      const match = text.match(keywordPattern);
+      if (match && match.index !== undefined) {
+        return text.substring(0, match.index).trim();
+      }
+      return '';
+    };
+
+    // 查找所有包含 /shop/ 的链接
+    const shopLinks = $('a[href*="/shop/"]');
+
+    // 遍历所有候选链接
+    for (let i = 0; i < shopLinks.length; i++) {
+      const shopLink = $(shopLinks[i]);
+      const href = shopLink.attr('href') || '';
+      const title = shopLink.attr('title') || '';
+
+      // 检查是否包含商家 logo（支持懒加载：src, data-lazy-src, data-src）
+      const logoImg = shopLink.find('img[src*="/wp-content/uploads/images/shops/"], img[data-lazy-src*="/wp-content/uploads/images/shops/"], img[data-src*="/wp-content/uploads/images/shops/"]');
+
+      // 优先级：src > data-lazy-src > data-src
+      const logo = logoImg.attr('src') || logoImg.attr('data-lazy-src') || logoImg.attr('data-src');
+
+      if (!logo) {
+        // 只考虑带有商家 logo 的链接
+        continue;
+      }
+
+      let merchant: string | undefined;
+
+      // ① 策略1：从 title 提取
+      if (title) {
+        const extracted = extractBeforeKeywords(title);
+        if (extracted && !isBlacklisted(extracted)) {
+          merchant = extracted;
+        }
+      }
+
+      // ② 策略2：从 href slug 提取
+      if (!merchant) {
+        const slugMatch = href.match(/\/shop\/([^\/]+)\/?/);
+        if (slugMatch) {
+          const slug = slugMatch[1];
+          // 将最后一个 - 改成 .（如 mediamarkt-at -> mediamarkt.at）
+          const lastDashIndex = slug.lastIndexOf('-');
+          const converted = lastDashIndex !== -1
+            ? slug.substring(0, lastDashIndex) + '.' + slug.substring(lastDashIndex + 1)
+            : slug;
+
+          if (!isBlacklisted(converted)) {
+            merchant = converted;
+          }
+        }
+      }
+
+      // ③ 策略3：从图片 alt 提取
+      if (!merchant) {
+        const imgAlt = logoImg.attr('alt') || '';
+        if (imgAlt) {
+          const extracted = extractBeforeKeywords(imgAlt);
+          if (extracted && !isBlacklisted(extracted)) {
+            merchant = extracted;
+          }
+        }
+      }
+
+      // 找到第一个有效商家，立即返回
+      if (merchant) {
+        return {
+          merchant,
+          logo,
+        };
+      }
+    }
+
+    // 没有找到有效商家
+    return null;
+  }
+
+  /**
+   * 检测联盟信息
+   * 如果是 forward.sparhamster.at 链接且最终跳转到 Amazon，标记为联盟链接
+   * 同时检查商家信息来判断联盟网络
+   */
+  private detectAffiliateInfo(merchantLink?: string, merchant?: string): {
+    affiliateLink?: string;
+    enabled: boolean;
+    network?: string;
+  } {
+    if (!merchantLink) {
+      return { enabled: false };
+    }
+
+    // 如果是 forward 链接，保留为联盟链接
+    if (merchantLink.includes('forward.sparhamster.at')) {
+      // 检查是否跳转到 Amazon
+      // 1. URL 中包含 amazon
+      // 2. 商家名称是 Amazon
+      // 3. URL 中包含已知的 Amazon 联盟 tag (如 urbansoccer)
+      const isAmazon =
+        merchantLink.toLowerCase().includes('amazon') ||
+        merchant?.toLowerCase().includes('amazon') ||
+        merchantLink.includes('urbansoccer'); // 联盟 tag
+
+      return {
+        affiliateLink: merchantLink,
+        enabled: true,
+        network: isAmazon ? 'amazon' : undefined,
+      };
+    }
+
+    // 检查直接的 Amazon 链接是否包含 tag 参数
+    if (merchantLink.includes('amazon.') && merchantLink.includes('tag=')) {
+      return {
+        affiliateLink: merchantLink,
+        enabled: true,
+        network: 'amazon',
+      };
+    }
+
+    return { enabled: false };
+  }
+
+  /**
+   * 从 HTML 中提取分类标签（只保留 rel="category tag"）
+   */
+  private extractCategoriesFromHtml(html: string): string[] {
+    if (!html) return [];
+
+    const $ = cheerio.load(html);
+    const categories: string[] = [];
+
+    // 只提取 <a rel="category tag"> 的标签
+    $('a[rel="category tag"]').each((_, el) => {
+      const text = $(el).text().trim();
+      if (text) {
+        categories.push(text);
+      }
+    });
+
+    // 去重
+    return Array.from(new Set(categories));
+  }
+
+  /**
+   * 提取发布时间（优先使用 <time datetime> 的 ISO 格式）
+   */
+  private extractPublishTime(html: string): Date | null {
+    if (!html) return null;
+
+    const $ = cheerio.load(html);
+    const timeElement = $('time[datetime]').first();
+
+    if (timeElement.length > 0) {
+      const datetime = timeElement.attr('datetime');
+      if (datetime) {
+        return new Date(datetime);
+      }
+    }
+
+    return null;
   }
 
   /**

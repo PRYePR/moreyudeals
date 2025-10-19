@@ -74,16 +74,29 @@ export class DeduplicationService {
   /**
    * 处理重复内容
    * 增加 duplicate_count 并更新 last_seen_at
+   * 同时更新商家信息(如果新数据包含商家信息且原记录缺失)
    *
    * @param dealId 已存在的 Deal ID
+   * @param newDeal 新抓取的 Deal 数据(可选,用于更新商家信息)
    */
-  async handleDuplicate(dealId: string): Promise<void> {
+  async handleDuplicate(dealId: string, newDeal?: Deal): Promise<void> {
     await this.database.incrementDuplicateCount(dealId);
-    await this.database.updateDeal(dealId, {
-      lastSeenAt: new Date(),
-    });
 
-    console.log(`🔁 检测到重复内容,已更新 Deal ${dealId} 的统计信息`);
+    const updateData: Partial<Deal> = {
+      lastSeenAt: new Date(),
+    };
+
+    // 如果新数据包含商家信息,更新到数据库
+    if (newDeal?.merchant) {
+      updateData.merchant = newDeal.merchant;
+      updateData.merchantLogo = newDeal.merchantLogo;
+      updateData.merchantLink = newDeal.merchantLink;
+      console.log(`🔁 检测到重复内容,已更新 Deal ${dealId} 的统计信息和商家信息: ${newDeal.merchant}`);
+    } else {
+      console.log(`🔁 检测到重复内容,已更新 Deal ${dealId} 的统计信息`);
+    }
+
+    await this.database.updateDeal(dealId, updateData);
   }
 
   /**
@@ -97,7 +110,7 @@ export class DeduplicationService {
     const result = await this.checkDuplicate(deal);
 
     if (result.isDuplicate && result.existingDeal) {
-      await this.handleDuplicate(result.existingDeal.id);
+      await this.handleDuplicate(result.existingDeal.id, deal);
     }
 
     return result;
