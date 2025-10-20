@@ -14,8 +14,8 @@ echo ""
 DB_HOST="43.157.40.96"
 DB_PORT="5432"
 DB_NAME="moreyudeals"
-DB_USER="moreyu_admin"
-DB_PASSWORD="bTXsPFtiLb7tNH87"
+DB_USER="moreyudeals"
+DB_PASSWORD="338e930fbb"
 
 # 颜色输出
 GREEN='\033[0;32m'
@@ -25,7 +25,7 @@ NC='\033[0m'
 
 # 检查 PostgreSQL 连接
 echo -e "${YELLOW}[1/7] 测试数据库连接...${NC}"
-if PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d postgres -c "SELECT 1;" > /dev/null 2>&1; then
+if PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT 1;" > /dev/null 2>&1; then
     echo -e "${GREEN}✓ 数据库连接成功${NC}"
 else
     echo -e "${RED}✗ 数据库连接失败，请检查配置${NC}"
@@ -33,17 +33,8 @@ else
 fi
 echo ""
 
-# 检查数据库是否存在
-echo -e "${YELLOW}[2/7] 检查数据库 '$DB_NAME'...${NC}"
-DB_EXISTS=$(PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';")
-
-if [ "$DB_EXISTS" = "1" ]; then
-    echo -e "${YELLOW}⚠ 数据库已存在，跳过创建${NC}"
-else
-    echo "创建数据库..."
-    PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d postgres -c "CREATE DATABASE $DB_NAME;"
-    echo -e "${GREEN}✓ 数据库创建成功${NC}"
-fi
+# 数据库已存在，跳过检查
+echo -e "${YELLOW}[2/7] 数据库 '$DB_NAME' 已就绪${NC}"
 echo ""
 
 # 执行迁移脚本

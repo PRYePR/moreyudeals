@@ -1,11 +1,349 @@
-# 部署手册 (DEPLOYMENT)
+# Moreyudeals 部署文档
 
-> 环境：腾讯云轻量服务器（Linux）+ 宝塔面板  
-> 目标：部署 Strapi（自托管）、抓取脚本（定时），前端托管 Vercel；媒体存 COS；HTTPS 全站。
+> **新部署方式**: 基于Git的服务器端部署（推荐）
+> **环境**: 腾讯云服务器 43.157.40.96 + PostgreSQL 15.5
+> **架构**: Worker服务(PM2) + PostgreSQL数据库
 
 ---
 
-## 1. 前置清单
+## 快速开始
+
+```bash
+# 服务器上执行
+git clone <你的仓库地址> /www/wwwroot/Moreyudeals
+cd /www/wwwroot/Moreyudeals
+sudo bash scripts/init-database-server.sh
+bash scripts/deploy-server.sh
+```
+
+---
+
+## 部署架构
+
+- **数据库**: PostgreSQL 15.5 (43.157.40.96:5432)
+- **Worker服务**: PM2 进程管理
+- **Web前端**: Vercel (计划中)
+
+---
+
+## 首次部署（服务器端）
+
+### 前置要求
+
+服务器需要安装以下工具：
+
+```bash
+# 1. Node.js (v18+)
+# 2. pnpm
+npm install -g pnpm
+
+# 3. PM2
+npm install -g pm2
+
+# 4. PostgreSQL客户端
+# Ubuntu/Debian:
+sudo apt-get install postgresql-client
+
+# 5. Git
+sudo apt-get install git
+```
+
+### 部署步骤
+
+#### 1. 克隆代码
+
+```bash
+cd /www/wwwroot  # 或你的项目目录
+git clone <你的仓库地址> Moreyudeals
+cd Moreyudeals
+```
+
+#### 2. 配置环境变量
+
+创建生产环境配置文件：
+
+```bash
+# 编辑配置文件
+nano packages/worker/.env.production
+```
+
+配置内容：
+
+```env
+# 数据库配置
+DB_HOST=43.157.40.96
+DB_PORT=5432
+DB_NAME=moreyudeals
+DB_USER=moreyudeals
+DB_PASSWORD=338e930fbb
+
+# Sparhamster API 配置
+SPARHAMSTER_API_URL=https://www.sparhamster.at/wp-json/wp/v2/posts
+SPARHAMSTER_API_LIMIT=40
+SPARHAMSTER_BASE_URL=https://www.sparhamster.at
+SPARHAMSTER_TOKEN=your_token_here
+SPARHAMSTER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+# 抓取配置
+FETCH_INTERVAL_MIN=1800
+FETCH_INTERVAL_MAX=2100
+RANDOM_DELAY_MIN=0
+RANDOM_DELAY_MAX=300
+
+# 翻译配置
+TRANSLATION_ENABLED=false
+DEEPL_API_KEY=your_key_here
+DEEPL_ENDPOINT=https://api-free.deepl.com/v2
+
+# 日志级别
+LOG_LEVEL=info
+NODE_ENV=production
+```
+
+#### 3. 初始化数据库
+
+```bash
+# 授予脚本执行权限
+chmod +x scripts/*.sh
+
+# 运行数据库初始化（需要 sudo 权限）
+sudo bash scripts/init-database-server.sh
+```
+
+这个脚本会：
+- 创建数据库和用户
+- 授予必要的权限
+- 执行所有迁移脚本
+- 创建表结构和索引
+
+#### 4. 部署服务
+
+```bash
+# 运行一键部署脚本
+bash scripts/deploy-server.sh
+```
+
+部署脚本会：
+- 检查系统环境
+- 安装项目依赖
+- 构建Worker项目
+- 启动PM2服务
+
+#### 5. 验证部署
+
+```bash
+# 查看服务状态
+pm2 status
+
+# 查看日志
+pm2 logs moreyudeals-worker
+
+# 查看实时日志
+pm2 logs moreyudeals-worker --lines 100 -f
+```
+
+---
+
+## 日常更新部署
+
+当你在本地开发完成并推送到Git仓库后，在服务器上执行：
+
+```bash
+cd /www/wwwroot/Moreyudeals
+
+# 快速更新脚本
+bash scripts/update-server.sh
+```
+
+更新脚本会：
+1. 拉取最新代码 (`git pull`)
+2. 更新依赖
+3. 重新构建项目
+4. 重启PM2服务
+
+### 手动更新步骤
+
+如果需要手动控制：
+
+```bash
+# 1. 拉取代码
+git pull origin main  # 或你的分支名
+
+# 2. 安装依赖
+pnpm install
+
+# 3. 构建项目
+cd packages/worker
+pnpm run build
+
+# 4. 重启服务
+pm2 restart moreyudeals-worker
+```
+
+---
+
+## PM2 常用命令
+
+```bash
+# 查看服务状态
+pm2 status
+
+# 查看日志
+pm2 logs moreyudeals-worker
+
+# 实时日志
+pm2 logs moreyudeals-worker -f
+
+# 重启服务
+pm2 restart moreyudeals-worker
+
+# 停止服务
+pm2 stop moreyudeals-worker
+
+# 启动服务
+pm2 start packages/worker/ecosystem.config.js --env production
+
+# 删除服务
+pm2 delete moreyudeals-worker
+
+# 保存PM2配置（重启后自动启动）
+pm2 save
+
+# 查看详细信息
+pm2 show moreyudeals-worker
+```
+
+---
+
+## 数据库管理
+
+### 连接数据库
+
+```bash
+# 本地连接
+sudo -u postgres psql -d moreyudeals
+
+# 远程连接（从本地）
+PGPASSWORD=338e930fbb psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals
+```
+
+### 常用SQL命令
+
+```sql
+-- 查看所有表
+\dt
+
+-- 查看deals表结构
+\d deals
+
+-- 查看deals数量
+SELECT COUNT(*) FROM deals;
+
+-- 查看最新的deals
+SELECT id, title_de, merchant, created_at
+FROM deals
+ORDER BY created_at DESC
+LIMIT 10;
+
+-- 查看数据库大小
+SELECT pg_size_pretty(pg_database_size('moreyudeals'));
+```
+
+### 数据库备份
+
+```bash
+# 备份数据库
+PGPASSWORD=338e930fbb pg_dump -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 恢复数据库
+PGPASSWORD=338e930fbb psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals < backup_20250120_120000.sql
+```
+
+---
+
+## 故障排查
+
+### 服务无法启动
+
+1. 检查日志：`pm2 logs moreyudeals-worker --err`
+2. 检查配置文件：`cat packages/worker/.env.production`
+3. 测试数据库连接：
+   ```bash
+   PGPASSWORD=338e930fbb psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals -c "SELECT 1;"
+   ```
+
+### 数据库连接失败
+
+1. 检查防火墙：端口5432是否开放
+2. 检查PostgreSQL配置：
+   ```bash
+   # 检查监听地址
+   sudo grep "listen_addresses" /www/server/postgresql/data/postgresql.conf
+
+   # 检查pg_hba.conf
+   sudo cat /www/server/postgresql/data/pg_hba.conf | grep moreyudeals
+   ```
+3. 重启PostgreSQL：
+   ```bash
+   sudo systemctl restart postgresql
+   ```
+
+### 服务频繁重启
+
+1. 查看错误日志：`pm2 logs moreyudeals-worker --err --lines 100`
+2. 检查内存使用：`pm2 monit`
+3. 检查磁盘空间：`df -h`
+
+---
+
+## 监控和维护
+
+### 日志管理
+
+PM2日志文件位置：
+- 标准输出：`~/.pm2/logs/moreyudeals-worker-out.log`
+- 错误输出：`~/.pm2/logs/moreyudeals-worker-error.log`
+
+定期清理日志：
+```bash
+pm2 flush  # 清空所有日志
+```
+
+### 性能监控
+
+```bash
+# 实时监控
+pm2 monit
+
+# 查看资源使用
+pm2 status
+```
+
+---
+
+## 安全建议
+
+1. **定期更新密码**：定期更改数据库密码
+2. **限制IP访问**：在`pg_hba.conf`中只允许特定IP访问
+3. **使用环境变量**：敏感信息不要提交到Git
+4. **定期备份**：每天自动备份数据库
+5. **监控日志**：定期检查错误日志
+
+---
+
+## 下一步
+
+- [ ] 配置自动备份脚本
+- [ ] 设置监控告警（如：Sentry）
+- [ ] 配置HTTPS证书
+- [ ] 部署Web前端到Vercel
+- [ ] 配置CI/CD自动部署
+
+---
+
+## 原有部署文档（参考）
+
+### 1. 前置清单
 - 已准备域名：`deals.moreyu.com`
 - 邮箱：`support@moreyu.com`, `legal@moreyu.com`（SPF/DKIM/DMARC 已配置）
 - 腾讯云 COS：已创建 Bucket，拿到 `Bucket`、`Region`、`SecretId`、`SecretKey`
