@@ -25,7 +25,7 @@ echo ""
 # 检查必要的工具
 echo -e "${YELLOW}[1/8] 检查系统环境...${NC}"
 command -v node >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 Node.js，请先安装${NC}"; exit 1; }
-command -v pnpm >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 pnpm，请先安装${NC}"; exit 1; }
+command -v npm >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 npm，请先安装${NC}"; exit 1; }
 command -v pm2 >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 PM2，请先安装${NC}"; exit 1; }
 command -v psql >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 PostgreSQL 客户端${NC}"; exit 1; }
 echo -e "${GREEN}✓ 系统环境检查通过${NC}"
@@ -43,14 +43,14 @@ echo ""
 
 # 安装依赖
 echo -e "${YELLOW}[3/8] 安装项目依赖...${NC}"
-pnpm install --frozen-lockfile
+npm ci
 echo -e "${GREEN}✓ 依赖安装完成${NC}"
 echo ""
 
 # 构建项目
 echo -e "${YELLOW}[4/8] 构建 Worker 项目...${NC}"
 cd packages/worker
-pnpm run build
+npm run build
 echo -e "${GREEN}✓ 项目构建完成${NC}"
 echo ""
 cd "$PROJECT_ROOT"

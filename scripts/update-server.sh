@@ -45,14 +45,14 @@ echo ""
 
 # 安装/更新依赖
 echo -e "${YELLOW}[3/5] 更新依赖...${NC}"
-pnpm install
+npm ci
 echo -e "${GREEN}✓ 依赖更新完成${NC}"
 echo ""
 
 # 重新构建
 echo -e "${YELLOW}[4/5] 重新构建项目...${NC}"
 cd packages/worker
-pnpm run build
+npm run build
 echo -e "${GREEN}✓ 构建完成${NC}"
 echo ""
 cd "$PROJECT_ROOT"
