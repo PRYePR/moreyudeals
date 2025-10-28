@@ -165,6 +165,31 @@ describe('SparhamsterNormalizer', () => {
       expect(deal.originalPrice).not.toBe(134.51);
     });
 
+    it('应正确解析德语千位分隔符价格格式', async () => {
+      const post = createMockPost({
+        title: 'Dreame Matrix10 Ultra Saug-/Wischroboter inkl. Absaug-/Reinigungsstation weiß um 1.108,24 € statt 1.519,89 €',
+        content: `
+          <div class="uk-font-bold has-blue-color">1.108,24 €</div>
+          <span class="line-through has-gray-color">1.519,89 €</span>
+        `,
+      });
+
+      const deal = await normalizer.normalize(post);
+
+      // 应正确解析带千位分隔符的价格
+      // 1.108,24 € -> 1108.24
+      // 1.519,89 € -> 1519.89
+      expect(deal.price).toBe(1108.24);
+      expect(deal.originalPrice).toBe(1519.89);
+
+      // 应计算正确的折扣百分比
+      const expectedDiscount = Math.round(((1519.89 - 1108.24) / 1519.89) * 100);
+      expect(deal.discount).toBe(expectedDiscount); // 约 27%
+
+      // 标题应该被清理掉价格后缀
+      expect(deal.title).toBe('Dreame Matrix10 Ultra Saug-/Wischroboter inkl. Absaug-/Reinigungsstation weiß');
+    });
+
     it('应忽略运费价格 (Versandkosten 2,99 €)', async () => {
       const post = createMockPost({
         title: 'Product Deal',
@@ -1038,6 +1063,86 @@ describe('SparhamsterNormalizer', () => {
       } as any;
 
       expect(normalizer.validate(incompleteDeal)).toBe(false);
+    });
+  });
+
+  describe('cleanPriceSuffix - 德语价格清理', () => {
+    it('应清除 "um X € statt Y €" 格式的价格尾巴', async () => {
+      const post = createMockPost({
+        title: 'SodaStream Sirupe 440ml (23 versch. Sorten) um 3,49 € statt 5,03 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('SodaStream Sirupe 440ml (23 versch. Sorten)');
+      expect(deal.originalTitle).toBe('SodaStream Sirupe 440ml (23 versch. Sorten) um 3,49 € statt 5,03 €');
+    });
+
+    it('应清除 "für X € statt Y €" 格式的价格尾巴', async () => {
+      const post = createMockPost({
+        title: 'Logitech Maus für 19,99 € statt 39,99 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('Logitech Maus');
+      expect(deal.originalTitle).toBe('Logitech Maus für 19,99 € statt 39,99 €');
+    });
+
+    it('应清除 "reduziert auf X € statt Y €" 格式的价格尾巴', async () => {
+      const post = createMockPost({
+        title: 'Philips Zahnbürste reduziert auf 79,99 € statt 159,99 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('Philips Zahnbürste');
+      expect(deal.originalTitle).toBe('Philips Zahnbürste reduziert auf 79,99 € statt 159,99 €');
+    });
+
+    it('应清除 "nur X € statt Y €" 格式的价格尾巴', async () => {
+      const post = createMockPost({
+        title: 'Gaming Headset nur 29,99 € statt 59,99 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('Gaming Headset');
+      expect(deal.originalTitle).toBe('Gaming Headset nur 29,99 € statt 59,99 €');
+    });
+
+    it('应支持 EUR 货币符号', async () => {
+      const post = createMockPost({
+        title: 'Sony Kopfhörer um 49,99 EUR statt 99,99 EUR',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('Sony Kopfhörer');
+    });
+
+    it('应支持不含小数点的价格', async () => {
+      const post = createMockPost({
+        title: 'Notebook Tasche für 25 € statt 50 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      expect(deal.title).toBe('Notebook Tasche');
+    });
+
+    it('不应清除中间出现的价格信息', async () => {
+      const post = createMockPost({
+        title: 'Special um 10€ Bundle mit Zubehör',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      // 中间的价格不应该被清除，因为没有完整的 "um X statt Y" 模式
+      expect(deal.title).toBe('Special um 10€ Bundle mit Zubehör');
+    });
+
+    it('应支持德语千位分隔符价格', async () => {
+      const post = createMockPost({
+        title: 'Dreame Matrix10 Ultra Saug-/Wischroboter inkl. Absaug-/Reinigungsstation weiß um 1.108,24 € statt 1.519,89 €',
+        content: '<p>Test content</p>',
+      });
+      const deal = await normalizer.normalize(post);
+      // 应清除带千位分隔符的价格后缀
+      expect(deal.title).toBe('Dreame Matrix10 Ultra Saug-/Wischroboter inkl. Absaug-/Reinigungsstation weiß');
     });
   });
 });

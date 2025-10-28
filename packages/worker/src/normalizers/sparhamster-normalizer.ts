@@ -181,6 +181,58 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
   }
 
   /**
+   * 清理德语价格文本，支持千位分隔符
+   * 德语格式: 1.108,24 (千位用点，小数用逗号)
+   *
+   * 算法：
+   * 1. 删除所有空格
+   * 2. 找到最后一个分隔符（. 或 ,）
+   * 3. 如果最后一个分隔符后面正好是 2 位数字，则为小数点，其他分隔符为千位分隔符
+   * 4. 删除千位分隔符，将小数分隔符替换为 .
+   *
+   * 示例:
+   *   "1.108,24" -> 1108.24
+   *   "1.519,89" -> 1519.89
+   *   "3,49" -> 3.49
+   *   "25" -> 25
+   *   "1 519,89" -> 1519.89
+   *   "1.519.000,99" -> 1519000.99
+   */
+  private sanitizePriceText(priceText: string): number {
+    if (!priceText) return 0;
+
+    // 1. 删除所有空格
+    let cleaned = priceText.replace(/\s+/g, '');
+
+    // 2. 找到最后一个分隔符的位置
+    const lastCommaIdx = cleaned.lastIndexOf(',');
+    const lastDotIdx = cleaned.lastIndexOf('.');
+    const lastSepIdx = Math.max(lastCommaIdx, lastDotIdx);
+
+    // 3. 如果没有分隔符，直接转换
+    if (lastSepIdx === -1) {
+      return parseFloat(cleaned) || 0;
+    }
+
+    // 4. 检查最后一个分隔符后面有多少位数字
+    const afterSep = cleaned.substring(lastSepIdx + 1);
+
+    // 如果最后分隔符后正好是 2 位数字（或 1 位），则为小数分隔符
+    // 德语格式：1.108,24 或 3,5
+    if (afterSep.length <= 2) {
+      // 最后一个是小数分隔符
+      // 删除所有之前的分隔符，将最后的分隔符替换为 .
+      const beforeSep = cleaned.substring(0, lastSepIdx).replace(/[.,]/g, '');
+      cleaned = beforeSep + '.' + afterSep;
+    } else {
+      // 最后分隔符不是小数点（如 1.519），删除所有分隔符
+      cleaned = cleaned.replace(/[.,]/g, '');
+    }
+
+    return parseFloat(cleaned) || 0;
+  }
+
+  /**
    * 清理标题末尾的价格描述
    * **仅移除标题结尾的完整价格对（原价...现价 或 现价...原价）**
    * 不移除单独的"原价"、"现价"或"价格"词
@@ -189,6 +241,7 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
    *   "产品名称原价 167,99 欧元，现价 64,99 欧元" -> "产品名称"
    *   "产品名称，原价 100 欧元" -> "产品名称，原价 100 欧元" (保留，因为不是完整价格对)
    *   "产品 原价 100 欧元 something现价 50 欧元" -> "产品 原价 100 欧元 something现价 50 欧元" (中间不清理)
+   *   "SodaStream Sirupe 440ml um 3,49 € statt 5,03 €" -> "SodaStream Sirupe 440ml"
    */
   private cleanPriceSuffix(title: string): string {
     if (!title) return '';
@@ -203,6 +256,23 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
 
       // 中文模式 - 现价...原价 (末尾，顺序相反)
       /[，,\s]*现价[：:\s]*\d+(?:[.,]\d+)?\s*欧元[，,\s]+原价[：:\s]*\d+(?:[.,]\d+)?\s*欧元\s*$/i,
+
+      // 德语模式 1: um <价格> statt <价格>
+      // 匹配: "Product um 3,49 € statt 5,03 €" 和 "Product um 1.108,24 € statt 1.519,89 €"
+      // 支持德语千位分隔符(.)和小数分隔符(,): 1.108,24
+      /\s+um\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s+statt\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s*$/i,
+
+      // 德语模式 2: für <价格> statt <价格>
+      // 匹配: "Product für 19,99 € statt 39,99 €" 和带千位分隔符的价格
+      /\s+für\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s+statt\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s*$/i,
+
+      // 德语模式 3: nur <价格> statt <价格>
+      // 匹配: "Product nur 12,50 € statt 25 €" 和带千位分隔符的价格
+      /\s+nur\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s+statt\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s*$/i,
+
+      // 德语模式 4: reduziert auf <价格> statt <价格>
+      // 匹配: "Product reduziert auf 79,99 € statt 159,99 €" 和带千位分隔符的价格
+      /\s+reduziert\s+auf\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s+statt\s+\d+(?:\.\d{3})*(?:,\d+)?\s*(?:€|EUR)\s*$/i,
     ];
 
     let cleanedTitle = title;
@@ -427,14 +497,17 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     const $ = cheerio.load(html);
 
     // 提取现价：.uk-font-bold.has-blue-color 中的价格（不在 .box-info 内）
+    // 支持德语千位分隔符: 1.108,24 €
     let currentPrice: number | undefined;
     $('.uk-font-bold.has-blue-color').each((_, el) => {
       // 排除在 .box-info 内的元素
       if ($(el).closest('.box-info').length === 0) {
         const text = $(el).text().trim();
-        const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+        // 匹配德语价格格式：支持千位分隔符(.)和小数分隔符(,)
+        // 例如: 1.108,24 € 或 3,49 € 或 25 €
+        const match = text.match(/([\d\s.,]+)\s*€/);
         if (match && !currentPrice) {
-          currentPrice = parseFloat(match[1].replace(',', '.'));
+          currentPrice = this.sanitizePriceText(match[1]);
         }
       }
     });
@@ -443,9 +516,9 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     let originalPrice: number | undefined;
     $('.line-through.has-gray-color, span.line-through').each((_, el) => {
       const text = $(el).text().trim();
-      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      const match = text.match(/([\d\s.,]+)\s*€/);
       if (match && !originalPrice) {
-        originalPrice = parseFloat(match[1].replace(',', '.'));
+        originalPrice = this.sanitizePriceText(match[1]);
       }
     });
 
@@ -492,20 +565,21 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     const prices: number[] = [];
 
     // 先提取 strong 中的价格（新价格）
+    // 支持德语千位分隔符: 1.108,24 €
     boxInfo.find('strong').each((_, el) => {
       const text = $(el).text().trim();
-      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      const match = text.match(/([\d\s.,]+)\s*€/);
       if (match) {
-        prices.push(parseFloat(match[1].replace(',', '.')));
+        prices.push(this.sanitizePriceText(match[1]));
       }
     });
 
     // 然后提取 del 中的价格（旧价格）
     boxInfo.find('del').each((_, el) => {
       const text = $(el).text().trim();
-      const match = text.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      const match = text.match(/([\d\s.,]+)\s*€/);
       if (match) {
-        prices.push(parseFloat(match[1].replace(',', '.')));
+        prices.push(this.sanitizePriceText(match[1]));
       }
     });
 
@@ -529,6 +603,62 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     return {
       note: fullText,
     };
+  }
+
+  /**
+   * 从文本中提取价格信息（德语 "um X statt Y" 模式）
+   * 支持千位分隔符: 1.108,24 €
+   *
+   * 示例:
+   * - "Product um 1.108,24 € statt 1.519,89 €" -> currentPrice: 1108.24, originalPrice: 1519.89
+   * - "Product für 3,49 € statt 5,03 €" -> currentPrice: 3.49, originalPrice: 5.03
+   */
+  protected extractPriceInfo(text: string): {
+    currentPrice?: number;
+    originalPrice?: number;
+    discountPercentage?: number;
+  } {
+    if (!text) return {};
+
+    // 德语价格模式：um/für/nur/reduziert auf <现价> statt <原价>
+    const germanPricePatterns = [
+      /\b(?:um|für|nur)\s+([\d\s.,]+)\s*(?:€|EUR)\s+statt\s+([\d\s.,]+)\s*(?:€|EUR)/i,
+      /\breduziert\s+auf\s+([\d\s.,]+)\s*(?:€|EUR)\s+statt\s+([\d\s.,]+)\s*(?:€|EUR)/i,
+    ];
+
+    for (const pattern of germanPricePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const currentPrice = this.sanitizePriceText(match[1]);
+        const originalPrice = this.sanitizePriceText(match[2]);
+
+        if (currentPrice > 0 && originalPrice > 0) {
+          const discountPercentage = Math.round(
+            ((originalPrice - currentPrice) / originalPrice) * 100
+          );
+
+          return {
+            currentPrice,
+            originalPrice,
+            discountPercentage,
+          };
+        }
+      }
+    }
+
+    // 简单价格提取：只提取单个价格
+    // 使用宽泛的正则匹配任何数字+€格式
+    const simpleMatch = text.match(/([\d\s.,]+)\s*(?:€|EUR)/);
+    if (simpleMatch) {
+      const price = this.sanitizePriceText(simpleMatch[1]);
+      if (price > 0) {
+        return {
+          currentPrice: price,
+        };
+      }
+    }
+
+    return {};
   }
 
   /**
