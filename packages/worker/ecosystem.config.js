@@ -13,7 +13,7 @@ module.exports = {
       DB_HOST: '43.157.40.96',
       DB_PORT: '5432',
       DB_NAME: 'moreyudeals',
-      DB_USER: 'moreyu_admin',
+      DB_USER: 'moreyudeals',
       DB_PASSWORD: 'bTXsPFtiLb7tNH87',
       SPARHAMSTER_API_URL: 'https://www.sparhamster.at/wp-json/wp/v2/posts',
       SPARHAMSTER_API_LIMIT: '40',

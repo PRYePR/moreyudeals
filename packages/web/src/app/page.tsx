@@ -1,18 +1,15 @@
-import DealCard from '@/components/DealCard'
-import SearchBar from '@/components/SearchBar'
-import TranslationDisclaimer from '@/components/TranslationDisclaimer'
-import { createModuleLogger } from '@/lib/logger'
-
-const logger = createModuleLogger('app:home-page')
+import DealCardPreisjaeger from '@/components/deals/DealCardPreisjaeger'
+import SiteHeader from '@/components/layout/SiteHeader'
 
 async function getLatestDeals() {
   try {
     const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://your-domain.com'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
       : 'http://localhost:3000'
 
-    const response = await fetch(`${baseUrl}/api/deals/live?limit=6`, {
-      cache: 'no-store' // 确保获取最新数据
+    const response = await fetch(`${baseUrl}/api/deals/live?limit=12`, {
+      cache: 'no-store',
+      next: { revalidate: 0 }
     })
 
     if (!response.ok) {
@@ -22,204 +19,198 @@ async function getLatestDeals() {
     const data = await response.json()
     return data.deals || []
   } catch (error) {
-    logger.error('Error fetching deals', error as Error)
+    console.error('Error fetching deals:', error)
     return []
   }
 }
 
-// 备用模拟数据
+// 备用示例数据
 const fallbackDeals = [
   {
     id: '1',
     title: 'Samsung Galaxy S24 Ultra - Exklusiver Rabatt',
-    originalTitle: 'Samsung Galaxy S24 Ultra - Exklusiver Rabatt',
     translatedTitle: 'Samsung Galaxy S24 Ultra - 独家折扣',
-    description: 'Sparen Sie 200€ beim Kauf des neuen Samsung Galaxy S24 Ultra. Limitiertes Angebot nur für kurze Zeit verfügbar.',
-    originalDescription: 'Sparen Sie 200€ beim Kauf des neuen Samsung Galaxy S24 Ultra. Limitiertes Angebot nur für kurze Zeit verfügbar.',
-    translatedDescription: '购买新款Samsung Galaxy S24 Ultra可节省200欧元。限时优惠，数量有限。',
-    price: '899.99',
-    originalPrice: '1099.99',
+    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800&q=80',
+    price: 899.99,
+    originalPrice: 1099.99,
     currency: 'EUR',
-    discountPercentage: 18,
-    imageUrl: 'https://images.samsung.com/is/image/samsung/assets/de/smartphones/galaxy-s24/images/galaxy-s24-ultra_highlights_design.jpg',
-    dealUrl: 'https://example-german-store.de/samsung-galaxy-s24-ultra',
+    discount: 18,
+    merchant: 'Amazon',
+    merchantLogo: '/logos/amazon.svg',
+    dealUrl: 'https://example.com/samsung-s24',
+    publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     category: 'Electronics',
-    source: 'DealNews DE',
-    publishedAt: new Date('2024-01-15'),
-    expiresAt: new Date('2024-02-15'),
-    language: 'de' as const,
-    translationProvider: 'deepl' as const,
-    isTranslated: true,
   },
   {
     id: '2',
     title: 'Adidas Sneaker Sale',
-    originalTitle: 'Adidas Sneaker Sale',
     translatedTitle: 'Adidas运动鞋促销',
-    description: 'Bis zu 50% Rabatt auf ausgewählte Adidas Sneaker. Große Auswahl verfügbar.',
-    originalDescription: 'Bis zu 50% Rabatt auf ausgewählte Adidas Sneaker. Große Auswahl verfügbar.',
-    translatedDescription: '精选Adidas运动鞋最高可享受50%的折扣。款式丰富，选择多样。',
-    price: '59.99',
-    originalPrice: '119.99',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80',
+    price: 59.99,
+    originalPrice: 119.99,
     currency: 'EUR',
-    discountPercentage: 50,
-    imageUrl: 'https://assets.adidas.com/images/h_840,f_auto,q_auto,fl_lossy,c_fill,g_auto/placeholder.jpg',
-    dealUrl: 'https://example-german-store.de/adidas-sneaker-sale',
+    discount: 50,
+    merchant: 'Adidas',
+    dealUrl: 'https://example.com/adidas-sneaker',
+    publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     category: 'Fashion',
-    source: 'MyDealz',
-    publishedAt: new Date('2024-01-14'),
-    expiresAt: new Date('2024-01-31'),
-    language: 'de' as const,
-    translationProvider: 'deepl' as const,
-    isTranslated: true,
   },
   {
     id: '3',
     title: 'KitchenAid Mixer - Winterschlussverkauf',
-    originalTitle: 'KitchenAid Mixer - Winterschlussverkauf',
-    translatedTitle: 'KitchenAid搅拌器 - 冬季清仓特卖',
-    description: 'Professioneller KitchenAid Stand Mixer mit 40% Nachlass. Perfekt für Hobby-Bäcker.',
-    originalDescription: 'Professioneller KitchenAid Stand Mixer mit 40% Nachlass. Perfekt für Hobby-Bäcker.',
-    translatedDescription: '专业KitchenAid台式搅拌器，享受40%折扣。非常适合烘焙爱好者。',
-    price: '299.99',
-    originalPrice: '499.99',
+    translatedTitle: 'KitchenAid搅拌器 - 冬季清仓',
+    imageUrl: 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800&q=80',
+    price: 299.99,
+    originalPrice: 499.99,
     currency: 'EUR',
-    discountPercentage: 40,
-    imageUrl: 'https://www.kitchenaid.de/is/image/content/dam/business-unit/kitchenaid/en-us/marketing-content/site-assets/page-content/pinch-of-help/how-to-use-kitchenaid-stand-mixer/how-to-use-kitchenaid-stand-mixer_banner_mobile.jpg',
-    dealUrl: 'https://example-german-store.de/kitchenaid-mixer-sale',
+    discount: 40,
+    merchant: 'Media Markt',
+    dealUrl: 'https://example.com/kitchenaid',
+    publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
     category: 'Home & Kitchen',
-    source: 'Chefkoch Deals',
-    publishedAt: new Date('2024-01-13'),
-    expiresAt: new Date('2024-02-29'),
-    language: 'de' as const,
-    translationProvider: 'deepl' as const,
-    isTranslated: true,
+  },
+  {
+    id: '4',
+    title: 'Sony WH-1000XM5 Kopfhörer',
+    translatedTitle: 'Sony WH-1000XM5 降噪耳机',
+    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&q=80',
+    price: 349.00,
+    originalPrice: 429.00,
+    currency: 'EUR',
+    discount: 19,
+    merchant: 'Saturn',
+    dealUrl: 'https://example.com/sony-headphones',
+    publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+    category: 'Electronics',
+  },
+  {
+    id: '5',
+    title: 'Lego Star Wars Set',
+    translatedTitle: '乐高星球大战套装',
+    imageUrl: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&q=80',
+    price: 89.99,
+    originalPrice: 129.99,
+    currency: 'EUR',
+    discount: 31,
+    merchant: 'MyToys',
+    dealUrl: 'https://example.com/lego',
+    publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    category: 'Toys',
+  },
+  {
+    id: '6',
+    title: 'Dyson V15 Staubsauger',
+    translatedTitle: 'Dyson V15 吸尘器',
+    imageUrl: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=800&q=80',
+    price: 549.00,
+    originalPrice: 749.00,
+    currency: 'EUR',
+    discount: 27,
+    merchant: 'Expert',
+    dealUrl: 'https://example.com/dyson',
+    publishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    category: 'Home Appliances',
   },
 ]
 
 export default async function HomePage() {
   const deals = await getLatestDeals()
   const displayDeals = deals.length > 0 ? deals : fallbackDeals
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-primary-600 to-primary-700 text-white py-16">
+    <div className="min-h-screen bg-neutral-bg">
+      {/* 使用新的 Header */}
+      <SiteHeader />
+
+      {/* Hero Section - Moreyu v3.1 配色 */}
+      <section className="bg-gradient-to-br from-brand-primary via-brand-hover to-brand-primary text-white py-12 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6">
               奥地利优惠信息聚合
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-primary-100">
-              自动收集并翻译奥地利商家最新折扣信息
-            </p>
-            <div className="max-w-2xl mx-auto">
-              <SearchBar />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Translation Disclaimer */}
-      <TranslationDisclaimer />
-
-      {/* Featured Deals Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">
-              精选优惠
-            </h2>
-            <a
-              href="/deals"
-              className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              查看全部 →
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {displayDeals.map((deal: any) => (
-              <DealCard key={deal.id} deal={deal} />
-            ))}
-          </div>
-
-          {deals.length > 0 && (
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-500">
-                数据来源: {deals[0]?.source} | 最后更新: {new Date().toLocaleString('zh-CN')}
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="bg-gray-100 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              平台数据
-            </h2>
-            <p className="text-gray-600">
-              实时更新的奥地利优惠信息统计
+            <p className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto">
+              自动收集并翻译奥地利商家最新折扣信息，让你不错过任何好deal
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary-600 mb-2">{deals.length || 10}</div>
-              <div className="text-gray-600">实时优惠</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary-600 mb-2">1</div>
-              <div className="text-gray-600">数据来源</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary-600 mb-2">
-                {deals.reduce((total: number, deal: any) => {
-                  const discount = deal.discountPercentage || 0
-                  return total + discount
-                }, 0)}%
-              </div>
-              <div className="text-gray-600">总节省比例</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary-600 mb-2">实时</div>
-              <div className="text-gray-600">数据同步</div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
-            热门分类
+      {/* Deals Grid Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Section Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+            最新优惠
           </h2>
+          <span className="text-sm text-gray-500">
+            共 {displayDeals.length} 个优惠
+          </span>
+        </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {[
-              { name: '电子产品', icon: '📱', count: 234 },
-              { name: '时尚服饰', icon: '👕', count: 189 },
-              { name: '家居用品', icon: '🏠', count: 156 },
-              { name: '运动户外', icon: '⚽', count: 145 },
-              { name: '美妆护肤', icon: '💄', count: 98 },
-              { name: '食品饮料', icon: '🍕', count: 87 },
-            ].map((category, index) => (
-              <a
-                key={index}
-                href={`/categories/${category.name.toLowerCase()}`}
-                className="bg-white rounded-lg p-6 text-center hover:shadow-lg transition-shadow duration-300 border border-gray-200"
-              >
-                <div className="text-3xl mb-3">{category.icon}</div>
-                <div className="font-semibold text-gray-900 mb-1">{category.name}</div>
-                <div className="text-sm text-gray-500">{category.count} 个优惠</div>
-              </a>
-            ))}
+        {/* Responsive Grid - Preisjaeger 风格 */}
+        <div className="space-y-4">
+          {displayDeals.map((deal: any) => (
+            <DealCardPreisjaeger key={deal.id} deal={deal} />
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {displayDeals.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg">暂无优惠信息</p>
+            <p className="text-gray-400 text-sm mt-2">请稍后再试</p>
+          </div>
+        )}
+      </section>
+
+      {/* Stats Section - 简化版 */}
+      <section className="bg-white border-t border-gray-200 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+                {displayDeals.length}+
+              </div>
+              <div className="text-sm md:text-base text-gray-600">实时优惠</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+                50+
+              </div>
+              <div className="text-sm md:text-base text-gray-600">合作商家</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+                每日
+              </div>
+              <div className="text-sm md:text-base text-gray-600">自动更新</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+                中文
+              </div>
+              <div className="text-sm md:text-base text-gray-600">AI翻译</div>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-sm">
+            <p>&copy; 2025 Moreyudeals. 奥地利优惠信息聚合平台</p>
+            <p className="mt-2">
+              数据来源于公开渠道 | 由 AI 自动翻译 | 仅供参考
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

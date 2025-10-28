@@ -21,7 +21,8 @@ interface Deal {
   language: 'de' | 'en'
   translationProvider: 'deepl' | 'microsoft' | 'google'
   isTranslated: boolean
-  merchantName?: string
+  merchant?: string           // 兼容旧字段
+  merchantName?: string       // 新字段（后端返回）
   merchantLogo?: string
 }
 
@@ -78,7 +79,7 @@ export default function DealCard({ deal }: DealCardProps) {
           </div>
         )}
         <span className="text-sm font-semibold text-gray-800 truncate flex-1">
-          {deal.merchantName || deal.source}
+          {deal.merchantName || deal.merchant || deal.source}
         </span>
         <span className="text-xs text-gray-500 ml-3 whitespace-nowrap">
           {formatDate(deal.publishedAt)}

@@ -8,27 +8,45 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Moreyu v3.1 配色方案
+        // 主色系 - 海洋蓝
+        brand: {
+          primary: '#1E4E8C',   // 主色：Logo、导航、标题、主按钮
+          hover: '#173B6C',     // hover态、页脚、选中态
+          light: '#E8F1FB',     // 浅蓝：背景衬色、高亮区
+          DEFAULT: '#1E4E8C',
+        },
+        // 功能色 - 珊瑚橙（CTA）
+        action: {
+          primary: '#FF6B3D',   // CTA按钮、优惠价签
+          hover: '#E45E2F',     // hover态
+          DEFAULT: '#FF6B3D',
+        },
+        // 辅助色
+        support: {
+          green: '#2FC9A8',     // 攻略标签、成功状态
+          yellow: '#FFA928',    // 警示、提示
+          red: '#E9443D',       // 错误、重要提醒
+        },
+        // 中性色
+        neutral: {
+          bg: '#F8F9FB',        // 全站背景
+          card: '#FFFFFF',      // 卡片背景
+          border: '#E3E8EF',    // 边框
+          text: {
+            primary: '#222222',   // 正文
+            secondary: '#666666', // 副标题、时间
+            tertiary: '#999999',  // 标签、注释
+          },
+        },
+        // 兼容旧配置
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          900: '#0c4a6e',
-        },
-        secondary: {
-          50: '#fef3c7',
-          100: '#fed7aa',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-        },
-        danger: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
+          50: '#E8F1FB',
+          100: '#E8F1FB',
+          500: '#1E4E8C',
+          600: '#1E4E8C',
+          700: '#173B6C',
+          900: '#173B6C',
         },
       },
       fontFamily: {
