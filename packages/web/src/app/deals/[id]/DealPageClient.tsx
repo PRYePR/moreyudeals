@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import DealDetailContent from '@/components/DealDetailContent'
 import {
   TranslationProvider,
@@ -27,33 +28,19 @@ interface DealPageClientProps {
 export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   const [detailContent, setDetailContent] = useState<DetailContent | null>(null)
 
-  const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(dateObj)
+  // 使用服务端计算的时间状态，避免 hydration mismatch
+  const timeStatus = deal.timeStatus || {
+    publishedAbsolute: '时间信息暂缺',
+    publishedRelative: null,
+    expiresAbsolute: null,
+    badgeLabel: '时间信息暂缺',
+    badgeTone: 'published' as const,
+    daysRemaining: null,
+    isExpired: false
   }
 
-  const getDaysRemaining = (expiresAt: Date | string) => {
-    const now = new Date()
-    const expirationDate = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt
-    const diffTime = expirationDate.getTime() - now.getTime()
-    if (Number.isNaN(diffTime)) return 0
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(diffDays, 0)
-  }
-
-  const calculatedDays = typeof deal.daysRemaining === 'number'
-    ? Math.max(deal.daysRemaining, 0)
-    : getDaysRemaining(deal.expiresAt)
-  const isExpired = typeof deal.isExpired === 'boolean'
-    ? deal.isExpired
-    : calculatedDays <= 0
-  const daysRemaining = isExpired ? 0 : calculatedDays
+  const isExpired = timeStatus.isExpired
+  const daysRemaining = timeStatus.daysRemaining ?? 0
   const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
   const hasPurchaseLink = typeof purchaseUrl === 'string' && purchaseUrl.startsWith('http')
 
@@ -65,13 +52,13 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <Tooltip content="返回主页查看更多优惠">
-                <a
+                <Link
                   href="/"
                   className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-medium transition-colors duration-200"
                 >
                   <span>←</span>
                   <span>返回首页</span>
-                </a>
+                </Link>
               </Tooltip>
               <div className="flex items-center space-x-4">
                 <TranslationControl />
@@ -80,7 +67,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                     来源: {deal.source}
                   </span>
                   <span>•</span>
-                  <span>{formatDate(deal.publishedAt)}</span>
+                  <span>{timeStatus.publishedRelative || timeStatus.publishedAbsolute}</span>
                 </div>
               </div>
             </div>
@@ -131,19 +118,19 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                 </div>
               </EnhancedCard>
 
-              {/* Price Alert */}
-              {daysRemaining <= 7 && daysRemaining > 0 && (
+              {/* Price Alert - 只在有明确过期时间且即将过期时显示 */}
+              {timeStatus.daysRemaining !== null && timeStatus.daysRemaining <= 7 && timeStatus.daysRemaining > 0 && (
                 <EnhancedCard className="bg-gradient-to-r from-red-50 to-orange-50 border-red-200 p-4 text-center">
                   <div className="text-red-600 font-semibold text-lg">
                     ⏰ 优惠即将结束
                   </div>
                   <div className="text-red-500 text-sm mt-1">
-                    还剩 {daysRemaining} 天
+                    {timeStatus.badgeLabel}
                   </div>
                   <div className="mt-2 w-full bg-red-100 rounded-full h-2">
                     <div
                       className="bg-red-500 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${Math.max(10, (daysRemaining / 30) * 100)}%` }}
+                      style={{ width: `${Math.max(10, (timeStatus.daysRemaining / 30) * 100)}%` }}
                     />
                   </div>
                 </EnhancedCard>
@@ -165,10 +152,12 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                     trend: 'up'
                   },
                   {
-                    label: '剩余',
-                    value: isExpired ? '已过期' : `${daysRemaining}天`,
+                    label: timeStatus.daysRemaining !== null ? '剩余' : '发布',
+                    value: timeStatus.daysRemaining !== null
+                      ? (isExpired ? '已过期' : `${timeStatus.daysRemaining}天`)
+                      : (timeStatus.publishedRelative || '未知'),
                     icon: '⏳',
-                    trend: isExpired ? 'down' : daysRemaining > 7 ? 'neutral' : 'down'
+                    trend: isExpired ? 'down' : (timeStatus.daysRemaining !== null && timeStatus.daysRemaining <= 7) ? 'down' : 'neutral'
                   },
                   {
                     label: '来源',
@@ -302,18 +291,20 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">发布时间</div>
-                      <div className="text-gray-600 text-sm">{formatDate(deal.publishedAt)}</div>
+                      <div className="text-gray-600 text-sm">{timeStatus.publishedAbsolute}</div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                      <span className="text-orange-600 text-sm">⏰</span>
+                  {timeStatus.expiresAbsolute && (
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                        <span className="text-orange-600 text-sm">⏰</span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">过期时间</div>
+                        <div className="text-gray-600 text-sm">{timeStatus.expiresAbsolute}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900">过期时间</div>
-                      <div className="text-gray-600 text-sm">{formatDate(deal.expiresAt)}</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </EnhancedCard>
             </div>
