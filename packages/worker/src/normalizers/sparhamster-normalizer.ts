@@ -115,8 +115,9 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     // 提取发布时间（优先使用 ISO 格式）
     const publishedAt = this.extractPublishTime(contentHtml) || new Date(post.date);
 
-    // 计算过期时间 (默认 30 天)
-    const expiresAt = new Date(publishedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    // 过期时间（如果能从内容中提取到则填充，否则保持为 undefined）
+    // 不再填写默认的 30 天，让前端根据是否有过期时间来决定显示逻辑
+    const expiresAt = undefined; // TODO: 可以添加从 HTML 中提取过期时间的逻辑
 
     return {
       id: '', // 将由数据库生成

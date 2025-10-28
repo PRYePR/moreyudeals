@@ -31,7 +31,7 @@ function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
     category: dbDeal.categories?.[0] || 'General',
     source: dbDeal.sourceSite,
     publishedAt: dbDeal.publishedAt,
-    expiresAt: dbDeal.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
+    expiresAt: dbDeal.expiresAt || undefined, // 不填默认值，保持为 undefined
     language: 'de' as const,
     translationProvider: 'deepl' as const,
     isTranslated: !!dbDeal.titleZh,
@@ -133,7 +133,8 @@ function toNumber(value?: string): number {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
-function computeDaysRemaining(expiresAt: Date): number {
+function computeDaysRemaining(expiresAt: Date | undefined): number {
+  if (!expiresAt) return 0 // 没有过期时间则返回 0
   const now = new Date()
   const diff = expiresAt.getTime() - now.getTime()
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
@@ -256,8 +257,9 @@ export class DealsService {
           bValue = b.discountPercentage ?? 0
           break
         case 'expiresAt':
-          aValue = new Date(a.expiresAt).getTime()
-          bValue = new Date(b.expiresAt).getTime()
+          // 没有过期时间的排在最后（使用最大时间戳）
+          aValue = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.MAX_SAFE_INTEGER
+          bValue = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.MAX_SAFE_INTEGER
           break
         case 'relevance':
           aValue = relevanceScores?.get(a.id) ?? 0
@@ -289,13 +291,13 @@ export class DealsService {
     const pageItems = workingList.slice(startIndex, endIndex)
 
     const preparedDeals = pageItems.map(deal => {
-      const expiresAt = new Date(deal.expiresAt)
+      const expiresAt = deal.expiresAt ? new Date(deal.expiresAt) : undefined
       const daysRemaining = computeDaysRemaining(expiresAt)
       const relevanceScore = relevanceScores?.get(deal.id)
 
       return {
         ...deal,
-        isExpired: expiresAt.getTime() < Date.now(),
+        isExpired: expiresAt ? expiresAt.getTime() < Date.now() : false, // 没有过期时间则不过期
         daysRemaining,
         relevanceScore
       }
