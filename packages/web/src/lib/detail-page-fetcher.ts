@@ -4,6 +4,7 @@ import { createModuleLogger } from './logger'
 const logger = createModuleLogger('detail-page-fetcher')
 
 export interface DetailContent {
+  rawHtml: string  // 新增：WordPress content.rendered 原始 HTML
   fullDescription: string
   specifications: Record<string, string>
   features: string[]
@@ -72,8 +73,15 @@ export class DetailPageFetcher {
       // 提取特性列表
       const features = this.extractFeaturesFromContent(deal.content)
 
+      // rawHtml: 直接使用 WordPress content.rendered
+      const rawHtml = deal.content || ''
+
+      // fullDescription: 原样返回 content，如果为空再退回译文/描述
+      const fullDescription = deal.content || deal.translatedDescription || deal.description
+
       return {
-        fullDescription: deal.content || deal.translatedDescription || deal.description,
+        rawHtml,
+        fullDescription,
         specifications,
         features,
         images,
@@ -245,6 +253,7 @@ export class DetailPageFetcher {
    */
   private getEmptyDetailContent(deal: Deal): DetailContent {
     return {
+      rawHtml: deal.content || '',
       fullDescription: deal.translatedDescription || deal.description || '暂无详细描述',
       specifications: {
         '来源': deal.source,

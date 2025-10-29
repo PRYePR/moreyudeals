@@ -129,15 +129,18 @@ export default function DealDetailContent({ deal, dealId, initialContent, onCont
     return null
   }
 
+  // 优先使用 rawHtml（WordPress content.rendered），如果为空则回退到 fullDescription
+  const contentToRender = detailContent.rawHtml || detailContent.fullDescription
+
   return (
     <div className="space-y-6">
-      {/* Full Description */}
-      {detailContent.fullDescription && (
+      {/* Full Description - 优先渲染 rawHtml */}
+      {contentToRender && (
         <div className="bg-white rounded-lg p-6 shadow-lg">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">产品详细描述</h2>
           <div
             className="prose max-w-none text-gray-700"
-            dangerouslySetInnerHTML={{ __html: detailContent.fullDescription }}
+            dangerouslySetInnerHTML={{ __html: contentToRender }}
           />
         </div>
       )}

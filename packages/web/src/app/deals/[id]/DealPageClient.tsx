@@ -1,24 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import DealDetailContent from '@/components/DealDetailContent'
 import {
   TranslationProvider,
   TranslationControl,
   TranslatableText,
   TranslatableDescription
 } from '@/components/TranslatableContent'
-import { ProductBadges } from '@/components/ProductBadges'
-import { DetailContent } from '@/lib/detail-page-fetcher'
-import {
-  EnhancedCard,
-  ImageGallery,
-  StatsGrid,
-  FloatingActionButton,
-  Tooltip
-} from '@/components/EnhancedDealLayout'
 
 interface DealPageClientProps {
   deal: any
@@ -26,9 +15,7 @@ interface DealPageClientProps {
 }
 
 export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
-  const [detailContent, setDetailContent] = useState<DetailContent | null>(null)
-
-  // 使用服务端计算的时间状态，避免 hydration mismatch
+  // 使用服务端计算的时间状态
   const timeStatus = deal.timeStatus || {
     publishedAbsolute: '时间信息暂缺',
     publishedRelative: null,
@@ -40,297 +27,243 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   }
 
   const isExpired = timeStatus.isExpired
-  const daysRemaining = timeStatus.daysRemaining ?? 0
   const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
   const hasPurchaseLink = typeof purchaseUrl === 'string' && purchaseUrl.startsWith('http')
 
+  // 格式化价格
+  const formatPrice = (price: string | number | undefined) => {
+    if (!price) return null
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price
+    return new Intl.NumberFormat('de-AT', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(numPrice)
+  }
+
+  // 转换价格为数字
+  const getNumericPrice = (price: string | number | undefined): number => {
+    if (!price) return 0
+    return typeof price === 'string' ? parseFloat(price) : price
+  }
+
   return (
     <TranslationProvider>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        {/* Header */}
-        <div className="bg-white/95 backdrop-blur-sm shadow-sm border-b sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <Tooltip content="返回主页查看更多优惠">
-                <Link
-                  href="/"
-                  className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-medium transition-colors duration-200"
-                >
-                  <span>←</span>
-                  <span>返回首页</span>
-                </Link>
-              </Tooltip>
-              <div className="flex items-center space-x-4">
-                <TranslationControl />
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <span className="bg-gray-100 px-2 py-1 rounded-full">
-                    来源: {deal.source}
-                  </span>
-                  <span>•</span>
-                  <span>{timeStatus.publishedRelative || timeStatus.publishedAbsolute}</span>
-                </div>
-              </div>
+      {/* 顶部导航栏 - 移动端优化 */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="flex items-center space-x-1.5 sm:space-x-2 text-gray-700 hover:text-orange-600 font-medium transition-colors min-h-[44px] -ml-2 pl-2 pr-3"
+            >
+              <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-sm sm:text-base">返回首页</span>
+            </Link>
+            <div className="min-h-[44px] flex items-center">
+              <TranslationControl />
             </div>
           </div>
         </div>
+      </header>
 
-        {isExpired && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <EnhancedCard className="bg-red-50 border border-red-200 text-red-700 p-4">
-              <div className="flex items-center space-x-3">
-                <span className="text-xl">⚠️</span>
+      <main className="bg-gray-50 min-h-screen pb-8 sm:pb-12">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 sm:py-6">
+
+          {/* 过期警告 - 移动端优化 */}
+          {isExpired && (
+            <div className="mb-3 sm:mb-4 bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-start space-x-2 sm:space-x-3">
+                <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
                 <div>
-                  <div className="font-semibold">优惠可能已过期</div>
-                  <div className="text-sm text-red-600">
-                    该优惠可能已结束，请在商家页面再次确认价格与库存信息
-                  </div>
+                  <div className="font-semibold text-red-800 text-sm sm:text-base">此优惠可能已过期</div>
+                  <div className="text-xs sm:text-sm text-red-700 mt-0.5 sm:mt-1">请在商家页面确认当前价格和库存</div>
                 </div>
               </div>
-            </EnhancedCard>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Enhanced Image Gallery */}
-            <div className="space-y-4">
-              <EnhancedCard className="relative p-0 overflow-hidden">
-                <ImageGallery
-                  mainImage={deal.imageUrl}
-                  images={detailContent?.images || []}
-                  altText={deal.translatedTitle}
-                />
+          {/* 主卡片 - 移动端优化 */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
 
-                {/* Floating Badges */}
-                {deal.discountPercentage && (
-                  <div className="absolute top-4 right-4 z-10">
-                    <div className="bg-red-500 text-white px-3 py-1 rounded-full text-lg font-bold shadow-lg animate-pulse">
+              {/* 左侧图片区域 - 占2列 */}
+              <div className="md:col-span-2 bg-gray-100 relative aspect-square md:aspect-auto">
+                <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
+                  <Image
+                    src={deal.imageUrl || '/placeholder-deal.png'}
+                    alt={deal.title}
+                    fill
+                    className="object-contain p-8"
+                    priority
+                  />
+
+                  {/* 折扣徽章 */}
+                  {deal.discountPercentage && deal.discountPercentage > 0 && (
+                    <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1.5 rounded-md font-bold text-lg shadow-lg">
                       -{deal.discountPercentage}%
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 右侧信息区域 - 占3列 - 移动端优化 */}
+              <div className="md:col-span-3 p-4 sm:p-6 md:p-8 flex flex-col">
+
+                {/* 标题 - 移动端字体优化 */}
+                <div className="mb-3 sm:mb-4">
+                  <TranslatableText
+                    originalText={deal.originalTitle || deal.title}
+                    translatedText={deal.title}
+                    as="h1"
+                    className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight"
+                  />
+                </div>
+
+                {/* 价格区域 - 移动端优化 */}
+                <div className="mb-4 sm:mb-6">
+                  <div className="flex items-baseline flex-wrap gap-x-2 sm:gap-x-3 gap-y-1 mb-1.5 sm:mb-2">
+                    {deal.price && (
+                      <div className="text-3xl sm:text-4xl font-bold text-gray-900">
+                        {formatPrice(deal.price)}
+                      </div>
+                    )}
+                    {deal.originalPrice && getNumericPrice(deal.originalPrice) > getNumericPrice(deal.price) && (
+                      <div className="text-lg sm:text-xl text-gray-500 line-through">
+                        {formatPrice(deal.originalPrice)}
+                      </div>
+                    )}
+                  </div>
+                  {deal.originalPrice && deal.price && getNumericPrice(deal.originalPrice) > getNumericPrice(deal.price) && (
+                    <div className="text-sm sm:text-base text-green-600 font-medium">
+                      节省 {formatPrice(getNumericPrice(deal.originalPrice) - getNumericPrice(deal.price))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 商家信息 - 移动端优化 */}
+                {deal.merchantName && (
+                  <div className="mb-4 sm:mb-6 flex items-center space-x-2.5 sm:space-x-3 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    {deal.merchantLogo && (
+                      <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                        <Image
+                          src={deal.merchantLogo}
+                          alt={deal.merchantName}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase tracking-wide">商家</div>
+                      <div className="text-base sm:text-lg font-semibold text-gray-900">{deal.merchantName}</div>
                     </div>
                   </div>
                 )}
 
-                <div className="absolute top-4 left-4 z-10">
-                  <div className="bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm backdrop-blur-sm">
-                    {deal.category}
-                  </div>
-                </div>
-              </EnhancedCard>
-
-              {/* Price Alert - 只在有明确过期时间且即将过期时显示 */}
-              {timeStatus.daysRemaining !== null && timeStatus.daysRemaining <= 7 && timeStatus.daysRemaining > 0 && (
-                <EnhancedCard className="bg-gradient-to-r from-red-50 to-orange-50 border-red-200 p-4 text-center">
-                  <div className="text-red-600 font-semibold text-lg">
-                    ⏰ 优惠即将结束
-                  </div>
-                  <div className="text-red-500 text-sm mt-1">
-                    {timeStatus.badgeLabel}
-                  </div>
-                  <div className="mt-2 w-full bg-red-100 rounded-full h-2">
-                    <div
-                      className="bg-red-500 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${Math.max(10, (timeStatus.daysRemaining / 30) * 100)}%` }}
-                    />
-                  </div>
-                </EnhancedCard>
-              )}
-
-              {/* Quick Stats */}
-              <StatsGrid
-                stats={[
-                  {
-                    label: '节省',
-                    value: `${deal.discountPercentage ?? 0}%`,
-                    icon: '💰',
-                    trend: 'up'
-                  },
-                  {
-                    label: '评分',
-                    value: '4.5',
-                    icon: '⭐',
-                    trend: 'up'
-                  },
-                  {
-                    label: timeStatus.daysRemaining !== null ? '剩余' : '发布',
-                    value: timeStatus.daysRemaining !== null
-                      ? (isExpired ? '已过期' : `${timeStatus.daysRemaining}天`)
-                      : (timeStatus.publishedRelative || '未知'),
-                    icon: '⏳',
-                    trend: isExpired ? 'down' : (timeStatus.daysRemaining !== null && timeStatus.daysRemaining <= 7) ? 'down' : 'neutral'
-                  },
-                  {
-                    label: '来源',
-                    value: deal.source || 'Sparhamster.at',
-                    icon: '🏪'
-                  }
-                ]}
-              />
-            </div>
-
-            {/* Right Column - Details */}
-            <div className="space-y-6">
-              {/* Title */}
-              <EnhancedCard className="p-6" delay={200}>
-                <TranslatableText
-                  originalText={deal.originalTitle}
-                  translatedText={deal.translatedTitle}
-                  as="h1"
-                  className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent leading-tight"
-                />
-              </EnhancedCard>
-
-              {/* Product Badges - Enhanced Section */}
-              <EnhancedCard className="p-6" delay={300}>
-                <ProductBadges
-                  deal={deal}
-                  detailContent={detailContent || undefined}
-                />
-              </EnhancedCard>
-
-              {/* Description */}
-              <EnhancedCard className="p-6" delay={400}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">产品描述</h2>
-                  <div className="text-sm text-gray-500">📋</div>
-                </div>
-                <TranslatableDescription
-                  originalText={deal.originalDescription}
-                  translatedText={deal.translatedDescription}
-                  maxLines={4}
-                  className="prose max-w-none"
-                />
-              </EnhancedCard>
-
-              {/* Enhanced Detail Content */}
-              <DealDetailContent
-                deal={deal}
-                dealId={dealId}
-                initialContent={deal.content || deal.translatedDescription}
-                onContentLoaded={setDetailContent}
-              />
-
-              {/* Translation Info */}
-              {deal.isTranslated && (
-                <EnhancedCard className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 p-4" delay={600}>
-                  <p className="text-blue-800 text-sm flex items-center">
-                    <span className="mr-2">🌐</span>
-                    此内容由 <strong className="mx-1">{deal.translationProvider?.toUpperCase() || 'DEEPL'}</strong>
-                    从{deal.language === 'de' ? '德语' : '英语'}自动翻译，仅供参考
-                  </p>
-                </EnhancedCard>
-              )}
-
-              {/* Enhanced Action Buttons */}
-              <EnhancedCard className="p-6" delay={700}>
-                <div className="space-y-4">
-                  <a
-                    href={hasPurchaseLink ? purchaseUrl : undefined}
-                    target={hasPurchaseLink ? '_blank' : undefined}
-                    rel={hasPurchaseLink ? 'noopener noreferrer' : undefined}
-                    className={`block w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-center py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform ${hasPurchaseLink ? 'hover:scale-[1.02]' : 'opacity-60 cursor-not-allowed pointer-events-none'}`}
-                  >
-                    <span className="flex items-center justify-center space-x-2">
-                      <span>🛒</span>
-                      <span>前往购买</span>
-                      <span className="text-sm opacity-75">({deal.source || 'Sparhamster.at'})</span>
-                    </span>
-                  </a>
-
-                  {!hasPurchaseLink && (
-                    <p className="text-xs text-gray-500 text-center">
-                      暂未提供直接跳转链接，请查看详情信息或稍后再试
-                    </p>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Tooltip content="收藏此优惠，稍后查看">
-                      <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:scale-[1.02]">
-                        <span>💖</span>
-                        <span>收藏</span>
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="分享给朋友">
-                      <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:scale-[1.02]">
-                        <span>📤</span>
-                        <span>分享</span>
-                      </button>
-                    </Tooltip>
-                  </div>
-                </div>
-              </EnhancedCard>
-
-              {/* Enhanced Meta Information */}
-              <EnhancedCard className="bg-gradient-to-r from-gray-50 to-gray-100 p-6" delay={800}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="mr-2">ℹ️</span>
-                  详细信息
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 text-sm">🏷️</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">分类</div>
-                      <div className="text-gray-600 text-sm">{deal.category}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 text-sm">🏪</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">来源</div>
-                      <div className="text-gray-600 text-sm">{deal.source}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-purple-600 text-sm">📅</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">发布时间</div>
-                      <div className="text-gray-600 text-sm">{timeStatus.publishedAbsolute}</div>
-                    </div>
-                  </div>
-                  {timeStatus.expiresAbsolute && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <span className="text-orange-600 text-sm">⏰</span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">过期时间</div>
-                        <div className="text-gray-600 text-sm">{timeStatus.expiresAbsolute}</div>
-                      </div>
+                {/* CTA 按钮 - 移动端优化触摸目标 */}
+                <div className="mb-4 sm:mb-6">
+                  {hasPurchaseLink ? (
+                    <a
+                      href={purchaseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-center py-3.5 sm:py-4 px-5 sm:px-6 rounded-lg font-bold text-base sm:text-lg transition-colors shadow-md hover:shadow-lg min-h-[48px] flex items-center justify-center"
+                    >
+                      前往商家查看优惠
+                    </a>
+                  ) : (
+                    <div className="block w-full bg-gray-300 text-gray-500 text-center py-3.5 sm:py-4 px-5 sm:px-6 rounded-lg font-bold text-base sm:text-lg cursor-not-allowed min-h-[48px] flex items-center justify-center">
+                      暂无购买链接
                     </div>
                   )}
                 </div>
-              </EnhancedCard>
+
+                {/* 时间信息 - 移动端优化 */}
+                <div className="mt-auto pt-3 sm:pt-4 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>发布: {timeStatus.publishedRelative || timeStatus.publishedAbsolute}</span>
+                    </div>
+                    {timeStatus.expiresAbsolute && (
+                      <div className="flex items-center space-x-1.5 sm:space-x-2">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>过期: {timeStatus.expiresAbsolute}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* 描述卡片 - 移动端优化 - 显示完整 content */}
+          {(deal.content) && (
+            <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">优惠详情</h2>
+              <div
+                className="prose prose-sm sm:prose max-w-none text-gray-700 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: deal.content }}
+              />
+            </div>
+          )}
+
+          {/* 元数据卡片 - 移动端优化 */}
+          <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">额外信息</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {deal.category && (
+                <div>
+                  <div className="text-xs sm:text-sm text-gray-500 mb-1">分类</div>
+                  <div className="font-medium text-sm sm:text-base text-gray-900">{deal.category}</div>
+                </div>
+              )}
+              {deal.source && (
+                <div>
+                  <div className="text-xs sm:text-sm text-gray-500 mb-1">来源</div>
+                  <div className="font-medium text-sm sm:text-base text-gray-900">{deal.source}</div>
+                </div>
+              )}
+              {deal.dealUrl && (
+                <div className="sm:col-span-2">
+                  <div className="text-xs sm:text-sm text-gray-500 mb-1">原始链接</div>
+                  <a
+                    href={deal.dealUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:text-orange-700 font-medium break-all text-sm sm:text-base min-h-[44px] inline-block"
+                  >
+                    {deal.dealUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 翻译提示 - 移动端优化 */}
+          {deal.isTranslated && (
+            <div className="mt-4 sm:mt-6 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-start space-x-2 sm:space-x-3">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div className="text-xs sm:text-sm text-blue-800">
+                  <span className="font-semibold">翻译提示：</span>
+                  此内容由 {deal.translationProvider?.toUpperCase() || 'DEEPL'} 从{deal.language === 'de' ? '德语' : '英语'}自动翻译，仅供参考
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Floating Action Buttons */}
-        <FloatingActionButton
-          icon="🛒"
-          label="立即购买"
-          onClick={() => {
-            if (hasPurchaseLink) {
-              window.open(purchaseUrl, '_blank', 'noopener,noreferrer')
-            }
-          }}
-          variant={hasPurchaseLink ? 'primary' : 'secondary'}
-        />
-
-        {/* Back to top button - positioned differently to avoid overlap */}
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 left-6 z-50 w-12 h-12 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-        >
-          ↑
-        </button>
-      </div>
+      </main>
     </TranslationProvider>
   )
 }
