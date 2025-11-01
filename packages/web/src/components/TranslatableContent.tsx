@@ -162,3 +162,33 @@ export function TranslatableDescription({
     </div>
   )
 }
+
+// 可翻译 HTML 内容组件
+interface TranslatableHtmlContentProps {
+  originalHtml: string
+  translatedHtml: string
+  className?: string
+}
+
+export function TranslatableHtmlContent({
+  originalHtml,
+  translatedHtml,
+  className = ''
+}: TranslatableHtmlContentProps) {
+  const { showOriginal } = useTranslation()
+
+  const html = showOriginal ? originalHtml : translatedHtml
+  const fallbackHtml = showOriginal ? translatedHtml : originalHtml
+  const displayHtml = html || fallbackHtml
+
+  if (!displayHtml) {
+    return null
+  }
+
+  return (
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: displayHtml }}
+    />
+  )
+}

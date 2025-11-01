@@ -20,6 +20,8 @@ export interface Deal {
   isTranslated: boolean
   categories: string[]
   content: string
+  contentHtml?: string  // 德语原文HTML（用于切换语言）
+  translatedContentHtml?: string  // 翻译后的中文HTML（用于切换语言）
 
   // 可选的扩展字段
   wordpressId?: number

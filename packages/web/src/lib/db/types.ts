@@ -28,6 +28,7 @@ export interface Deal {
   description: string | null // 翻译后的描述
   originalDescription: string | null // 德语原描述
   contentHtml: string | null // 德语 HTML 内容
+  translatedContentHtml: string | null // 中文翻译后的 HTML 内容
   contentText: string | null // 德语纯文本内容
   contentBlocks: ContentBlock[] | null
 
@@ -104,6 +105,7 @@ export interface DealRow {
   description: string | null // 翻译后的描述
   original_description: string | null // 德语原描述
   content_html: string | null // 德语 HTML
+  translated_content_html: string | null // 中文翻译后的 HTML
   content_text: string | null // 德语纯文本
   content_blocks: any | null
 
@@ -172,6 +174,7 @@ export function mapRowToDeal(row: DealRow): Deal {
     description: row.description, // 翻译后的描述
     originalDescription: row.original_description, // 德语原描述
     contentHtml: row.content_html, // 德语 HTML
+    translatedContentHtml: row.translated_content_html, // 中文翻译后的 HTML
     contentText: row.content_text, // 德语纯文本
     contentBlocks: row.content_blocks as ContentBlock[] | null,
     translationStatus: row.translation_status,

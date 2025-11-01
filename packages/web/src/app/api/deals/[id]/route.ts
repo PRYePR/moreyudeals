@@ -112,8 +112,8 @@ export async function GET(
       )
     }
 
-    // 查找特定优惠信息
-    const deal = await dealsService.getDealById(id)
+    // 查找特定优惠信息（从数据库读取，包含完整字段如 contentHtml）
+    const deal = await dealsService.getDealById(id, { fromDatabase: true })
 
     if (!deal) {
       return NextResponse.json(

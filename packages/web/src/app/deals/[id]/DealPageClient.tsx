@@ -2,11 +2,12 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   TranslationProvider,
   TranslationControl,
   TranslatableText,
-  TranslatableDescription
+  TranslatableHtmlContent
 } from '@/components/TranslatableContent'
 
 interface DealPageClientProps {
@@ -15,6 +16,8 @@ interface DealPageClientProps {
 }
 
 export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
+  const router = useRouter()
+
   // 使用服务端计算的时间状态
   const timeStatus = deal.timeStatus || {
     publishedAbsolute: '时间信息暂缺',
@@ -29,6 +32,13 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   const isExpired = timeStatus.isExpired
   const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
   const hasPurchaseLink = typeof purchaseUrl === 'string' && purchaseUrl.startsWith('http')
+
+  // 点击商家筛选
+  const handleMerchantClick = () => {
+    if (deal.merchantName) {
+      router.push(`/?merchant=${encodeURIComponent(deal.merchantName)}`)
+    }
+  }
 
   // 格式化价格
   const formatPrice = (price: string | number | undefined) => {
@@ -144,9 +154,13 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                   )}
                 </div>
 
-                {/* 商家信息 - 移动端优化 */}
+                {/* 商家信息 - 移动端优化 - 可点击筛选 */}
                 {deal.merchantName && (
-                  <div className="mb-4 sm:mb-6 flex items-center space-x-2.5 sm:space-x-3 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <button
+                    onClick={handleMerchantClick}
+                    className="mb-4 sm:mb-6 flex items-center space-x-2.5 sm:space-x-3 p-3 sm:p-4 bg-gray-50 hover:bg-orange-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all w-full text-left group cursor-pointer"
+                    title={`查看 ${deal.merchantName} 的所有优惠`}
+                  >
                     {deal.merchantLogo && (
                       <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                         <Image
@@ -157,11 +171,16 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                         />
                       </div>
                     )}
-                    <div>
+                    <div className="flex-1">
                       <div className="text-xs text-gray-500 uppercase tracking-wide">商家</div>
-                      <div className="text-base sm:text-lg font-semibold text-gray-900">{deal.merchantName}</div>
+                      <div className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-orange-600 transition-colors flex items-center gap-2">
+                        {deal.merchantName}
+                        <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 )}
 
                 {/* CTA 按钮 - 移动端优化触摸目标 */}
@@ -206,47 +225,16 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
           </div>
 
           {/* 描述卡片 - 移动端优化 - 显示完整的 HTML content */}
-          {deal.content && (
+          {(deal.content || deal.contentHtml || deal.description) && (
             <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">优惠详情</h2>
-              <div
+              <TranslatableHtmlContent
+                originalHtml={deal.contentHtml || ''}
+                translatedHtml={deal.description || deal.content || ''}
                 className="prose prose-sm sm:prose max-w-none text-gray-700 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: deal.content }}
               />
             </div>
           )}
-
-          {/* 元数据卡片 - 移动端优化 */}
-          <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">额外信息</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {deal.category && (
-                <div>
-                  <div className="text-xs sm:text-sm text-gray-500 mb-1">分类</div>
-                  <div className="font-medium text-sm sm:text-base text-gray-900">{deal.category}</div>
-                </div>
-              )}
-              {deal.source && (
-                <div>
-                  <div className="text-xs sm:text-sm text-gray-500 mb-1">来源</div>
-                  <div className="font-medium text-sm sm:text-base text-gray-900">{deal.source}</div>
-                </div>
-              )}
-              {deal.dealUrl && (
-                <div className="sm:col-span-2">
-                  <div className="text-xs sm:text-sm text-gray-500 mb-1">原始链接</div>
-                  <a
-                    href={deal.dealUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-600 hover:text-orange-700 font-medium break-all text-sm sm:text-base min-h-[44px] inline-block"
-                  >
-                    {deal.dealUrl}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* 翻译提示 - 移动端优化 */}
           {deal.isTranslated && (

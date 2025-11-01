@@ -35,6 +35,8 @@ function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
     isTranslated: dbDeal.translationStatus === 'completed',
     categories: dbDeal.categories || [],
     content: dbDeal.description || dbDeal.contentHtml || '', // 优先使用翻译后的 HTML (description)，否则使用德语 HTML
+    contentHtml: dbDeal.contentHtml || '', // 添加德语原文HTML
+    translatedContentHtml: dbDeal.translatedContentHtml || '', // 添加翻译后的HTML
 
     // Extended fields
     wordpressId: dbDeal.sourcePostId ? parseInt(dbDeal.sourcePostId) : undefined,
@@ -195,9 +197,11 @@ function translateCategoryName(category: string): string {
 
 export class DealsService {
   private readonly datasetLimit: number
+  private readonly repository: DealsRepository
 
   constructor(datasetLimit: number = DATASET_LIMIT) {
     this.datasetLimit = datasetLimit
+    this.repository = new DealsRepository()
   }
 
   async getDeals(options: DealsListOptions = {}): Promise<DealsListResult> {
@@ -333,7 +337,18 @@ export class DealsService {
     }
   }
 
-  async getDealById(id: string, opts: { forceRefresh?: boolean } = {}): Promise<Deal | null> {
+  async getDealById(id: string, opts: { forceRefresh?: boolean; fromDatabase?: boolean } = {}): Promise<Deal | null> {
+    // 如果指定从数据库读取，使用 repository
+    if (opts.fromDatabase) {
+      const dbDeal = await this.repository.getDealById(id)
+      if (!dbDeal) {
+        return null
+      }
+      // 转换 DB Deal 到 Fetcher Deal 格式
+      return convertDbDealToFetcherDeal(dbDeal)
+    }
+
+    // 否则从缓存读取
     const { entry } = await this.loadDeals(opts.forceRefresh === true)
     const match = entry.deals.find(deal => deal.id === id || deal.wordpressId?.toString() === id)
 

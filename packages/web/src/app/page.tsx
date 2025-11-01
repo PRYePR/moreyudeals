@@ -63,20 +63,6 @@ export default async function HomePage({
       {/* 使用新的 Header */}
       <SiteHeader />
 
-      {/* Hero Section - Moreyu v3.1 配色 */}
-      <section className="bg-gradient-to-br from-brand-primary via-brand-hover to-brand-primary text-white py-12 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6">
-              奥地利优惠信息聚合
-            </h1>
-            <p className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto">
-              自动收集并翻译奥地利商家最新折扣信息，让你不错过任何好deal
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* Deals Grid Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {/* Section Header */}
