@@ -5,18 +5,27 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import DealCardPreisjaeger from './DealCardPreisjaeger'
 import { X } from 'lucide-react'
 
+interface Category {
+  id: string
+  name: string
+  translatedName: string
+  count: number
+}
+
 interface DealsListClientProps {
   initialDeals: any[]
   totalCount: number
   initialPage?: number
   pageSize?: number
+  categories?: Category[]
 }
 
 export default function DealsListClient({
   initialDeals,
   totalCount: initialTotalCount,
   initialPage = 1,
-  pageSize = 20
+  pageSize = 20,
+  categories = []
 }: DealsListClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,6 +39,12 @@ export default function DealsListClient({
   const currentMerchant = searchParams.get('merchant')
   const currentCategory = searchParams.get('category')
   const currentSearch = searchParams.get('search')
+
+  // 获取分类的中文翻译
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId.toLowerCase())
+    return category?.translatedName || categoryId
+  }
 
   // 当 props 变化时更新状态（服务端重新渲染后）
   useEffect(() => {
@@ -54,10 +69,20 @@ export default function DealsListClient({
     return `/api/deals/live?${params.toString()}`
   }, [pageSize, currentMerchant, currentCategory, currentSearch])
 
-  // 清除筛选条件 - 使用完整页面刷新确保状态重置
-  const clearFilters = useCallback(() => {
-    window.location.href = '/'
-  }, [])
+  // 移除单个筛选条件
+  const removeFilter = useCallback((filterType: 'merchant' | 'category' | 'search') => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete(filterType)
+    params.delete('page') // 重置分页
+
+    const queryString = params.toString()
+    router.push(queryString ? `/?${queryString}` : '/')
+  }, [searchParams, router])
+
+  // 清除所有筛选条件
+  const clearAllFilters = useCallback(() => {
+    router.push('/')
+  }, [router])
 
   // 加载更多（追加模式）
   const loadMore = async () => {
@@ -114,9 +139,9 @@ export default function DealsListClient({
             <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
               <span>商家: {currentMerchant}</span>
               <button
-                onClick={clearFilters}
+                onClick={() => removeFilter('merchant')}
                 className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="清除筛选"
+                title="移除商家筛选"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -125,11 +150,11 @@ export default function DealsListClient({
 
           {currentCategory && (
             <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>分类: {currentCategory}</span>
+              <span>分类: {getCategoryName(currentCategory)}</span>
               <button
-                onClick={clearFilters}
+                onClick={() => removeFilter('category')}
                 className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="清除筛选"
+                title="移除分类筛选"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -140,9 +165,9 @@ export default function DealsListClient({
             <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
               <span>搜索: {currentSearch}</span>
               <button
-                onClick={clearFilters}
+                onClick={() => removeFilter('search')}
                 className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="清除筛选"
+                title="移除搜索筛选"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -150,7 +175,7 @@ export default function DealsListClient({
           )}
 
           <button
-            onClick={clearFilters}
+            onClick={clearAllFilters}
             className="ml-auto text-sm text-gray-600 hover:text-brand-primary underline transition-colors"
           >
             清除全部筛选
@@ -272,6 +297,7 @@ export default function DealsListClient({
           <div className="flex items-center gap-2 text-sm">
             <span className="text-gray-600">跳转到</span>
             <input
+              id="page-jump-input"
               type="number"
               min={1}
               max={totalPages}
@@ -287,6 +313,18 @@ export default function DealsListClient({
               className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-brand-primary"
             />
             <span className="text-gray-600">页</span>
+            <button
+              onClick={() => {
+                const input = document.getElementById('page-jump-input') as HTMLInputElement
+                const page = parseInt(input.value)
+                if (page >= 1 && page <= totalPages) {
+                  goToPage(page)
+                }
+              }}
+              className="px-3 py-1 bg-brand-primary hover:bg-brand-hover text-white rounded transition-colors"
+            >
+              跳转
+            </button>
           </div>
         </div>
       )}

@@ -1,5 +1,10 @@
 import DealsListClient from '@/components/deals/DealsListClient'
 import SiteHeader from '@/components/layout/SiteHeader'
+import RightSidebar from '@/components/layout/RightSidebar'
+import CategoryTabs from '@/components/filters/CategoryTabs'
+import FilterSidebar from '@/components/filters/FilterSidebar'
+import MobileFilterButton from '@/components/filters/MobileFilterButton'
+import { dealsService } from '@/lib/services/deals-service'
 
 const PAGE_SIZE = 20
 
@@ -23,6 +28,12 @@ async function getDealsData(searchParams: { [key: string]: string | string[] | u
     }
     if (searchParams.search && typeof searchParams.search === 'string') {
       params.set('search', searchParams.search)
+    }
+    if (searchParams.sortBy && typeof searchParams.sortBy === 'string') {
+      params.set('sortBy', searchParams.sortBy)
+    }
+    if (searchParams.sortOrder && typeof searchParams.sortOrder === 'string') {
+      params.set('sortOrder', searchParams.sortOrder)
     }
 
     // 获取初始数据
@@ -50,6 +61,26 @@ async function getDealsData(searchParams: { [key: string]: string | string[] | u
   }
 }
 
+async function getCategoriesAndMerchants() {
+  try {
+    const [categoriesData, merchants] = await Promise.all([
+      dealsService.getCategories(),
+      dealsService.getMerchants()
+    ])
+
+    return {
+      categories: categoriesData.categories,
+      merchants
+    }
+  } catch (error) {
+    console.error('Error fetching categories and merchants:', error)
+    return {
+      categories: [],
+      merchants: []
+    }
+  }
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -57,32 +88,145 @@ export default async function HomePage({
 }) {
   const params = await searchParams
   const { deals, totalCount } = await getDealsData(params)
+  const { categories, merchants } = await getCategoriesAndMerchants()
+
+  // 获取当前筛选参数
+  const currentCategory = typeof params.category === 'string' ? params.category : null
+  const currentMerchant = typeof params.merchant === 'string' ? params.merchant : null
+  const currentSearch = typeof params.search === 'string' ? params.search : null
+  const currentSortBy = typeof params.sortBy === 'string' ? params.sortBy : null
+  const currentSortOrder = typeof params.sortOrder === 'string' ? params.sortOrder : null
+
+  // 判断是否处于筛选模式
+  // 注意：只有非默认排序才算作筛选
+  const hasNonDefaultSort = (currentSortBy && currentSortBy !== 'publishedAt') ||
+                            (currentSortOrder && currentSortOrder !== 'desc')
+
+  // 有任何筛选条件时，都应该显示筛选布局
+  // 包括：分类、商家、搜索、非默认排序、最低折扣等
+  const hasFilters = Boolean(
+    (currentCategory && currentCategory !== 'all') ||
+    currentMerchant ||
+    currentSearch ||
+    hasNonDefaultSort ||
+    params.minDiscount
+  )
+
+  // 调试信息
+  console.log('=== 筛选调试信息 ===')
+  console.log('currentCategory:', currentCategory)
+  console.log('currentMerchant:', currentMerchant)
+  console.log('currentSearch:', currentSearch)
+  console.log('hasNonDefaultSort:', hasNonDefaultSort)
+  console.log('hasFilters:', hasFilters)
+  console.log('categories count:', categories.length)
+
+  // 获取当前分类信息
+  const categoryInfo = categories.find(cat => cat.id === currentCategory?.toLowerCase())
+  console.log('categoryInfo:', categoryInfo)
+
+  // 渲染发现模式布局
+  const renderDiscoveryLayout = () => (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      {/* Main Layout: 左侧列表 + 右侧边栏 */}
+      <div className="flex gap-6">
+        {/* 左侧：优惠列表 */}
+        <div className="flex-1 min-w-0">
+          <DealsListClient
+            initialDeals={deals}
+            totalCount={totalCount}
+            initialPage={1}
+            pageSize={PAGE_SIZE}
+            categories={categories}
+          />
+        </div>
+
+        {/* 右侧：侧边栏（桌面端显示） */}
+        <div className="hidden lg:block">
+          <div className="sticky top-20">
+            <RightSidebar categories={categories} merchants={merchants} />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+
+  // 渲染筛选模式布局
+  const renderFilteredLayout = () => {
+    // 构建页面标题
+    let pageTitle = '筛选结果'
+    if (categoryInfo?.translatedName && currentMerchant) {
+      pageTitle = `${categoryInfo.translatedName} - ${currentMerchant}`
+    } else if (categoryInfo?.translatedName) {
+      pageTitle = categoryInfo.translatedName
+    } else if (currentMerchant) {
+      pageTitle = currentMerchant
+    } else if (currentSearch) {
+      pageTitle = `搜索：${currentSearch}`
+    }
+
+    console.log('页面标题:', pageTitle)
+
+    return (
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Page Header - 类似 preisjaeger 的大标题 */}
+        <div className="mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            {pageTitle}
+          </h1>
+          <p className="text-gray-600 text-sm md:text-base">
+            {totalCount} 个优惠 · 奥地利优惠信息聚合 · {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}
+          </p>
+        </div>
+
+      {/* Category Tabs */}
+      <div className="mb-8">
+        <CategoryTabs
+          categories={categories}
+          currentCategory={currentCategory}
+        />
+      </div>
+
+        {/* Main Layout: 左侧筛选 + 右侧列表 */}
+        <div className="flex gap-6">
+          {/* 左侧：筛选面板（桌面端显示） */}
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-20">
+              <FilterSidebar
+                merchants={merchants}
+                currentMerchant={currentMerchant}
+              />
+            </div>
+          </aside>
+
+          {/* 右侧：优惠列表 */}
+          <div className="flex-1 min-w-0">
+            <DealsListClient
+              initialDeals={deals}
+              totalCount={totalCount}
+              initialPage={1}
+              pageSize={PAGE_SIZE}
+              categories={categories}
+            />
+          </div>
+        </div>
+
+        {/* 移动端筛选按钮 */}
+        <MobileFilterButton
+          merchants={merchants}
+          currentMerchant={currentMerchant}
+        />
+      </section>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-neutral-bg">
-      {/* 使用新的 Header */}
-      <SiteHeader />
+      {/* Header */}
+      <SiteHeader merchants={merchants} />
 
-      {/* Deals Grid Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Section Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-            最新优惠
-          </h2>
-          <span className="text-sm text-gray-500">
-            共 {totalCount} 个优惠
-          </span>
-        </div>
-
-        {/* 使用客户端组件处理分页和加载更多 */}
-        <DealsListClient
-          initialDeals={deals}
-          totalCount={totalCount}
-          initialPage={1}
-          pageSize={PAGE_SIZE}
-        />
-      </section>
+      {/* Main Content - 根据模式渲染不同布局 */}
+      {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
 
       {/* Stats Section - 简化版 */}
       <section className="bg-white border-t border-gray-200 py-12">

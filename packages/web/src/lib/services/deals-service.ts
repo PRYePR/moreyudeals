@@ -175,20 +175,56 @@ function computeRelevanceScore(deal: Deal, query: string): number {
 
 function translateCategoryName(category: string): string {
   const mapping: Record<string, string> = {
+    // 标准分类
+    'gaming': '游戏娱乐',
     'electronics': '电子产品',
     'fashion': '时尚服饰',
-    'home & kitchen': '家居用品',
-    'home and kitchen': '家居用品',
-    'home &amp; kitchen': '家居用品',
-    'gaming': '游戏娱乐',
+    'home-kitchen': '家居厨房',
+    'home & kitchen': '家居厨房',
+    'home and kitchen': '家居厨房',
+    'home &amp; kitchen': '家居厨房',
+    'sports-outdoor': '运动户外',
     'sports & outdoor': '运动户外',
     'sports and outdoor': '运动户外',
+    'beauty-health': '美妆护肤',
     'beauty & health': '美妆护肤',
     'beauty and health': '美妆护肤',
     'automotive': '汽车用品',
+    'food-drinks': '食品饮料',
     'food & drinks': '食品饮料',
     'food and drinks': '食品饮料',
-    'general': '综合'
+    'toys-kids': '玩具儿童',
+    'toys & kids': '玩具儿童',
+    'books-media': '图书影音',
+    'books & media': '图书影音',
+    'pets': '宠物用品',
+    'office': '办公用品',
+    'garden': '园艺花园',
+    'general': '综合',
+
+    // 兼容德语原始分类（Sparhamster）
+    'computer': '电子产品',
+    'elektronik': '电子产品',
+    'mode': '时尚服饰',
+    'kleidung': '时尚服饰',
+    'haushalt': '家居厨房',
+    'küche': '家居厨房',
+    'sport': '运动户外',
+    'fitness': '运动户外',
+    'beauty': '美妆护肤',
+    'gesundheit': '美妆护肤',
+    'auto': '汽车用品',
+    'kfz': '汽车用品',
+    'lebensmittel': '食品饮料',
+    'getränke': '食品饮料',
+    'spielzeug': '玩具儿童',
+    'kinder': '玩具儿童',
+    'bücher': '图书影音',
+    'medien': '图书影音',
+    'haustiere': '宠物用品',
+    'büro': '办公用品',
+    'garten': '园艺花园',
+    'schnäppchen': '综合',
   }
 
   const key = normaliseText(category)
@@ -217,10 +253,15 @@ export class DealsService {
     let workingList = [...entry.deals]
 
     if (categoryFilter && categoryFilter !== 'all') {
+      // 获取该标准分类的关键词
+      const keywords = this.getCategoryKeywords(categoryFilter)
+
       workingList = workingList.filter(deal => {
         const mainCategory = normaliseText(deal.category)
-        const extraCategories = (deal.categories ?? []).map(normaliseText)
-        return mainCategory === categoryFilter || extraCategories.includes(categoryFilter)
+        const allCategories = [mainCategory, ...(deal.categories ?? []).map(normaliseText)]
+
+        // 检查优惠的分类是否匹配任一关键词
+        return allCategories.some(cat => keywords.includes(cat))
       })
     }
 
@@ -362,80 +403,121 @@ export class DealsService {
 
   async getCategories(): Promise<CategoriesSummary> {
     const { entry, cacheHit } = await this.loadDeals(false)
-    const categoryMap = new Map<string, { count: number; translatedName: string }>()
-    const subcategoryMap = new Map<string, Map<string, number>>()
+
+    // 定义标准分类（与 packages/shared 中的定义保持一致）
+    const standardCategories = [
+      { id: 'gaming', name: 'Gaming', translatedName: '游戏娱乐', icon: 'gamepad' },
+      { id: 'electronics', name: 'Electronics', translatedName: '电子产品', icon: 'laptop' },
+      { id: 'fashion', name: 'Fashion', translatedName: '时尚服饰', icon: 'shirt' },
+      { id: 'home-kitchen', name: 'Home & Kitchen', translatedName: '家居厨房', icon: 'home' },
+      { id: 'sports-outdoor', name: 'Sports & Outdoor', translatedName: '运动户外', icon: 'bike' },
+      { id: 'beauty-health', name: 'Beauty & Health', translatedName: '美妆护肤', icon: 'heart' },
+      { id: 'automotive', name: 'Automotive', translatedName: '汽车用品', icon: 'car' },
+      { id: 'food-drinks', name: 'Food & Drinks', translatedName: '食品饮料', icon: 'utensils' },
+      { id: 'toys-kids', name: 'Toys & Kids', translatedName: '玩具儿童', icon: 'baby' },
+      { id: 'books-media', name: 'Books & Media', translatedName: '图书影音', icon: 'book' },
+      { id: 'pets', name: 'Pets', translatedName: '宠物用品', icon: 'paw' },
+      { id: 'office', name: 'Office', translatedName: '办公用品', icon: 'briefcase' },
+      { id: 'garden', name: 'Garden', translatedName: '园艺花园', icon: 'leaf' },
+      { id: 'general', name: 'General', translatedName: '综合', icon: 'tag' },
+    ]
+
+    // 统计每个标准分类的优惠数量
+    const categoryCounts = new Map<string, number>()
 
     for (const deal of entry.deals) {
-      const mainKey = normaliseText(deal.category || 'General')
-      const translated = translateCategoryName(deal.category || 'General')
+      // 尝试映射原始分类到标准分类
+      const originalCategory = normaliseText(deal.category || 'general')
+      const allCategories = [originalCategory, ...(deal.categories || []).map(normaliseText)]
 
-      const mainEntry = categoryMap.get(mainKey) ?? { count: 0, translatedName: translated }
-      mainEntry.count += 1
-      categoryMap.set(mainKey, mainEntry)
+      // 查找匹配的标准分类
+      let matched = false
+      for (const stdCat of standardCategories) {
+        const keywords = this.getCategoryKeywords(stdCat.id)
 
-      const secondaryCategories = deal.categories ?? []
-      if (secondaryCategories.length > 0) {
-        if (!subcategoryMap.has(mainKey)) {
-          subcategoryMap.set(mainKey, new Map())
+        for (const cat of allCategories) {
+          if (keywords.includes(cat)) {
+            categoryCounts.set(stdCat.id, (categoryCounts.get(stdCat.id) || 0) + 1)
+            matched = true
+            break
+          }
         }
-        const bucket = subcategoryMap.get(mainKey)!
-        for (const subcat of secondaryCategories) {
-          const subKey = normaliseText(subcat)
-          bucket.set(subKey, (bucket.get(subKey) ?? 0) + 1)
-        }
+        if (matched) break
+      }
+
+      // 如果没有匹配，归类到 general
+      if (!matched) {
+        categoryCounts.set('general', (categoryCounts.get('general') || 0) + 1)
       }
     }
 
-    const categories = Array.from(categoryMap.entries()).map(([key, info]) => {
-      const readableName = key
-        .split('-')
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
+    // 构建分类列表
+    const categories = standardCategories.map(stdCat => ({
+      id: stdCat.id,
+      name: stdCat.name,
+      translatedName: stdCat.translatedName,
+      icon: stdCat.icon,
+      description: undefined,
+      count: categoryCounts.get(stdCat.id) || 0,
+      subcategories: []
+    }))
 
-      const subcategoriesRaw = Array.from(subcategoryMap.get(key)?.entries() ?? [])
-      const subcategories = subcategoriesRaw
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([subKey, count]) => {
-          const originalName = subKey
-            .split('-')
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ')
-          return {
-            id: subKey,
-            name: originalName,
-            translatedName: translateCategoryName(originalName),
-            count
-          }
-        })
-
-      return {
-        id: key || 'general',
-        name: readableName,
-        translatedName: info.translatedName,
-        description: undefined,
-        icon: undefined,
-        count: info.count,
-        subcategories
-      }
-    })
-
+    // 按优惠数量排序（保留有优惠的分类在前）
     categories.sort((a, b) => b.count - a.count)
 
     const totalDeals = entry.deals.length
-    const totalCategories = categories.length
-    const totalSubcategories = categories.reduce((sum, category) => sum + (category.subcategories?.length ?? 0), 0)
+    const totalCategories = categories.filter(c => c.count > 0).length
 
     return {
       categories,
       stats: {
         totalDeals,
         totalCategories,
-        totalSubcategories
+        totalSubcategories: 0
       },
       fetchedAt: entry.fetchedAt,
       cacheHit
     }
+  }
+
+  // 获取分类的关键词（用于匹配）
+  private getCategoryKeywords(categoryId: string): string[] {
+    const keywordMap: Record<string, string[]> = {
+      'gaming': ['gaming', 'spiele', 'konsolen', 'playstation', 'xbox', 'nintendo'],
+      'electronics': ['electronics', 'elektronik', 'computer', 'laptop', 'smartphone', 'handy', 'tv', 'fernseher'],
+      'fashion': ['fashion', 'mode', 'kleidung', 'schuhe'],
+      'home-kitchen': ['home', 'kitchen', 'haushalt', 'küche', 'möbel'],
+      'sports-outdoor': ['sport', 'sports', 'outdoor', 'fitness', 'fahrrad', 'bike'],
+      'beauty-health': ['beauty', 'health', 'gesundheit', 'kosmetik', 'pflege'],
+      'automotive': ['automotive', 'auto', 'kfz', 'car'],
+      'food-drinks': ['food', 'drinks', 'lebensmittel', 'getränke'],
+      'toys-kids': ['toys', 'kids', 'spielzeug', 'kinder', 'baby'],
+      'books-media': ['books', 'media', 'bücher', 'medien', 'musik'],
+      'pets': ['pets', 'haustiere', 'tierbedarf'],
+      'office': ['office', 'büro', 'schreibwaren'],
+      'garden': ['garden', 'garten'],
+      'general': ['general', 'allgemein', 'schnäppchen', 'sonstiges'],
+    }
+
+    return keywordMap[categoryId] || []
+  }
+
+  async getMerchants(): Promise<Array<{ name: string; count: number }>> {
+    const { entry } = await this.loadDeals(false)
+    const merchantCounts = new Map<string, number>()
+
+    for (const deal of entry.deals) {
+      if (deal.merchantName) {
+        merchantCounts.set(
+          deal.merchantName,
+          (merchantCounts.get(deal.merchantName) || 0) + 1
+        )
+      }
+    }
+
+    return Array.from(merchantCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count) // 按数量降序排序
   }
 
   private async loadDeals(forceRefresh: boolean): Promise<{ entry: DealsCacheEntry; cacheHit: boolean }> {

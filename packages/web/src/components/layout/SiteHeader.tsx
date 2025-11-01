@@ -2,57 +2,100 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Search, Menu, X, ChevronDown, Tag, Store } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  Search,
+  Menu,
+  X,
+  ChevronDown,
+  Tag,
+  Store,
+  Gamepad2,
+  Laptop,
+  Shirt,
+  Home,
+  Bike,
+  Heart,
+  Car,
+  Utensils,
+  Baby,
+  Book,
+  PawPrint,
+  Briefcase,
+  Leaf
+} from 'lucide-react'
 
-export default function SiteHeader() {
+interface SiteHeaderProps {
+  merchants?: Array<{ name: string; count: number }>
+}
+
+export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [merchantsOpen, setMerchantsOpen] = useState(false)
 
-  // 主要分类（基于实际数据库数据）
-  const categories = [
-    { name: 'Elektronik', label: '电子产品', icon: '📱' },
-    { name: 'Haushalt', label: '家居用品', icon: '🏠' },
-    { name: 'Fashion & Beauty', label: '时尚美妆', icon: '👗' },
-    { name: 'Lebensmittel', label: '食品饮料', icon: '🍔' },
-    { name: 'Spielzeug', label: '玩具游戏', icon: '🎮' },
-    { name: 'Entertainment', label: '娱乐影音', icon: '🎬' },
-    { name: 'Freizeit', label: '休闲运动', icon: '⚽' },
-    { name: 'Werkzeug & Baumarkt', label: '工具建材', icon: '🔧' },
+  // 热门分类（6个）
+  const popularCategories = [
+    { id: 'gaming', name: 'Gaming', label: '游戏娱乐', Icon: Gamepad2 },
+    { id: 'electronics', name: 'Electronics', label: '电子产品', Icon: Laptop },
+    { id: 'fashion', name: 'Fashion', label: '时尚服饰', Icon: Shirt },
+    { id: 'home-kitchen', name: 'Home & Kitchen', label: '家居厨房', Icon: Home },
+    { id: 'sports-outdoor', name: 'Sports & Outdoor', label: '运动户外', Icon: Bike },
+    { id: 'beauty-health', name: 'Beauty & Health', label: '美妆护肤', Icon: Heart },
   ]
 
-  // 热门商家（基于实际数据库数据）
-  const merchants = [
-    { name: 'Amazon', count: 44, icon: '🛒' },
-    { name: 'MediaMarkt', count: 12, icon: '🔌' },
-    { name: 'XXXLutz', count: 6, icon: '🛋️' },
-    { name: 'Interspar', count: 4, icon: '🛍️' },
-    { name: 'iBOOD', count: 3, icon: '💰' },
-    { name: 'Möbelix', count: 2, icon: '🪑' },
-    { name: 'tink', count: 2, icon: '💡' },
-    { name: 'we-are.travel', count: 2, icon: '✈️' },
+  // 更多分类（8个）
+  const moreCategories = [
+    { id: 'automotive', name: 'Automotive', label: '汽车用品', Icon: Car },
+    { id: 'food-drinks', name: 'Food & Drinks', label: '食品饮料', Icon: Utensils },
+    { id: 'toys-kids', name: 'Toys & Kids', label: '玩具儿童', Icon: Baby },
+    { id: 'books-media', name: 'Books & Media', label: '图书影音', Icon: Book },
+    { id: 'pets', name: 'Pets', label: '宠物用品', Icon: PawPrint },
+    { id: 'office', name: 'Office', label: '办公用品', Icon: Briefcase },
+    { id: 'garden', name: 'Garden', label: '园艺花园', Icon: Leaf },
+    { id: 'general', name: 'General', label: '综合', Icon: Tag },
   ]
+
+  // 热门商家（取前8个，按优惠数量排序）
+  const merchants = allMerchants
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`)
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('search', searchQuery.trim())
+      params.delete('page') // 重置分页
+
+      const queryString = params.toString()
+      router.push(queryString ? `/?${queryString}` : '/')
       setSearchQuery('')
       setMobileMenuOpen(false)
     }
   }
 
-  const handleCategoryClick = (categoryName: string) => {
-    router.push(`/?category=${encodeURIComponent(categoryName)}`)
+  const handleCategoryClick = (categoryId: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('category', categoryId)
+    params.delete('page') // 重置分页
+
+    const queryString = params.toString()
+    router.push(queryString ? `/?${queryString}` : '/')
     setCategoriesOpen(false)
     setMobileMenuOpen(false)
   }
 
   const handleMerchantClick = (merchantName: string) => {
-    router.push(`/?merchant=${encodeURIComponent(merchantName)}`)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('merchant', merchantName)
+    params.delete('page') // 重置分页
+
+    const queryString = params.toString()
+    router.push(queryString ? `/?${queryString}` : '/')
     setMerchantsOpen(false)
     setMobileMenuOpen(false)
   }
@@ -102,18 +145,43 @@ export default function SiteHeader() {
                   className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
                   onMouseLeave={() => setCategoriesOpen(false)}
                 >
-                  {categories.map((category) => (
+                  {/* 热门分类 */}
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    热门分类
+                  </div>
+                  {popularCategories.map((category) => (
                     <button
-                      key={category.name}
-                      onClick={() => handleCategoryClick(category.name)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors group"
+                      key={category.id}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
                     >
-                      <span className="text-xl">{category.icon}</span>
+                      <category.Icon className="w-4 h-4 text-gray-600 group-hover:text-brand-primary transition-colors" />
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900 group-hover:text-brand-primary">
                           {category.label}
                         </div>
-                        <div className="text-xs text-gray-500">{category.name}</div>
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* 分隔线 */}
+                  <div className="my-2 border-t border-gray-200" />
+
+                  {/* 更多分类 */}
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    更多分类
+                  </div>
+                  {moreCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
+                    >
+                      <category.Icon className="w-4 h-4 text-gray-600 group-hover:text-brand-primary transition-colors" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900 group-hover:text-brand-primary">
+                          {category.label}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -144,17 +212,17 @@ export default function SiteHeader() {
                   className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
                   onMouseLeave={() => setMerchantsOpen(false)}
                 >
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    热门商家
+                  </div>
                   {merchants.map((merchant) => (
                     <button
                       key={merchant.name}
                       onClick={() => handleMerchantClick(merchant.name)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors group"
+                      className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
                     >
-                      <span className="text-xl">{merchant.icon}</span>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900 group-hover:text-brand-primary">
-                          {merchant.name}
-                        </div>
+                      <div className="text-sm font-medium text-gray-900 group-hover:text-brand-primary">
+                        {merchant.name}
                       </div>
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {merchant.count}
@@ -227,17 +295,36 @@ export default function SiteHeader() {
               </button>
               {categoriesOpen && (
                 <div className="mt-1 ml-4 space-y-1">
-                  {categories.map((category) => (
+                  {/* 热门分类 */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    热门分类
+                  </div>
+                  {popularCategories.map((category) => (
                     <button
-                      key={category.name}
-                      onClick={() => handleCategoryClick(category.name)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left hover:bg-gray-50 transition-colors"
+                      key={category.id}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
                     >
-                      <span className="text-lg">{category.icon}</span>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{category.label}</div>
-                        <div className="text-xs text-gray-500">{category.name}</div>
-                      </div>
+                      <category.Icon className="w-4 h-4 text-gray-600" />
+                      <div className="text-sm font-medium text-gray-900">{category.label}</div>
+                    </button>
+                  ))}
+
+                  {/* 分隔线 */}
+                  <div className="my-2 border-t border-gray-200" />
+
+                  {/* 更多分类 */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    更多分类
+                  </div>
+                  {moreCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <category.Icon className="w-4 h-4 text-gray-600" />
+                      <div className="text-sm font-medium text-gray-900">{category.label}</div>
                     </button>
                   ))}
                 </div>
@@ -258,16 +345,16 @@ export default function SiteHeader() {
               </button>
               {merchantsOpen && (
                 <div className="mt-1 ml-4 space-y-1">
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    热门商家
+                  </div>
                   {merchants.map((merchant) => (
                     <button
                       key={merchant.name}
                       onClick={() => handleMerchantClick(merchant.name)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
                     >
-                      <span className="text-lg">{merchant.icon}</span>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {merchant.count}
                       </div>
