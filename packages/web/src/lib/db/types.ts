@@ -59,7 +59,8 @@ export interface Deal {
   dealType: string | null
 
   // Categories and tags
-  categories: string[] | null
+  canonicalCategory: string | null // 标准分类（映射后）
+  categories: string[] | null // 原始分类数组
   tags: string[] | null
 
   // Dates
@@ -130,6 +131,7 @@ export interface DealRow {
   coupon_code: string | null
   deal_type: string | null
 
+  canonical_category: string | null
   categories: any | null
   tags: any | null
 
@@ -198,6 +200,7 @@ export function mapRowToDeal(row: DealRow): Deal {
     couponCode: row.coupon_code,
     dealType: row.deal_type,
 
+    canonicalCategory: row.canonical_category,
     categories: row.categories as string[] | null,
     tags: row.tags as string[] | null,
 

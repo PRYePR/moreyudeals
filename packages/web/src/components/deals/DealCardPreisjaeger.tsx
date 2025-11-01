@@ -116,8 +116,8 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
         )}
       </div>
 
-      {/* 主体区域：桌面端横向布局，移动端横向紧凑布局 */}
-      <div className="deal-card-body flex flex-row lg:flex-row p-3 lg:p-4">
+      {/* 主体区域：桌面端横向布局（含右侧广告位），移动端横向紧凑布局 */}
+      <div className="deal-card-body flex flex-row p-3 lg:p-4">
         {/* 左侧：移动端图片+按钮组合，桌面端仅图片 */}
         <div className="flex flex-col gap-2 lg:contents">
           {/* 商品图片（移动端固定宽度正方形，桌面端固定宽度） */}
@@ -164,10 +164,10 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           </div>
         </div>
 
-        {/* 右：内容区 */}
+        {/* 中：内容区 */}
         <div className="deal-content flex-1 flex flex-col min-w-0 pl-3 lg:pl-4">
           {/* 桌面端：顶部商店信息 + 时间标签 */}
-          <div className="hidden lg:flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+          <div className="hidden lg:flex items-center justify-between mb-1.5 pb-1.5 border-b border-gray-100">
             {/* 商店信息 */}
             <button
               onClick={handleMerchantClick}
@@ -200,7 +200,7 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           <div className="flex-1 flex flex-col gap-2 lg:gap-0">
             {/* 标题 */}
             <Link href={`/deals/${deal.id}`}>
-              <h3 className="text-base lg:text-xl font-bold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors lg:mb-3">
+              <h3 className="text-base lg:text-xl font-bold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors lg:mb-6">
                 {displayTitle}
               </h3>
             </Link>
@@ -233,7 +233,7 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
             )}
 
             {/* 底部操作栏 */}
-            <div className="mt-auto flex items-center gap-1 lg:gap-2 pt-2 lg:pt-3 lg:border-t lg:border-gray-100">
+            <div className="mt-auto flex items-center gap-1 lg:gap-2 pt-2 lg:pt-3">
               {/* 桌面端：评论 */}
               <button
                 onClick={() => window.location.href = `/deals/${deal.id}#comments`}
