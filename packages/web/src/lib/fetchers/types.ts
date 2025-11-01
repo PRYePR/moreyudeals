@@ -5,8 +5,6 @@ export interface Deal {
   originalTitle: string
   translatedTitle: string
   description: string
-  originalDescription: string
-  translatedDescription: string
   price?: string
   originalPrice?: string
   currency: string
@@ -16,7 +14,7 @@ export interface Deal {
   category: string
   source: string
   publishedAt: Date
-  expiresAt: Date
+  expiresAt?: Date
   language: 'de' | 'en'
   translationProvider: 'deepl' | 'microsoft' | 'google'
   isTranslated: boolean

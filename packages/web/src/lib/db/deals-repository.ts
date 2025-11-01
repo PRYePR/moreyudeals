@@ -51,7 +51,7 @@ export class DealsRepository {
    */
   async getDeals(options: DealsListOptions = {}): Promise<DealsListResult> {
     const page = Math.max(options.page || 1, 1)
-    const limit = Math.min(Math.max(options.limit || 20, 1), 100)
+    const limit = Math.min(Math.max(options.limit || 20, 1), 500)
     const offset = (page - 1) * limit
 
     // Try cache first
@@ -118,6 +118,9 @@ export class DealsRepository {
 
     // Filter: Only active deals (not expired)
     conditions.push(`(expires_at IS NULL OR expires_at > NOW())`)
+
+    // Filter: Only translated deals
+    conditions.push(`translation_status = 'completed'`)
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
@@ -192,8 +195,8 @@ export class DealsRepository {
       return cached
     }
 
-    // Query database
-    const queryText = 'SELECT * FROM deals WHERE id = $1 LIMIT 1'
+    // Query database - only return translated deals
+    const queryText = `SELECT * FROM deals WHERE id = $1 AND translation_status = 'completed' LIMIT 1`
     const result = await query<DealRow>(queryText, [id])
 
     if (result.rows.length === 0) {
@@ -225,7 +228,8 @@ export class DealsRepository {
         cat AS name,
         COUNT(*) AS count
       FROM deals, jsonb_array_elements_text(categories) AS cat
-      WHERE expires_at IS NULL OR expires_at > NOW()
+      WHERE (expires_at IS NULL OR expires_at > NOW())
+        AND translation_status = 'completed'
       GROUP BY cat
       ORDER BY count DESC
     `
@@ -298,7 +302,7 @@ export class DealsRepository {
       return { ...cached, cacheHit: true }
     }
 
-    // Query database
+    // Query database - only count translated deals
     const queryText = `
       SELECT
         COUNT(*) as total_deals,
@@ -307,8 +311,9 @@ export class DealsRepository {
         COUNT(*) FILTER (WHERE published_at >= CURRENT_DATE) as today_deals,
         COUNT(DISTINCT merchant) FILTER (WHERE expires_at IS NULL OR expires_at > NOW()) as active_merchants,
         COALESCE(AVG(discount) FILTER (WHERE discount IS NOT NULL AND (expires_at IS NULL OR expires_at > NOW())), 0) as avg_discount,
-        (SELECT COUNT(DISTINCT cat) FROM deals, jsonb_array_elements_text(categories) AS cat) as total_categories
+        (SELECT COUNT(DISTINCT cat) FROM deals, jsonb_array_elements_text(categories) AS cat WHERE translation_status = 'completed') as total_categories
       FROM deals
+      WHERE translation_status = 'completed'
     `
 
     const result = await query<{

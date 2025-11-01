@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '12')
     const category = searchParams.get('category')
+    const merchant = searchParams.get('merchant')
     const search = searchParams.get('search')
     const sortByParam = searchParams.get('sortBy')
     const sortOrderParam = searchParams.get('sortOrder')
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       category: category ?? undefined,
+      merchant: merchant ?? undefined,
       search: search ?? undefined,
       sortBy,
       sortOrder,

@@ -38,22 +38,24 @@ export class TranslationWorker {
     this.isProcessing = true;
 
     try {
-      // 获取待翻译的条目
-      const untranslatedItems = await this.database.getUntranslatedItems(10);
+      // 获取待翻译的 Deal（使用新方法）
+      const untranslatedDeals = await this.database.getUntranslatedDeals(10);
 
-      if (untranslatedItems.length === 0) {
+      if (untranslatedDeals.length === 0) {
+        console.log('ℹ️  没有待翻译的记录');
         return;
       }
 
-      console.log(`📝 发现 ${untranslatedItems.length} 个待翻译条目`);
+      console.log(`📝 发现 ${untranslatedDeals.length} 个待翻译的优惠`);
 
-      // 为每个条目创建翻译任务
-      for (const item of untranslatedItems) {
-        await this.createTranslationJobsForItem(item);
+      // 直接翻译每个 Deal
+      for (const deal of untranslatedDeals) {
+        try {
+          await this.translateDeal(deal);
+        } catch (error) {
+          console.error(`❌ 翻译 Deal ${deal.id} 失败:`, error);
+        }
       }
-
-      // 处理翻译任务
-      await this.processTranslationQueue();
 
     } catch (error) {
       console.error('❌ 处理翻译任务失败:', error);
@@ -62,36 +64,65 @@ export class TranslationWorker {
     }
   }
 
-  private async createTranslationJobsForItem(item: RSSItem): Promise<void> {
-    // 更新条目状态为处理中
-    await this.database.updateRSSItem(item.id, {
-      translationStatus: 'processing'
-    });
+  /**
+   * 翻译单个 Deal
+   */
+  private async translateDeal(deal: any): Promise<void> {
+    // 使用清理后的 title（无价格）而不是 originalTitle（有价格）
+    const cleanTitle = deal.title || deal.originalTitle;
+    console.log(`🌐 开始翻译: ${cleanTitle?.substring(0, 50)}...`);
 
-    // 创建标题翻译任务
-    if (item.originalTitle) {
-      await this.database.createTranslationJob({
-        itemId: item.id,
-        type: 'title',
-        originalText: item.originalTitle,
-        sourceLanguage: 'de', // 假设源语言是德语
-        targetLanguage: 'zh', // 目标语言是中文
-        status: 'pending',
-        retryCount: 0
+    try {
+      // 更新状态为处理中
+      await this.database.updateDeal(deal.id, {
+        translationStatus: 'processing'
       });
-    }
 
-    // 创建描述翻译任务
-    if (item.originalDescription) {
-      await this.database.createTranslationJob({
-        itemId: item.id,
-        type: 'description',
-        originalText: item.originalDescription,
-        sourceLanguage: 'de',
-        targetLanguage: 'zh',
-        status: 'pending',
-        retryCount: 0
+      const translations: any = {};
+
+      // 翻译标题（使用清理后的 title，不含价格信息）
+      if (cleanTitle) {
+        const titleResult = await this.translationManager.translate({
+          text: cleanTitle,
+          from: 'de' as any,
+          to: 'zh' as any
+        });
+        translations.title = titleResult.translatedText;
+        console.log(`  ✅ 标题: ${titleResult.translatedText.substring(0, 40)}...`);
+      }
+
+      // 翻译HTML内容 (content_html -> description)
+      if (deal.contentHtml) {
+        const htmlResult = await this.translationManager.translate({
+          text: deal.contentHtml,
+          from: 'de' as any,
+          to: 'zh' as any
+        });
+        translations.description = htmlResult.translatedText;
+        console.log(`  ✅ HTML内容已翻译 (${deal.contentHtml.length} -> ${htmlResult.translatedText.length} 字符)`);
+      }
+
+      // 更新数据库
+      await this.database.updateDealTranslation(
+        deal.id,
+        translations,
+        {
+          provider: 'deepl',
+          language: 'zh',
+          detectedLanguage: 'de'
+        }
+      );
+
+      console.log(`✅ 翻译完成: ${deal.id}`);
+    } catch (error) {
+      console.error(`❌ 翻译失败: ${deal.id}`, error);
+
+      // 标记为失败
+      await this.database.updateDeal(deal.id, {
+        translationStatus: 'failed'
       });
+
+      throw error;
     }
   }
 

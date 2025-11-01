@@ -147,6 +147,12 @@ export class SparhamsterFetcher {
     // 1. 标准化数据（从 REST API 提取结构化字段）
     const deal = await this.normalizer.normalize(post);
 
+    // 1.5 从 content.rendered 提取过期时间
+    const expiryDate = this.extractExpiryDate(post.content?.rendered || '');
+    if (expiryDate) {
+      deal.expiresAt = expiryDate;
+    }
+
     // 2. 从首页数据补充 merchantLink 和 merchantLogo
     const postId = post.id.toString();
     const slug = this.extractSlug(post.link);
@@ -200,6 +206,60 @@ export class SparhamsterFetcher {
   private extractSlug(url: string): string | undefined {
     const match = url.match(/\/([^\/]+)\/?$/);
     return match ? match[1] : undefined;
+  }
+
+  /**
+   * 从 content.rendered 提取过期时间
+   * 支持多种德语日期格式:
+   * - dd.MM.yyyy (如: 31.10.2025)
+   * - d.M.yyyy (如: 1.5.2025)
+   */
+  private extractExpiryDate(content: string): Date | undefined {
+    if (!content) return undefined;
+
+    // 德语日期格式: dd.MM.yyyy 或 d.M.yyyy
+    // 匹配模式: 数字.数字.数字
+    const germanDatePattern = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
+    const matches = [...content.matchAll(germanDatePattern)];
+
+    if (matches.length === 0) return undefined;
+
+    // 尝试解析所有日期，找出有效的未来日期
+    const now = new Date();
+    const validDates: Date[] = [];
+
+    for (const match of matches) {
+      const [_, day, month, year] = match;
+      const dayNum = parseInt(day, 10);
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+
+      // 基本验证
+      if (dayNum < 1 || dayNum > 31) continue;
+      if (monthNum < 1 || monthNum > 12) continue;
+      if (yearNum < 2025 || yearNum > 2030) continue;
+
+      try {
+        // JavaScript Date 月份是 0-11，所以要减1
+        const date = new Date(yearNum, monthNum - 1, dayNum, 23, 59, 59);
+
+        // 只保留未来的日期
+        if (date > now) {
+          validDates.push(date);
+        }
+      } catch (error) {
+        // 忽略无效日期
+        continue;
+      }
+    }
+
+    // 如果有多个日期，返回最近的一个（最可能是过期日期）
+    if (validDates.length > 0) {
+      validDates.sort((a, b) => a.getTime() - b.getTime());
+      return validDates[0];
+    }
+
+    return undefined;
   }
 
   /**

@@ -22,21 +22,16 @@ export interface Deal {
   slug: string | null
   contentHash: string | null
 
-  // Content fields (original language)
-  title: string
-  description: string | null
-  contentHtml: string | null
+  // Content fields
+  title: string // 翻译后的标题
+  originalTitle: string | null // 德语原标题
+  description: string | null // 翻译后的描述
+  originalDescription: string | null // 德语原描述
+  contentHtml: string | null // 德语 HTML 内容
+  contentText: string | null // 德语纯文本内容
   contentBlocks: ContentBlock[] | null
 
-  // Translation fields
-  titleZh: string | null
-  titleEn: string | null
-  descriptionZh: string | null
-  descriptionEn: string | null
-  contentHtmlZh: string | null
-  contentHtmlEn: string | null
-  contentBlocksZh: ContentBlock[] | null
-  contentBlocksEn: ContentBlock[] | null
+  // Translation status
   translationStatus: 'pending' | 'processing' | 'completed' | 'failed'
 
   // Pricing fields
@@ -104,19 +99,14 @@ export interface DealRow {
   slug: string | null
   content_hash: string | null
 
-  title: string
-  description: string | null
-  content_html: string | null
+  title: string // 翻译后的标题
+  original_title: string | null // 德语原标题
+  description: string | null // 翻译后的描述
+  original_description: string | null // 德语原描述
+  content_html: string | null // 德语 HTML
+  content_text: string | null // 德语纯文本
   content_blocks: any | null
 
-  title_zh: string | null
-  title_en: string | null
-  description_zh: string | null
-  description_en: string | null
-  content_html_zh: string | null
-  content_html_en: string | null
-  content_blocks_zh: any | null
-  content_blocks_en: any | null
   translation_status: 'pending' | 'processing' | 'completed' | 'failed'
 
   price: string | null
@@ -176,19 +166,14 @@ export function mapRowToDeal(row: DealRow): Deal {
     slug: row.slug,
     contentHash: row.content_hash,
 
-    title: row.title,
-    description: row.description,
-    contentHtml: row.content_html,
+    // Content fields
+    title: row.title || '', // 翻译后的标题
+    originalTitle: row.original_title, // 德语原标题
+    description: row.description, // 翻译后的描述
+    originalDescription: row.original_description, // 德语原描述
+    contentHtml: row.content_html, // 德语 HTML
+    contentText: row.content_text, // 德语纯文本
     contentBlocks: row.content_blocks as ContentBlock[] | null,
-
-    titleZh: row.title_zh,
-    titleEn: row.title_en,
-    descriptionZh: row.description_zh,
-    descriptionEn: row.description_en,
-    contentHtmlZh: row.content_html_zh,
-    contentHtmlEn: row.content_html_en,
-    contentBlocksZh: row.content_blocks_zh as ContentBlock[] | null,
-    contentBlocksEn: row.content_blocks_en as ContentBlock[] | null,
     translationStatus: row.translation_status,
 
     price: row.price ? parseFloat(row.price) : null,

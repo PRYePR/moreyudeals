@@ -6,9 +6,9 @@ import { DealsRepository } from '../db/deals-repository'
 
 const logger = createModuleLogger('service:deals')
 
-const MAX_FETCH_LIMIT = 100
-const ENV_LIMIT = Number(process.env.SPARHAMSTER_FETCH_LIMIT || '60')
-const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 60 : ENV_LIMIT, 20), MAX_FETCH_LIMIT)
+const MAX_FETCH_LIMIT = 500
+const ENV_LIMIT = Number(process.env.SPARHAMSTER_FETCH_LIMIT || '200')
+const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 200 : ENV_LIMIT, 20), MAX_FETCH_LIMIT)
 
 /**
  * Convert database Deal to fetcher Deal format
@@ -16,12 +16,10 @@ const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 60 : ENV_LIMIT
 function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
   return {
     id: dbDeal.id,
-    title: dbDeal.titleZh || dbDeal.title,
-    originalTitle: dbDeal.title,
-    translatedTitle: dbDeal.titleZh || dbDeal.title,
-    description: dbDeal.descriptionZh || dbDeal.description || '',
-    originalDescription: dbDeal.description || '',
-    translatedDescription: dbDeal.descriptionZh || dbDeal.description || '',
+    title: dbDeal.title, // 已翻译的标题
+    originalTitle: dbDeal.originalTitle || dbDeal.title, // 德语原标题
+    translatedTitle: dbDeal.title, // 已翻译的标题
+    description: dbDeal.description || '', // 已翻译的HTML描述
     price: dbDeal.price?.toString() || undefined,
     originalPrice: dbDeal.originalPrice?.toString() || undefined,
     currency: dbDeal.currency,
@@ -31,12 +29,12 @@ function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
     category: dbDeal.categories?.[0] || 'General',
     source: dbDeal.sourceSite,
     publishedAt: dbDeal.publishedAt,
-    expiresAt: dbDeal.expiresAt || undefined, // 不填默认值，保持为 undefined
+    expiresAt: dbDeal.expiresAt || undefined,
     language: 'de' as const,
     translationProvider: 'deepl' as const,
-    isTranslated: !!dbDeal.titleZh,
+    isTranslated: dbDeal.translationStatus === 'completed',
     categories: dbDeal.categories || [],
-    content: dbDeal.contentHtmlZh || dbDeal.contentHtml || '',
+    content: dbDeal.description || dbDeal.contentHtml || '', // 优先使用翻译后的 HTML (description)，否则使用德语 HTML
 
     // Extended fields
     wordpressId: dbDeal.sourcePostId ? parseInt(dbDeal.sourcePostId) : undefined,
@@ -66,6 +64,7 @@ export interface DealsListOptions {
   page?: number
   limit?: number
   category?: string
+  merchant?: string
   search?: string
   sortBy?: DealSortField
   sortOrder?: 'asc' | 'desc'
@@ -84,6 +83,7 @@ export interface DealsListResult {
   }
   filters: {
     category?: string | null
+    merchant?: string | null
     search?: string | null
     sortBy: DealSortField
     sortOrder: 'asc' | 'desc'
@@ -103,7 +103,6 @@ export interface CategoriesSummary {
     count: number
     icon?: string
     description?: string
-    translatedDescription?: string
     subcategories?: Array<{
       id: string
       name: string
@@ -148,8 +147,7 @@ function computeRelevanceScore(deal: Deal, query: string): number {
   const textTargets = [
     { value: deal.translatedTitle, weight: 10 },
     { value: deal.originalTitle, weight: 8 },
-    { value: deal.translatedDescription, weight: 5 },
-    { value: deal.originalDescription, weight: 4 },
+    { value: deal.description, weight: 5 },
     { value: deal.category, weight: 6 },
     { value: deal.source, weight: 2 },
     { value: deal.merchantName ?? '', weight: 3 }
@@ -209,6 +207,7 @@ export class DealsService {
     const sortOrder: 'asc' | 'desc' = options.sortOrder ?? 'desc'
     const searchTerm = normaliseText(options.search ?? '')
     const categoryFilter = normaliseText(options.category ?? '')
+    const merchantFilter = normaliseText(options.merchant ?? '')
 
     const { entry, cacheHit } = await this.loadDeals(options.forceRefresh === true)
     let workingList = [...entry.deals]
@@ -221,14 +220,20 @@ export class DealsService {
       })
     }
 
+    if (merchantFilter) {
+      workingList = workingList.filter(deal => {
+        const dealMerchant = normaliseText(deal.merchantName ?? '')
+        return dealMerchant === merchantFilter
+      })
+    }
+
     let relevanceScores: Map<string, number> | null = null
     if (searchTerm) {
       workingList = workingList.filter(deal => {
         const fields = [
           deal.translatedTitle,
           deal.originalTitle,
-          deal.translatedDescription,
-          deal.originalDescription,
+          deal.description,
           deal.category,
           deal.source,
           deal.merchantName ?? '',
@@ -315,6 +320,7 @@ export class DealsService {
       },
       filters: {
         category: options.category ?? null,
+        merchant: options.merchant ?? null,
         search: options.search ?? null,
         sortBy,
         sortOrder
@@ -393,7 +399,6 @@ export class DealsService {
         name: readableName,
         translatedName: info.translatedName,
         description: undefined,
-        translatedDescription: undefined,
         icon: undefined,
         count: info.count,
         subcategories

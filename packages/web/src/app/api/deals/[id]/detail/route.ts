@@ -25,7 +25,7 @@ export async function POST(
 
     logger.info('Generating detail content for deal', {
       dealId,
-      title: deal.translatedTitle
+      title: deal.translatedTitle || deal.title
     })
 
     // 从 deal 对象生成详细内容

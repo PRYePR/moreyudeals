@@ -154,6 +154,12 @@ class WorkerService {
         console.warn('\n⚠️ 抓取过程中发生错误:');
         result.errors.forEach((err) => console.warn(`  - ${err}`));
       }
+
+      // 抓取完成后，立即检查并翻译待翻译的内容
+      if (this.translationWorker) {
+        console.log('\n🌐 抓取完成，检查待翻译内容...');
+        await this.translationWorker.processTranslationJobs();
+      }
     } catch (error) {
       console.error('❌ 抓取任务失败:', error);
     }

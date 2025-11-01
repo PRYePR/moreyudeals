@@ -1,13 +1,32 @@
-import DealCardPreisjaeger from '@/components/deals/DealCardPreisjaeger'
+import DealsListClient from '@/components/deals/DealsListClient'
 import SiteHeader from '@/components/layout/SiteHeader'
 
-async function getLatestDeals() {
+const PAGE_SIZE = 20
+
+async function getDealsData(searchParams: { [key: string]: string | string[] | undefined }) {
   try {
     const baseUrl = process.env.NODE_ENV === 'production'
       ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
       : 'http://localhost:3000'
 
-    const response = await fetch(`${baseUrl}/api/deals/live?limit=12`, {
+    // 构建查询参数
+    const params = new URLSearchParams()
+    params.set('page', '1')
+    params.set('limit', PAGE_SIZE.toString())
+
+    // 添加筛选参数
+    if (searchParams.merchant && typeof searchParams.merchant === 'string') {
+      params.set('merchant', searchParams.merchant)
+    }
+    if (searchParams.category && typeof searchParams.category === 'string') {
+      params.set('category', searchParams.category)
+    }
+    if (searchParams.search && typeof searchParams.search === 'string') {
+      params.set('search', searchParams.search)
+    }
+
+    // 获取初始数据
+    const response = await fetch(`${baseUrl}/api/deals/live?${params.toString()}`, {
       cache: 'no-store',
       next: { revalidate: 0 }
     })
@@ -17,109 +36,27 @@ async function getLatestDeals() {
     }
 
     const data = await response.json()
-    return data.deals || []
+
+    return {
+      deals: data.deals || [],
+      totalCount: data.pagination?.total || 0
+    }
   } catch (error) {
     console.error('Error fetching deals:', error)
-    return []
+    return {
+      deals: [],
+      totalCount: 0
+    }
   }
 }
 
-// 备用示例数据
-const fallbackDeals = [
-  {
-    id: '1',
-    title: 'Samsung Galaxy S24 Ultra - Exklusiver Rabatt',
-    translatedTitle: 'Samsung Galaxy S24 Ultra - 独家折扣',
-    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800&q=80',
-    price: 899.99,
-    originalPrice: 1099.99,
-    currency: 'EUR',
-    discount: 18,
-    merchant: 'Amazon',
-    merchantLogo: '/logos/amazon.svg',
-    dealUrl: 'https://example.com/samsung-s24',
-    publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    category: 'Electronics',
-  },
-  {
-    id: '2',
-    title: 'Adidas Sneaker Sale',
-    translatedTitle: 'Adidas运动鞋促销',
-    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80',
-    price: 59.99,
-    originalPrice: 119.99,
-    currency: 'EUR',
-    discount: 50,
-    merchant: 'Adidas',
-    dealUrl: 'https://example.com/adidas-sneaker',
-    publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    category: 'Fashion',
-  },
-  {
-    id: '3',
-    title: 'KitchenAid Mixer - Winterschlussverkauf',
-    translatedTitle: 'KitchenAid搅拌器 - 冬季清仓',
-    imageUrl: 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800&q=80',
-    price: 299.99,
-    originalPrice: 499.99,
-    currency: 'EUR',
-    discount: 40,
-    merchant: 'Media Markt',
-    dealUrl: 'https://example.com/kitchenaid',
-    publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    category: 'Home & Kitchen',
-  },
-  {
-    id: '4',
-    title: 'Sony WH-1000XM5 Kopfhörer',
-    translatedTitle: 'Sony WH-1000XM5 降噪耳机',
-    imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&q=80',
-    price: 349.00,
-    originalPrice: 429.00,
-    currency: 'EUR',
-    discount: 19,
-    merchant: 'Saturn',
-    dealUrl: 'https://example.com/sony-headphones',
-    publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-    category: 'Electronics',
-  },
-  {
-    id: '5',
-    title: 'Lego Star Wars Set',
-    translatedTitle: '乐高星球大战套装',
-    imageUrl: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&q=80',
-    price: 89.99,
-    originalPrice: 129.99,
-    currency: 'EUR',
-    discount: 31,
-    merchant: 'MyToys',
-    dealUrl: 'https://example.com/lego',
-    publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    category: 'Toys',
-  },
-  {
-    id: '6',
-    title: 'Dyson V15 Staubsauger',
-    translatedTitle: 'Dyson V15 吸尘器',
-    imageUrl: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=800&q=80',
-    price: 549.00,
-    originalPrice: 749.00,
-    currency: 'EUR',
-    discount: 27,
-    merchant: 'Expert',
-    dealUrl: 'https://example.com/dyson',
-    publishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    category: 'Home Appliances',
-  },
-]
-
-export default async function HomePage() {
-  const deals = await getLatestDeals()
-  const displayDeals = deals.length > 0 ? deals : fallbackDeals
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const { deals, totalCount } = await getDealsData(params)
 
   return (
     <div className="min-h-screen bg-neutral-bg">
@@ -148,24 +85,17 @@ export default async function HomePage() {
             最新优惠
           </h2>
           <span className="text-sm text-gray-500">
-            共 {displayDeals.length} 个优惠
+            共 {totalCount} 个优惠
           </span>
         </div>
 
-        {/* Responsive Grid - Preisjaeger 风格 */}
-        <div className="space-y-4">
-          {displayDeals.map((deal: any) => (
-            <DealCardPreisjaeger key={deal.id} deal={deal} />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {displayDeals.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-gray-500 text-lg">暂无优惠信息</p>
-            <p className="text-gray-400 text-sm mt-2">请稍后再试</p>
-          </div>
-        )}
+        {/* 使用客户端组件处理分页和加载更多 */}
+        <DealsListClient
+          initialDeals={deals}
+          totalCount={totalCount}
+          initialPage={1}
+          pageSize={PAGE_SIZE}
+        />
       </section>
 
       {/* Stats Section - 简化版 */}
@@ -174,7 +104,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
-                {displayDeals.length}+
+                {totalCount}+
               </div>
               <div className="text-sm md:text-base text-gray-600">实时优惠</div>
             </div>

@@ -34,8 +34,11 @@ export class DetailPageFetcher {
     try {
       logger.info('Fetching detail content for deal', { dealId: deal.id })
 
-      // 从 deal.content 中提取图片
-      const images = this.extractImagesFromContent(deal.content)
+      // 直接使用 deal.content（已经是 contentHtmlZh || contentHtml）
+      const contentHtml = deal.content || ''
+
+      // 从 HTML 内容中提取图片
+      const images = this.extractImagesFromContent(contentHtml)
 
       // 如果没有从 content 中提取到图片，使用 deal.imageUrl
       if (images.length === 0 && deal.imageUrl) {
@@ -71,13 +74,13 @@ export class DetailPageFetcher {
       }
 
       // 提取特性列表
-      const features = this.extractFeaturesFromContent(deal.content)
+      const features = this.extractFeaturesFromContent(contentHtml)
 
-      // rawHtml: 直接使用 WordPress content.rendered
-      const rawHtml = deal.content || ''
+      // rawHtml: 直接使用 deal.content (WordPress content.rendered)
+      const rawHtml = contentHtml
 
-      // fullDescription: 原样返回 content，如果为空再退回译文/描述
-      const fullDescription = deal.content || deal.translatedDescription || deal.description
+      // fullDescription: 优先返回完整HTML，为空时才回退到描述
+      const fullDescription = contentHtml || deal.description
 
       return {
         rawHtml,
@@ -198,6 +201,10 @@ export class DetailPageFetcher {
    * 获取可用性状态
    */
   private getAvailabilityStatus(deal: Deal): string {
+    if (!deal.expiresAt) {
+      return '有效'
+    }
+
     const now = new Date()
     const expiresAt = new Date(deal.expiresAt)
 
@@ -254,7 +261,7 @@ export class DetailPageFetcher {
   private getEmptyDetailContent(deal: Deal): DetailContent {
     return {
       rawHtml: deal.content || '',
-      fullDescription: deal.translatedDescription || deal.description || '暂无详细描述',
+      fullDescription: deal.description || '暂无详细描述',
       specifications: {
         '来源': deal.source,
         '分类': deal.category

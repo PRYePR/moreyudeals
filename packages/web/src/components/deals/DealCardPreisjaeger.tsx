@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { MessageCircle, Share2, Bookmark, ExternalLink, MapPin, Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
 
@@ -32,6 +33,7 @@ interface DealCardPreisjaegerProps {
 }
 
 export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) {
+  const router = useRouter()
   const [isFavorited, setIsFavorited] = useState(false)
 
   // 处理数据
@@ -69,6 +71,16 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
     }
   }
 
+  // 点击商家筛选
+  const handleMerchantClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const merchantName = deal.merchantName || deal.merchant
+    if (merchantName) {
+      router.push(`/?merchant=${encodeURIComponent(merchantName)}`)
+    }
+  }
+
   // 购买链接：后台已处理好逻辑（实际链接或详情页），前端直接使用
   // deal.link 已经是最终跳转地址（购买链接 or 详情页）
 
@@ -77,7 +89,11 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
       {/* 移动端：顶部商店信息栏 */}
       <div className="lg:hidden deal-card-header flex items-center justify-between px-4 py-3 bg-gray-50">
         {/* 商店Logo + 名字 */}
-        <div className="store-info flex items-center gap-2">
+        <button
+          onClick={handleMerchantClick}
+          className="store-info flex items-center gap-2 hover:bg-gray-100 px-2 py-1 -ml-2 rounded-lg transition-colors group"
+          title={`筛选 ${displayMerchant} 的优惠`}
+        >
           {deal.merchantLogo ? (
             <Image
               src={deal.merchantLogo}
@@ -87,10 +103,10 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
               className="object-contain rounded"
             />
           ) : (
-            <Store className="w-6 h-6 text-gray-400" />
+            <Store className="w-6 h-6 text-gray-400 group-hover:text-brand-primary transition-colors" />
           )}
-          <span className="text-sm font-bold text-gray-800">{displayMerchant}</span>
-        </div>
+          <span className="text-sm font-bold text-gray-800 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
+        </button>
 
         {/* 相对时间标签 */}
         {relativeTime && (
@@ -153,7 +169,11 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           {/* 桌面端：顶部商店信息 + 时间标签 */}
           <div className="hidden lg:flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
             {/* 商店信息 */}
-            <div className="store-info flex items-center gap-2">
+            <button
+              onClick={handleMerchantClick}
+              className="store-info flex items-center gap-2 hover:bg-gray-50 px-3 py-1.5 -ml-3 rounded-lg transition-colors group"
+              title={`筛选 ${displayMerchant} 的优惠`}
+            >
               {deal.merchantLogo ? (
                 <Image
                   src={deal.merchantLogo}
@@ -163,10 +183,10 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
                   className="object-contain rounded"
                 />
               ) : (
-                <Store className="w-6 h-6 text-gray-400" />
+                <Store className="w-6 h-6 text-gray-400 group-hover:text-brand-primary transition-colors" />
               )}
-              <span className="text-base font-semibold text-brand-primary">{displayMerchant}</span>
-            </div>
+              <span className="text-base font-semibold text-brand-primary group-hover:text-brand-hover transition-colors">{displayMerchant}</span>
+            </button>
 
             {/* 相对时间标签 */}
             {relativeTime && (

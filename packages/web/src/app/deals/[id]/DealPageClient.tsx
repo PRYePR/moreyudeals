@@ -205,8 +205,8 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
             </div>
           </div>
 
-          {/* 描述卡片 - 移动端优化 - 显示完整 content */}
-          {(deal.content) && (
+          {/* 描述卡片 - 移动端优化 - 显示完整的 HTML content */}
+          {deal.content && (
             <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-md p-4 sm:p-6 md:p-8">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">优惠详情</h2>
               <div
