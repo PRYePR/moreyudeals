@@ -1,7 +1,7 @@
 import DealsListClient from '@/components/deals/DealsListClient'
 import SiteHeader from '@/components/layout/SiteHeader'
 import RightSidebar from '@/components/layout/RightSidebar'
-import CategoryTabs from '@/components/filters/CategoryTabs'
+import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import { dealsService } from '@/lib/services/deals-service'
