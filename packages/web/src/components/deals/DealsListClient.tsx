@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DealCardPreisjaeger from './DealCardPreisjaeger'
-import { X } from 'lucide-react'
+import { X, ArrowUp } from 'lucide-react'
 
 interface Category {
   id: string
@@ -29,11 +29,13 @@ export default function DealsListClient({
 }: DealsListClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const [deals, setDeals] = useState(initialDeals)
   const [totalCount, setTotalCount] = useState(initialTotalCount)
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
@@ -53,7 +55,43 @@ export default function DealsListClient({
     setCurrentPage(initialPage)
   }, [initialDeals, initialTotalCount, initialPage])
 
-  const totalPages = Math.ceil(totalCount / pageSize)
+  // 监听滚动显示"返回顶部"按钮
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 500)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // 无限滚动：监听滚动到底部
+  useEffect(() => {
+    if (!hasMore || isLoading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0]
+        if (first.isIntersecting) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const currentRef = loadMoreRef.current
+    if (currentRef) {
+      observer.observe(currentRef)
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deals.length, totalCount, isLoading])
+
   const hasMore = deals.length < totalCount
 
   // 构建带筛选参数的 URL
@@ -97,6 +135,9 @@ export default function DealsListClient({
       if (data.deals && data.deals.length > 0) {
         setDeals(prev => [...prev, ...data.deals])
         setCurrentPage(nextPage)
+        if (data.pagination?.total) {
+          setTotalCount(data.pagination.total)
+        }
       }
     } catch (error) {
       console.error('加载更多失败:', error)
@@ -105,27 +146,9 @@ export default function DealsListClient({
     }
   }
 
-  // 跳转到指定页（替换模式）
-  const goToPage = async (page: number) => {
-    if (isLoading || page < 1 || page > totalPages || page === currentPage) return
-
-    setIsLoading(true)
-    try {
-      const response = await fetch(buildApiUrl(page))
-      const data = await response.json()
-
-      if (data.deals) {
-        setDeals(data.deals)
-        setTotalCount(data.pagination.total)
-        setCurrentPage(page)
-        // 滚动到顶部
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
-    } catch (error) {
-      console.error('加载页面失败:', error)
-    } finally {
-      setIsLoading(false)
-    }
+  // 返回顶部
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -194,139 +217,55 @@ export default function DealsListClient({
       {deals.length === 0 && (
         <div className="text-center py-16">
           <p className="text-gray-500 text-lg">暂无优惠信息</p>
-          <p className="text-gray-400 text-sm mt-2">请稍后再试</p>
+          <p className="text-gray-400 text-sm mt-2">请稍后再试或调整筛选条件</p>
         </div>
       )}
 
-      {/* 加载更多按钮 */}
-      {hasMore && deals.length > 0 && (
-        <div className="flex justify-center pt-8">
-          <button
-            onClick={loadMore}
-            disabled={isLoading}
-            className="px-8 py-3 bg-brand-primary hover:bg-brand-hover text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? '加载中...' : '加载更多优惠'}
-          </button>
-        </div>
-      )}
-
-      {/* 分页导航 */}
-      {totalPages > 1 && (
+      {/* 加载进度和状态 */}
+      {deals.length > 0 && (
         <div className="flex flex-col items-center gap-4 pt-8 border-t border-gray-200">
-          {/* 页码信息 */}
+          {/* 加载进度 */}
           <div className="text-sm text-gray-600">
-            第 {currentPage} / {totalPages} 页 · 共 {totalCount} 个优惠
+            已加载 <span className="font-semibold text-brand-primary">{deals.length}</span> / {totalCount} 个优惠
           </div>
 
-          {/* 分页按钮 */}
-          <div className="flex items-center gap-2">
-            {/* 上一页 */}
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={isLoading || currentPage === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              上一页
-            </button>
-
-            {/* 页码按钮 */}
-            <div className="flex gap-1">
-              {/* 第一页 */}
-              {currentPage > 3 && (
-                <>
-                  <button
-                    onClick={() => goToPage(1)}
-                    className="w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    1
-                  </button>
-                  {currentPage > 4 && (
-                    <span className="w-10 h-10 flex items-center justify-center text-gray-400">...</span>
-                  )}
-                </>
-              )}
-
-              {/* 当前页附近的页码 */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => {
-                  return Math.abs(page - currentPage) <= 2
-                })
-                .map(page => (
-                  <button
-                    key={page}
-                    onClick={() => goToPage(page)}
-                    disabled={isLoading || page === currentPage}
-                    className={`w-10 h-10 rounded-lg transition-colors ${
-                      page === currentPage
-                        ? 'bg-brand-primary text-white font-medium'
-                        : 'border border-gray-300 hover:bg-gray-50'
-                    } disabled:cursor-not-allowed`}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-              {/* 最后一页 */}
-              {currentPage < totalPages - 2 && (
-                <>
-                  {currentPage < totalPages - 3 && (
-                    <span className="w-10 h-10 flex items-center justify-center text-gray-400">...</span>
-                  )}
-                  <button
-                    onClick={() => goToPage(totalPages)}
-                    className="w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    {totalPages}
-                  </button>
-                </>
+          {/* 加载状态 */}
+          {hasMore && (
+            <div ref={loadMoreRef} className="w-full flex justify-center">
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                  <span>加载中...</span>
+                </div>
+              ) : (
+                <button
+                  onClick={loadMore}
+                  className="px-8 py-3 bg-brand-primary hover:bg-brand-hover text-white font-medium rounded-lg transition-colors"
+                >
+                  加载更多优惠
+                </button>
               )}
             </div>
+          )}
 
-            {/* 下一页 */}
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={isLoading || currentPage === totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              下一页
-            </button>
-          </div>
-
-          {/* 快速跳转 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-600">跳转到</span>
-            <input
-              id="page-jump-input"
-              type="number"
-              min={1}
-              max={totalPages}
-              defaultValue={currentPage}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const page = parseInt((e.target as HTMLInputElement).value)
-                  if (page >= 1 && page <= totalPages) {
-                    goToPage(page)
-                  }
-                }
-              }}
-              className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-brand-primary"
-            />
-            <span className="text-gray-600">页</span>
-            <button
-              onClick={() => {
-                const input = document.getElementById('page-jump-input') as HTMLInputElement
-                const page = parseInt(input.value)
-                if (page >= 1 && page <= totalPages) {
-                  goToPage(page)
-                }
-              }}
-              className="px-3 py-1 bg-brand-primary hover:bg-brand-hover text-white rounded transition-colors"
-            >
-              跳转
-            </button>
-          </div>
+          {/* 已加载全部 */}
+          {!hasMore && totalCount > 0 && (
+            <div className="text-sm text-gray-500">
+              已显示全部 {totalCount} 个优惠 🎉
+            </div>
+          )}
         </div>
+      )}
+
+      {/* 返回顶部按钮 */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 bg-brand-primary hover:bg-brand-hover text-white p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
+          title="返回顶部"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
       )}
     </div>
   )

@@ -60,19 +60,14 @@ export default function RightSidebar({ categories, merchants }: RightSidebarProp
             <button
               key={category.id}
               onClick={() => handleCategoryClick(category.id)}
-              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors group"
+              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 w-4">
-                  {index + 1}
-                </span>
-                <Tag className="w-4 h-4 text-gray-400 group-hover:text-brand-primary transition-colors" />
-                <span className="text-sm text-gray-700 group-hover:text-brand-primary transition-colors">
-                  {category.translatedName}
-                </span>
-              </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                {category.count}
+              <span className="text-xs font-bold text-gray-400 w-4">
+                {index + 1}
+              </span>
+              <Tag className="w-4 h-4 text-gray-400 group-hover:text-brand-primary transition-colors" />
+              <span className="text-sm text-gray-700 group-hover:text-brand-primary transition-colors">
+                {category.translatedName}
               </span>
             </button>
           ))}
@@ -90,18 +85,13 @@ export default function RightSidebar({ categories, merchants }: RightSidebarProp
             <button
               key={merchant.name}
               onClick={() => handleMerchantClick(merchant.name)}
-              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors group"
+              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 w-4">
-                  {index + 1}
-                </span>
-                <span className="text-sm text-gray-700 group-hover:text-brand-primary transition-colors">
-                  {merchant.name}
-                </span>
-              </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                {merchant.count}
+              <span className="text-xs font-bold text-gray-400 w-4">
+                {index + 1}
+              </span>
+              <span className="text-sm text-gray-700 group-hover:text-brand-primary transition-colors">
+                {merchant.name}
               </span>
             </button>
           ))}

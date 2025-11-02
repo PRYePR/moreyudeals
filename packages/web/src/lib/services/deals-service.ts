@@ -520,6 +520,77 @@ export class DealsService {
       .sort((a, b) => b.count - a.count) // 按数量降序排序
   }
 
+  /**
+   * Get cross-filtering data for categories and merchants
+   * Returns the count of deals for each category-merchant combination
+   */
+  async getCategoryMerchantCrossFilters(): Promise<{
+    categoryByMerchant: Map<string, Map<string, number>>  // merchant -> category -> count
+    merchantByCategory: Map<string, Map<string, number>>  // category -> merchant -> count
+  }> {
+    const { entry } = await this.loadDeals(false)
+
+    // merchant -> category -> count
+    const categoryByMerchant = new Map<string, Map<string, number>>()
+    // category -> merchant -> count
+    const merchantByCategory = new Map<string, Map<string, number>>()
+
+    // 定义标准分类列表（与 getCategories 保持一致）
+    const standardCategories = [
+      'gaming', 'electronics', 'fashion', 'home-kitchen', 'sports-outdoor',
+      'beauty-health', 'automotive', 'food-drinks', 'toys-kids', 'books-media',
+      'pets', 'office', 'garden', 'general'
+    ]
+
+    for (const deal of entry.deals) {
+      const merchantName = deal.merchantName
+      if (!merchantName) continue
+
+      // 找到该 deal 所属的标准分类
+      const originalCategory = normaliseText(deal.category || 'general')
+      const allCategories = [originalCategory, ...(deal.categories || []).map(normaliseText)]
+
+      // 查找匹配的标准分类
+      let matchedCategories = new Set<string>()
+      for (const stdCat of standardCategories) {
+        const keywords = this.getCategoryKeywords(stdCat)
+        for (const cat of allCategories) {
+          if (keywords.includes(cat)) {
+            matchedCategories.add(stdCat)
+            break
+          }
+        }
+      }
+
+      // 如果没有匹配，归类到 general
+      if (matchedCategories.size === 0) {
+        matchedCategories.add('general')
+      }
+
+      // 更新统计数据
+      for (const categoryId of matchedCategories) {
+        // Update categoryByMerchant
+        if (!categoryByMerchant.has(merchantName)) {
+          categoryByMerchant.set(merchantName, new Map())
+        }
+        const categoryMap = categoryByMerchant.get(merchantName)!
+        categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1)
+
+        // Update merchantByCategory
+        if (!merchantByCategory.has(categoryId)) {
+          merchantByCategory.set(categoryId, new Map())
+        }
+        const merchantMap = merchantByCategory.get(categoryId)!
+        merchantMap.set(merchantName, (merchantMap.get(merchantName) || 0) + 1)
+      }
+    }
+
+    return {
+      categoryByMerchant,
+      merchantByCategory
+    }
+  }
+
   private async loadDeals(forceRefresh: boolean): Promise<{ entry: DealsCacheEntry; cacheHit: boolean }> {
     if (!forceRefresh) {
       const cached = await defaultCache.get<DealsCacheEntry>(cacheKey)

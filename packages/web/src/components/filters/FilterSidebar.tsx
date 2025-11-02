@@ -8,6 +8,8 @@ interface FilterSidebarProps {
   merchants?: Array<{ name: string; count: number }>
   currentMerchant?: string | null
   currentSort?: string | null
+  currentCategory?: string | null
+  merchantByCategory?: Record<string, Record<string, number>>
 }
 
 const SORT_OPTIONS = [
@@ -18,7 +20,13 @@ const SORT_OPTIONS = [
   { id: 'expiresAt-asc', label: '即将过期', value: { sortBy: 'expiresAt', sortOrder: 'asc' } },
 ]
 
-export default function FilterSidebar({ merchants = [], currentMerchant, currentSort }: FilterSidebarProps) {
+export default function FilterSidebar({
+  merchants = [],
+  currentMerchant,
+  currentSort,
+  currentCategory,
+  merchantByCategory = {}
+}: FilterSidebarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -160,26 +168,39 @@ export default function FilterSidebar({ merchants = [], currentMerchant, current
               {merchants.slice(0, 20).map((merchant) => {
                 const isActive = currentMerchant === merchant.name
 
+                // 判断该商家是否在当前选中的分类下有商品
+                let isDisabled = false
+                if (currentCategory && currentCategory !== 'all' && merchantByCategory[currentCategory]) {
+                  const categoryMerchants = merchantByCategory[currentCategory]
+                  isDisabled = !categoryMerchants[merchant.name] || categoryMerchants[merchant.name] === 0
+                }
+
                 return (
                   <label
                     key={merchant.name}
-                    className="flex items-center justify-between gap-3 cursor-pointer group"
+                    className={`flex items-center gap-3 group ${
+                      isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isActive}
-                        onChange={() => handleMerchantToggle(merchant.name)}
-                        className="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-brand-primary"
-                      />
-                      <span className={`text-sm ${
-                        isActive ? 'text-brand-primary font-medium' : 'text-gray-700 group-hover:text-brand-primary'
-                      }`}>
-                        {merchant.name}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {merchant.count}
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={() => handleMerchantToggle(merchant.name)}
+                      disabled={isDisabled}
+                      className={`w-4 h-4 border-gray-300 rounded focus:ring-brand-primary ${
+                        isDisabled
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-brand-primary'
+                      }`}
+                    />
+                    <span className={`text-sm ${
+                      isDisabled
+                        ? 'text-gray-400'
+                        : isActive
+                          ? 'text-brand-primary font-medium'
+                          : 'text-gray-700 group-hover:text-brand-primary'
+                    }`}>
+                      {merchant.name}
                     </span>
                   </label>
                 )

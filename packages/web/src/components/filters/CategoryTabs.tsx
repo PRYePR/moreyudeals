@@ -29,6 +29,8 @@ interface Category {
 interface CategoryTabsProps {
   categories: Category[]
   currentCategory?: string | null
+  currentMerchant?: string | null
+  categoryByMerchant?: Record<string, Record<string, number>>
 }
 
 // 分类图标映射（14个标准分类）
@@ -60,7 +62,12 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'sports and outdoor': <Bike className="w-4 h-4" />,
 }
 
-export default function CategoryTabs({ categories, currentCategory }: CategoryTabsProps) {
+export default function CategoryTabs({
+  categories,
+  currentCategory,
+  currentMerchant,
+  categoryByMerchant = {}
+}: CategoryTabsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -88,9 +95,21 @@ export default function CategoryTabs({ categories, currentCategory }: CategoryTa
     icon: <Tag className="w-4 h-4" />
   }
 
-  // 只显示有优惠的分类（数量 > 0）
-  const categoriesWithDeals = categories.filter(cat => cat.count > 0)
-  const displayCategories = [allCategory, ...categoriesWithDeals.slice(0, 13)] // 最多显示13个分类 + 全部
+  // 根据当前选中的商家动态过滤分类
+  let displayCategories: typeof categories
+  if (currentMerchant && categoryByMerchant[currentMerchant]) {
+    // 如果选中了商家，只显示该商家有商品的分类
+    const merchantCategories = categoryByMerchant[currentMerchant]
+    displayCategories = categories.filter(cat => {
+      // 检查该商家在这个分类下是否有商品
+      return merchantCategories[cat.id] && merchantCategories[cat.id] > 0
+    })
+  } else {
+    // 没有选中商家时，显示全部14个标准分类（包括 count = 0 的分类）
+    displayCategories = categories.slice(0, 14)
+  }
+
+  const allDisplayCategories = [allCategory, ...displayCategories]
   const normalizedCurrent = currentCategory?.toLowerCase()
 
   return (
@@ -98,7 +117,7 @@ export default function CategoryTabs({ categories, currentCategory }: CategoryTa
       {/* 横向滚动容器 */}
       <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex gap-2 pb-2">
-          {displayCategories.map((category) => {
+          {allDisplayCategories.map((category) => {
             const isActive = category.id === 'all'
               ? !normalizedCurrent
               : normalizedCurrent === category.id
@@ -119,11 +138,6 @@ export default function CategoryTabs({ categories, currentCategory }: CategoryTa
                 {CATEGORY_ICONS[category.id] || category.icon}
                 <span className="font-medium text-sm">
                   {category.translatedName}
-                </span>
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-white/20' : 'bg-gray-100'
-                }`}>
-                  {category.count}
                 </span>
               </button>
             )

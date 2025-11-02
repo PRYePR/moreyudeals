@@ -63,20 +63,36 @@ async function getDealsData(searchParams: { [key: string]: string | string[] | u
 
 async function getCategoriesAndMerchants() {
   try {
-    const [categoriesData, merchants] = await Promise.all([
+    const [categoriesData, merchants, crossFilters] = await Promise.all([
       dealsService.getCategories(),
-      dealsService.getMerchants()
+      dealsService.getMerchants(),
+      dealsService.getCategoryMerchantCrossFilters()
     ])
+
+    // Convert Maps to plain objects for client components
+    const categoryByMerchant: Record<string, Record<string, number>> = {}
+    for (const [merchant, categoryMap] of crossFilters.categoryByMerchant.entries()) {
+      categoryByMerchant[merchant] = Object.fromEntries(categoryMap)
+    }
+
+    const merchantByCategory: Record<string, Record<string, number>> = {}
+    for (const [category, merchantMap] of crossFilters.merchantByCategory.entries()) {
+      merchantByCategory[category] = Object.fromEntries(merchantMap)
+    }
 
     return {
       categories: categoriesData.categories,
-      merchants
+      merchants,
+      categoryByMerchant,
+      merchantByCategory
     }
   } catch (error) {
     console.error('Error fetching categories and merchants:', error)
     return {
       categories: [],
-      merchants: []
+      merchants: [],
+      categoryByMerchant: {},
+      merchantByCategory: {}
     }
   }
 }
@@ -88,7 +104,7 @@ export default async function HomePage({
 }) {
   const params = await searchParams
   const { deals, totalCount } = await getDealsData(params)
-  const { categories, merchants } = await getCategoriesAndMerchants()
+  const { categories, merchants, categoryByMerchant, merchantByCategory } = await getCategoriesAndMerchants()
 
   // 获取当前筛选参数
   const currentCategory = typeof params.category === 'string' ? params.category : null
@@ -184,6 +200,8 @@ export default async function HomePage({
         <CategoryTabs
           categories={categories}
           currentCategory={currentCategory}
+          currentMerchant={currentMerchant}
+          categoryByMerchant={categoryByMerchant}
         />
       </div>
 
@@ -195,6 +213,8 @@ export default async function HomePage({
               <FilterSidebar
                 merchants={merchants}
                 currentMerchant={currentMerchant}
+                currentCategory={currentCategory}
+                merchantByCategory={merchantByCategory}
               />
             </div>
           </aside>
