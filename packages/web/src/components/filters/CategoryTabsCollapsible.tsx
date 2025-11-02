@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import {
   Gamepad2,
   Laptop,
@@ -26,16 +28,15 @@ interface Category {
   icon?: React.ReactNode
 }
 
-interface CategoryTabsProps {
+interface CategoryTabsCollapsibleProps {
   categories: Category[]
   currentCategory?: string | null
   currentMerchant?: string | null
   categoryByMerchant?: Record<string, Record<string, number>>
 }
 
-// 分类图标映射（14个标准分类）
+// 分类图标映射
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  // 标准分类 ID
   'gaming': <Gamepad2 className="w-4 h-4" />,
   'electronics': <Laptop className="w-4 h-4" />,
   'fashion': <Shirt className="w-4 h-4" />,
@@ -50,8 +51,6 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'office': <Briefcase className="w-4 h-4" />,
   'garden': <Leaf className="w-4 h-4" />,
   'general': <Tag className="w-4 h-4" />,
-
-  // 兼容旧格式
   'home & kitchen': <Home className="w-4 h-4" />,
   'home and kitchen': <Home className="w-4 h-4" />,
   'beauty & health': <Heart className="w-4 h-4" />,
@@ -62,12 +61,13 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'sports and outdoor': <Bike className="w-4 h-4" />,
 }
 
-export default function CategoryTabs({
+export default function CategoryTabsCollapsible({
   categories,
   currentCategory,
   currentMerchant,
   categoryByMerchant = {}
-}: CategoryTabsProps) {
+}: CategoryTabsCollapsibleProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -80,7 +80,6 @@ export default function CategoryTabs({
       params.set('category', categoryId)
     }
 
-    // 清除页码参数
     params.delete('page')
 
     const queryString = params.toString()
@@ -98,25 +97,31 @@ export default function CategoryTabs({
   // 根据当前选中的商家动态过滤分类
   let displayCategories: typeof categories
   if (currentMerchant && categoryByMerchant[currentMerchant]) {
-    // 如果选中了商家，只显示该商家有商品的分类
     const merchantCategories = categoryByMerchant[currentMerchant]
     displayCategories = categories.filter(cat => {
-      // 检查该商家在这个分类下是否有商品
       return merchantCategories[cat.id] && merchantCategories[cat.id] > 0
     })
   } else {
-    // 没有选中商家时，显示全部14个标准分类（包括 count = 0 的分类）
     displayCategories = categories.slice(0, 14)
   }
 
   const allDisplayCategories = [allCategory, ...displayCategories]
   const normalizedCurrent = currentCategory?.toLowerCase()
 
+  // 移动端：显示前6个 + "更多"按钮
+  // 桌面端：显示全部
+  const MOBILE_DISPLAY_COUNT = 6
+  const visibleCategories = isExpanded
+    ? allDisplayCategories
+    : allDisplayCategories.slice(0, MOBILE_DISPLAY_COUNT)
+
+  const hasMore = allDisplayCategories.length > MOBILE_DISPLAY_COUNT
+
   return (
-    <div className="relative">
-      {/* 多行网格布局 - 响应式显示 */}
+    <div className="relative space-y-2">
+      {/* 主要分类网格 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
-        {allDisplayCategories.map((category) => {
+        {visibleCategories.map((category) => {
           const isActive = category.id === 'all'
             ? !normalizedCurrent
             : normalizedCurrent === category.id
@@ -155,6 +160,28 @@ export default function CategoryTabs({
           )
         })}
       </div>
+
+      {/* 展开/收起按钮 (仅在移动端且有更多分类时显示) */}
+      {hasMore && (
+        <div className="flex justify-center md:hidden">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-primary hover:text-brand-primary-dark transition-colors"
+          >
+            <span>
+              {isExpanded
+                ? `收起 (${allDisplayCategories.length - MOBILE_DISPLAY_COUNT} 个分类)`
+                : `显示更多 (${allDisplayCategories.length - MOBILE_DISPLAY_COUNT} 个分类)`
+              }
+            </span>
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
