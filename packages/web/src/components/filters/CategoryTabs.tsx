@@ -140,17 +140,6 @@ export default function CategoryTabs({
               <span className="font-medium text-sm truncate">
                 {category.translatedName}
               </span>
-              {category.count > 0 && (
-                <span className={`
-                  text-xs px-1.5 py-0.5 rounded-full flex-shrink-0
-                  ${isActive
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-100 text-gray-600'
-                  }
-                `}>
-                  {category.count}
-                </span>
-              )}
             </button>
           )
         })}
