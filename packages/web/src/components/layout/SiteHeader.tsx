@@ -25,11 +25,19 @@ import {
   Leaf
 } from 'lucide-react'
 
-interface SiteHeaderProps {
-  merchants?: Array<{ name: string; count: number }>
+interface Category {
+  id: string
+  name: string
+  translatedName: string
+  count: number
 }
 
-export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderProps) {
+interface SiteHeaderProps {
+  merchants?: Array<{ name: string; count: number }>
+  categories?: Category[]
+}
+
+export default function SiteHeader({ merchants: allMerchants = [], categories: allCategories = [] }: SiteHeaderProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -37,27 +45,39 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [merchantsOpen, setMerchantsOpen] = useState(false)
 
-  // 热门分类（6个）
-  const popularCategories = [
-    { id: 'gaming', name: 'Gaming', label: '游戏娱乐', Icon: Gamepad2 },
-    { id: 'electronics', name: 'Electronics', label: '电子产品', Icon: Laptop },
-    { id: 'fashion', name: 'Fashion', label: '时尚服饰', Icon: Shirt },
-    { id: 'home-kitchen', name: 'Home & Kitchen', label: '家居厨房', Icon: Home },
-    { id: 'sports-outdoor', name: 'Sports & Outdoor', label: '运动户外', Icon: Bike },
-    { id: 'beauty-health', name: 'Beauty & Health', label: '美妆护肤', Icon: Heart },
-  ]
+  // 分类图标映射
+  const categoryIcons: Record<string, any> = {
+    'gaming': Gamepad2,
+    'electronics': Laptop,
+    'fashion': Shirt,
+    'home-kitchen': Home,
+    'sports-outdoor': Bike,
+    'beauty-health': Heart,
+    'automotive': Car,
+    'food-drinks': Utensils,
+    'toys-kids': Baby,
+    'books-media': Book,
+    'pets': PawPrint,
+    'office': Briefcase,
+    'garden': Leaf,
+    'general': Tag,
+  }
 
-  // 更多分类（8个）
-  const moreCategories = [
-    { id: 'automotive', name: 'Automotive', label: '汽车用品', Icon: Car },
-    { id: 'food-drinks', name: 'Food & Drinks', label: '食品饮料', Icon: Utensils },
-    { id: 'toys-kids', name: 'Toys & Kids', label: '玩具儿童', Icon: Baby },
-    { id: 'books-media', name: 'Books & Media', label: '图书影音', Icon: Book },
-    { id: 'pets', name: 'Pets', label: '宠物用品', Icon: PawPrint },
-    { id: 'office', name: 'Office', label: '办公用品', Icon: Briefcase },
-    { id: 'garden', name: 'Garden', label: '园艺花园', Icon: Leaf },
-    { id: 'general', name: 'General', label: '综合', Icon: Tag },
-  ]
+  // 按商品数量排序分类
+  const sortedCategories = [...allCategories]
+    .sort((a, b) => b.count - a.count)
+    .map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      label: cat.translatedName,
+      Icon: categoryIcons[cat.id] || Tag
+    }))
+
+  // 热门分类（前6个）
+  const popularCategories = sortedCategories.slice(0, 6)
+
+  // 更多分类（剩余的）
+  const moreCategories = sortedCategories.slice(6)
 
   // 热门商家（取前8个，按优惠数量排序）
   const merchants = allMerchants
@@ -125,6 +145,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
             {/* 分类下拉 */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => {
                   setCategoriesOpen(!categoriesOpen)
                   setMerchantsOpen(false)
@@ -152,6 +173,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {popularCategories.map((category) => (
                     <button
                       key={category.id}
+                      type="button"
                       onClick={() => handleCategoryClick(category.id)}
                       className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
                     >
@@ -174,6 +196,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {moreCategories.map((category) => (
                     <button
                       key={category.id}
+                      type="button"
                       onClick={() => handleCategoryClick(category.id)}
                       className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
                     >
@@ -192,6 +215,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
             {/* 商家下拉 */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => {
                   setMerchantsOpen(!merchantsOpen)
                   setCategoriesOpen(false)
@@ -218,6 +242,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {merchants.map((merchant) => (
                     <button
                       key={merchant.name}
+                      type="button"
                       onClick={() => handleMerchantClick(merchant.name)}
                       className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-50 transition-colors group"
                     >
@@ -250,6 +275,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
 
           {/* 移动端菜单按钮 */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="菜单"
@@ -284,6 +310,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
             {/* 分类 */}
             <div>
               <button
+                type="button"
                 onClick={() => setCategoriesOpen(!categoriesOpen)}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
@@ -302,6 +329,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {popularCategories.map((category) => (
                     <button
                       key={category.id}
+                      type="button"
                       onClick={() => handleCategoryClick(category.id)}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
                     >
@@ -320,6 +348,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {moreCategories.map((category) => (
                     <button
                       key={category.id}
+                      type="button"
                       onClick={() => handleCategoryClick(category.id)}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
                     >
@@ -334,6 +363,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
             {/* 商家 */}
             <div>
               <button
+                type="button"
                 onClick={() => setMerchantsOpen(!merchantsOpen)}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
@@ -351,6 +381,7 @@ export default function SiteHeader({ merchants: allMerchants = [] }: SiteHeaderP
                   {merchants.map((merchant) => (
                     <button
                       key={merchant.name}
+                      type="button"
                       onClick={() => handleMerchantClick(merchant.name)}
                       className="w-full flex items-center justify-between px-4 py-2 rounded-lg text-left hover:bg-gray-50 transition-colors"
                     >

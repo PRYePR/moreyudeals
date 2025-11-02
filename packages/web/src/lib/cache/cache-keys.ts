@@ -16,13 +16,16 @@ export const CACHE_PREFIXES = {
 
 /**
  * 缓存 TTL 配置（秒）
+ * 开发模式使用更短的缓存时间，方便实时查看抓取效果
  */
+const isDevelopment = process.env.NODE_ENV === 'development'
+
 export const CACHE_TTL = {
-  DEAL: 5 * 60,           // 5 分钟
-  DEALS_LIST: 10 * 60,    // 10 分钟
-  TRANSLATION: 24 * 60 * 60, // 24 小时
-  CATEGORY: 60 * 60,      // 1 小时
-  MERCHANT: 24 * 60 * 60, // 24 小时
+  DEAL: isDevelopment ? 30 : 5 * 60,           // 开发: 30秒, 生产: 5分钟
+  DEALS_LIST: isDevelopment ? 30 : 10 * 60,    // 开发: 30秒, 生产: 10分钟
+  TRANSLATION: 24 * 60 * 60,                   // 24 小时 (不影响)
+  CATEGORY: isDevelopment ? 60 : 60 * 60,      // 开发: 1分钟, 生产: 1小时
+  MERCHANT: isDevelopment ? 60 : 24 * 60 * 60, // 开发: 1分钟, 生产: 24小时
 } as const
 
 /**

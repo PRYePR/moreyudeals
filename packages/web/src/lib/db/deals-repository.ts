@@ -116,9 +116,8 @@ export class DealsRepository {
       paramIndex += 2
     }
 
-    // Filter: Only show translated or processing deals (exclude failed)
-    // Note: processing deals are shown so users see all available content
-    conditions.push(`translation_status IN ('completed', 'processing')`)
+    // Filter: Only show translated deals (exclude pending, processing, failed)
+    conditions.push(`translation_status = 'completed'`)
 
     // Note: We don't filter by expires_at because many deals don't have expiry dates
     // and NULL expiry means the deal is ongoing. Users can see the expiry badge on cards.

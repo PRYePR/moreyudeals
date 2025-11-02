@@ -12,6 +12,11 @@ import { HomepageFetcher, HomepageArticle } from '../services/homepage-fetcher';
 import { FetchResult } from '../types/fetcher.types';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal } from '../types/deal.types';
+import {
+  createNormalizationStats,
+  recordUnmatchedMerchant,
+  getUnmatchedReport
+} from '../config/merchant-mapping';
 
 // API 配置
 const API_URL =
@@ -50,6 +55,9 @@ export class SparhamsterFetcher {
       duplicates: 0,
       errors: [],
     };
+
+    // 商家规范化统计
+    const merchantStats = createNormalizationStats();
 
     try {
       // Step 1: 从 REST API 获取结构化数据
@@ -96,7 +104,7 @@ export class SparhamsterFetcher {
         const post = posts[i];
 
         try {
-          const action = await this.processPost(post, articleMap);
+          const action = await this.processPost(post, articleMap, merchantStats);
 
           if (action.result === 'inserted') {
             result.inserted++;
@@ -125,6 +133,16 @@ export class SparhamsterFetcher {
       console.log(`   - 成功补充: ${enrichedCount}/${posts.length} (${enrichmentRate}%)`);
       console.log(`   - 使用 fallback: ${posts.length - enrichedCount}/${posts.length}`);
 
+      // 打印商家规范化统计
+      console.log(`\n🏪 商家规范化统计:`);
+      console.log(`   - 总处理数: ${merchantStats.totalProcessed}`);
+      console.log(`   - 已匹配规范名称: ${merchantStats.matched}`);
+      console.log(`   - 未匹配规范名称: ${merchantStats.unmatched}`);
+
+      if (merchantStats.unmatched > 0) {
+        console.log(getUnmatchedReport(merchantStats));
+      }
+
     } catch (error) {
       const message = `抓取 Sparhamster API 失败: ${(error as Error).message}`;
       console.error(`❌ ${message}`);
@@ -138,14 +156,28 @@ export class SparhamsterFetcher {
    * 处理单个帖子
    * @param post REST API 返回的文章数据
    * @param articleMap 首页 HTML 提取的文章信息映射
+   * @param merchantStats 商家规范化统计对象
    * @returns 处理结果和是否成功补充商家信息
    */
   private async processPost(
     post: WordPressPost,
-    articleMap: Map<string, HomepageArticle>
+    articleMap: Map<string, HomepageArticle>,
+    merchantStats: any
   ): Promise<{ result: 'inserted' | 'updated' | 'duplicate'; enriched: boolean }> {
     // 1. 标准化数据（从 REST API 提取结构化字段）
     const deal = await this.normalizer.normalize(post);
+
+    // 1.5 记录商家规范化统计
+    if (deal.merchant) {
+      merchantStats.totalProcessed++;
+      // 检查是否匹配到规范名称（通过比较 canonicalMerchantName 和 merchant）
+      if (deal.canonicalMerchantName && deal.canonicalMerchantName !== deal.merchant) {
+        merchantStats.matched++;
+      } else if (!deal.canonicalMerchantName || deal.canonicalMerchantName === deal.merchant) {
+        merchantStats.unmatched++;
+        recordUnmatchedMerchant(merchantStats, deal.merchant);
+      }
+    }
 
     // 1.5 从 content.rendered 提取过期时间
     const expiryDate = this.extractExpiryDate(post.content?.rendered || '');

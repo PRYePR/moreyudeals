@@ -46,10 +46,14 @@ export interface Deal {
   images?: string[];             // 所有图片 URL 列表
 
   // 商家信息
-  merchant?: string;             // 商家名称
+  merchant?: string;             // 商家名称 (原始)
   merchantLogo?: string;         // 商家 Logo URL
   merchantLink?: string;         // 商家原始链接 (从首页HTML获取)
   fallbackLink?: string;         // 临时回退链接 (文章URL,当merchantLink未抓到时使用)
+
+  // 规范商家信息 (用于统一展示和筛选)
+  canonicalMerchantId?: string;  // 规范商家ID (用于URL和API)
+  canonicalMerchantName?: string; // 规范商家显示名称 (前端展示用)
 
   // 联盟链接 (STEP6 实现)
   affiliateLink?: string;        // 替换后的联盟链接
@@ -132,6 +136,9 @@ export interface DealRow {
   merchant_logo?: string;
   merchant_link?: string;
   fallback_link?: string;
+
+  canonical_merchant_id?: string;
+  canonical_merchant_name?: string;
 
   affiliate_link?: string;
   affiliate_enabled: boolean;

@@ -40,7 +40,7 @@ function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
 
     // Extended fields
     wordpressId: dbDeal.sourcePostId ? parseInt(dbDeal.sourcePostId) : undefined,
-    merchantName: dbDeal.merchant || undefined,
+    merchantName: dbDeal.canonicalMerchantName || dbDeal.merchant || undefined,
     merchantLogo: dbDeal.merchantLogo || undefined,
     tags: dbDeal.tags || [],
     featured: dbDeal.isFeatured,

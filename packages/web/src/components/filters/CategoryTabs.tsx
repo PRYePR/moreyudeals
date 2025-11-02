@@ -98,15 +98,24 @@ export default function CategoryTabs({
   // 根据当前选中的商家动态过滤分类
   let displayCategories: typeof categories
   if (currentMerchant && categoryByMerchant[currentMerchant]) {
-    // 如果选中了商家，只显示该商家有商品的分类
+    // 如果选中了商家，只显示该商家有商品的分类，并按数量排序
     const merchantCategories = categoryByMerchant[currentMerchant]
-    displayCategories = categories.filter(cat => {
-      // 检查该商家在这个分类下是否有商品
-      return merchantCategories[cat.id] && merchantCategories[cat.id] > 0
-    })
+    displayCategories = categories
+      .filter(cat => {
+        // 检查该商家在这个分类下是否有商品
+        return merchantCategories[cat.id] && merchantCategories[cat.id] > 0
+      })
+      .sort((a, b) => {
+        // 按照该商家在这个分类下的商品数量降序排列
+        const countA = merchantCategories[a.id] || 0
+        const countB = merchantCategories[b.id] || 0
+        return countB - countA
+      })
   } else {
-    // 没有选中商家时，显示全部14个标准分类（包括 count = 0 的分类）
-    displayCategories = categories.slice(0, 14)
+    // 没有选中商家时，先按总数量降序排列，再显示前14个
+    displayCategories = [...categories]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 14)
   }
 
   const allDisplayCategories = [allCategory, ...displayCategories]
@@ -124,6 +133,7 @@ export default function CategoryTabs({
           return (
             <button
               key={category.id}
+              type="button"
               onClick={() => handleCategoryClick(category.id)}
               className={`
                 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg

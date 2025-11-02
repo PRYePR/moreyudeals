@@ -5,6 +5,7 @@
 import { CoreTranslationManager, createTranslationManager } from '@moreyudeals/translation';
 import { DatabaseManager } from './database';
 import { TranslationJob, TranslationResult, RSSItem } from './types';
+import { prepareForTranslation, cleanTranslatedHtml } from './utils/html-cleaner';
 
 export class TranslationWorker {
   private translationManager: CoreTranslationManager;
@@ -93,13 +94,20 @@ export class TranslationWorker {
 
       // 翻译HTML内容 (content_html -> description)
       if (deal.contentHtml) {
+        // 1. 预处理：保护换行符（DeepL 会删除纯文本的换行）
+        const preparedHtml = prepareForTranslation(deal.contentHtml);
+
+        // 2. 翻译
         const htmlResult = await this.translationManager.translate({
-          text: deal.contentHtml,
+          text: preparedHtml,
           from: 'de' as any,
           to: 'zh' as any
         });
-        translations.description = htmlResult.translatedText;
-        console.log(`  ✅ HTML内容已翻译 (${deal.contentHtml.length} -> ${htmlResult.translatedText.length} 字符)`);
+
+        // 3. 清理翻译后的HTML，修复DeepL产生的格式问题
+        const cleanedHtml = cleanTranslatedHtml(htmlResult.translatedText);
+        translations.description = cleanedHtml;
+        console.log(`  ✅ HTML内容已翻译并清理 (${deal.contentHtml.length} -> ${cleanedHtml.length} 字符)`);
       }
 
       // 更新数据库

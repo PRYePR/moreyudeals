@@ -243,7 +243,7 @@ export default async function HomePage({
   return (
     <div className="min-h-screen bg-neutral-bg">
       {/* Header */}
-      <SiteHeader merchants={merchants} />
+      <SiteHeader merchants={merchants} categories={categories} />
 
       {/* Main Content - 根据模式渲染不同布局 */}
       {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}

@@ -59,7 +59,7 @@ export default function DealCard({ deal }: DealCardProps) {
             <div className="absolute top-2 left-2 w-10 h-10 bg-white rounded-md p-1 shadow-md">
               <Image
                 src={deal.merchantLogo}
-                alt={deal.merchant || 'Merchant'}
+                alt={deal.canonicalMerchantName || deal.merchant || 'Merchant'}
                 width={40}
                 height={40}
                 className="object-contain"
@@ -136,12 +136,12 @@ export default function DealCard({ deal }: DealCardProps) {
             {/* Bottom Info */}
             <div className="flex items-center justify-between text-xs text-gray-500">
               <div className="flex items-center gap-1">
-                {deal.merchant && (
+                {(deal.canonicalMerchantName || deal.merchant) && (
                   <>
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
-                    <span className="truncate max-w-[100px]">{deal.merchant}</span>
+                    <span className="truncate max-w-[100px]">{deal.canonicalMerchantName || deal.merchant}</span>
                   </>
                 )}
               </div>

@@ -52,6 +52,10 @@ export interface Deal {
   merchantLink: string | null
   fallbackLink: string | null
 
+  // Canonical merchant fields (规范商家信息)
+  canonicalMerchantId: string | null
+  canonicalMerchantName: string | null
+
   // Deal metadata
   dealUrl: string | null
   affiliateUrl: string | null
@@ -126,6 +130,9 @@ export interface DealRow {
   merchant_link: string | null
   fallback_link: string | null
 
+  canonical_merchant_id: string | null
+  canonical_merchant_name: string | null
+
   deal_url: string | null
   affiliate_url: string | null
   coupon_code: string | null
@@ -194,6 +201,9 @@ export function mapRowToDeal(row: DealRow): Deal {
     merchantLogo: row.merchant_logo,
     merchantLink: row.merchant_link,
     fallbackLink: row.fallback_link,
+
+    canonicalMerchantId: row.canonical_merchant_id,
+    canonicalMerchantName: row.canonical_merchant_name,
 
     dealUrl: row.deal_url,
     affiliateUrl: row.affiliate_url,

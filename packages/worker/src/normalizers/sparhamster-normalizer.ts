@@ -8,6 +8,7 @@ import { BaseNormalizer } from './base-normalizer';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal, ContentBlock } from '../types/deal.types';
 import { getMerchantLogo } from '../config/merchant-logos';
+import { normalizeMerchant } from '../utils/merchant-normalizer';
 
 /**
  * Sparhamster 数据标准化器
@@ -85,6 +86,11 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     const merchant = merchantInfo?.merchant;
     const merchantLogo = merchantInfo?.logo;
 
+    // 规范化商家名称（统一不同站点的商家写法）
+    const normalizedMerchant = normalizeMerchant(merchant);
+    const canonicalMerchantId = normalizedMerchant.canonicalId;
+    const canonicalMerchantName = normalizedMerchant.canonicalName;
+
     // 不再从 content.rendered 提取 forward 链接
     // merchantLink 和 merchantLogo 将从首页 HTML 获取，此处初始化为 undefined
     const merchantLink = undefined;
@@ -145,6 +151,9 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
       merchantLogo,
       merchantLink: merchantLink || undefined,
       fallbackLink,
+
+      canonicalMerchantId,
+      canonicalMerchantName,
 
       affiliateLink: affiliateInfo?.affiliateLink,
       affiliateEnabled: affiliateInfo?.enabled || false,
