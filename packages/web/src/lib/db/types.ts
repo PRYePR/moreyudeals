@@ -23,8 +23,9 @@ export interface Deal {
   contentHash: string | null
 
   // Content fields
-  title: string // 翻译后的标题
-  originalTitle: string | null // 德语原标题
+  title: string | null // 中文翻译标题（前端默认显示，主字段）
+  titleDe: string | null // 清理后的德语标题（前端德语切换时显示）
+  originalTitle: string | null // 原始德语标题（含价格后缀，仅归档留存）
   description: string | null // 翻译后的描述
   originalDescription: string | null // 德语原描述
   contentHtml: string | null // 德语 HTML 内容
@@ -105,8 +106,9 @@ export interface DealRow {
   slug: string | null
   content_hash: string | null
 
-  title: string // 翻译后的标题
-  original_title: string | null // 德语原标题
+  title: string | null // 中文翻译标题
+  title_de: string | null // 清理后的德语标题
+  original_title: string | null // 原始德语标题（含价格后缀）
   description: string | null // 翻译后的描述
   original_description: string | null // 德语原描述
   content_html: string | null // 德语 HTML
@@ -178,8 +180,9 @@ export function mapRowToDeal(row: DealRow): Deal {
     contentHash: row.content_hash,
 
     // Content fields
-    title: row.title || '', // 翻译后的标题
-    originalTitle: row.original_title, // 德语原标题
+    title: row.title, // 中文翻译标题（主字段）
+    titleDe: row.title_de, // 清理后的德语标题
+    originalTitle: row.original_title, // 原始德语标题（含价格后缀）
     description: row.description, // 翻译后的描述
     originalDescription: row.original_description, // 德语原描述
     contentHtml: row.content_html, // 德语 HTML

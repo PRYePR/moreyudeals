@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Deal } from '@/lib/db/types'
 import { formatDistance } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { TranslatableText } from '@/components/TranslatableContent'
 
 interface DealCardProps {
   deal: Deal
@@ -41,7 +42,7 @@ export default function DealCard({ deal }: DealCardProps) {
           {deal.imageUrl ? (
             <Image
               src={deal.imageUrl}
-              alt={deal.titleZh || deal.title}
+              alt={deal.title || ''}
               fill
               className="object-cover group-hover:scale-110 transition-transform duration-300"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -106,15 +107,20 @@ export default function DealCard({ deal }: DealCardProps) {
             </div>
           )}
 
-          {/* Title - 优先显示中文翻译 */}
-          <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors min-h-[3.5rem]">
-            {deal.titleZh || deal.title}
-          </h3>
+          {/* Title - 支持中文/德语切换 */}
+          {deal.title && (
+            <TranslatableText
+              originalText={deal.originalTitle || deal.title}
+              translatedText={deal.translatedTitle || deal.title}
+              as="h3"
+              className="font-bold text-lg text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors min-h-[3.5rem]"
+            />
+          )}
 
-          {/* Description - 优先显示中文翻译 */}
-          {(deal.descriptionZh || deal.description) && (
+          {/* Description - 显示翻译后的描述 */}
+          {deal.description && (
             <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-              {deal.descriptionZh || deal.description}
+              {deal.description}
             </p>
           )}
 

@@ -4,6 +4,7 @@ import RightSidebar from '@/components/layout/RightSidebar'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
+import TranslationWrapper from '@/components/layout/TranslationWrapper'
 import { dealsService } from '@/lib/services/deals-service'
 
 const PAGE_SIZE = 20
@@ -241,14 +242,15 @@ export default async function HomePage({
   }
 
   return (
-    <div className="min-h-screen bg-neutral-bg">
-      {/* Header */}
-      <SiteHeader merchants={merchants} categories={categories} />
+    <TranslationWrapper>
+      <div className="min-h-screen bg-neutral-bg">
+        {/* Header */}
+        <SiteHeader merchants={merchants} categories={categories} />
 
-      {/* Main Content - 根据模式渲染不同布局 */}
-      {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
+        {/* Main Content - 根据模式渲染不同布局 */}
+        {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
 
-      {/* Stats Section - 简化版 */}
+        {/* Stats Section - 简化版 */}
       <section className="bg-white border-t border-gray-200 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -291,6 +293,7 @@ export default async function HomePage({
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </TranslationWrapper>
   )
 }

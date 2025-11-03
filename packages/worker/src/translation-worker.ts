@@ -69,8 +69,16 @@ export class TranslationWorker {
    * 翻译单个 Deal
    */
   private async translateDeal(deal: any): Promise<void> {
-    // 使用清理后的 title（无价格）而不是 originalTitle（有价格）
-    const cleanTitle = deal.title || deal.originalTitle;
+    // 如果 titleDe 为空，说明标题本身为空，跳过翻译
+    if (!deal.titleDe) {
+      console.log(`⚠️  跳过翻译（titleDe为空）: ${deal.originalTitle?.substring(0, 50)}...`);
+      await this.database.updateDeal(deal.id, {
+        translationStatus: 'failed'
+      });
+      return;
+    }
+
+    const cleanTitle = deal.titleDe;
     console.log(`🌐 开始翻译: ${cleanTitle?.substring(0, 50)}...`);
 
     try {

@@ -16,9 +16,9 @@ const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 200 : ENV_LIMI
 function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
   return {
     id: dbDeal.id,
-    title: dbDeal.title, // 已翻译的标题
-    originalTitle: dbDeal.originalTitle || dbDeal.title, // 德语原标题
-    translatedTitle: dbDeal.title, // 已翻译的标题
+    title: dbDeal.title, // 已翻译的标题（中文）
+    originalTitle: dbDeal.titleDe || dbDeal.title, // 清理后的德语标题（用于语言切换）
+    translatedTitle: dbDeal.title, // 已翻译的标题（中文）
     description: dbDeal.description || '', // 已翻译的HTML描述
     price: dbDeal.price?.toString() || undefined,
     originalPrice: dbDeal.originalPrice?.toString() || undefined,

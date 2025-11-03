@@ -24,6 +24,7 @@ import {
   Briefcase,
   Leaf
 } from 'lucide-react'
+import { TranslationControl } from '@/components/TranslatableContent'
 
 interface Category {
   id: string
@@ -143,7 +144,10 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
           {/* 桌面端导航 */}
           <nav className="hidden lg:flex items-center gap-2">
             {/* 分类下拉 */}
-            <div className="relative">
+            <div
+              className="relative"
+              onMouseLeave={() => setCategoriesOpen(false)}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -164,7 +168,6 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
               {categoriesOpen && (
                 <div
                   className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
-                  onMouseLeave={() => setCategoriesOpen(false)}
                 >
                   {/* 热门分类 */}
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -213,7 +216,10 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
             </div>
 
             {/* 商家下拉 */}
-            <div className="relative">
+            <div
+              className="relative"
+              onMouseLeave={() => setMerchantsOpen(false)}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -234,7 +240,6 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
               {merchantsOpen && (
                 <div
                   className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
-                  onMouseLeave={() => setMerchantsOpen(false)}
                 >
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     热门商家
@@ -267,10 +272,22 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索优惠信息..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+                className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-brand-primary hover:bg-brand-hover text-white transition-colors"
+                title="搜索"
+              >
+                <Search className="w-4 h-4" />
+              </button>
             </form>
+          </div>
+
+          {/* 语言切换按钮 - 桌面端 */}
+          <div className="hidden md:block">
+            <TranslationControl />
           </div>
 
           {/* 移动端菜单按钮 */}
@@ -288,18 +305,30 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
           </button>
         </div>
 
-        {/* 移动端搜索框 */}
-        <div className="md:hidden pb-3">
+        {/* 移动端搜索框和语言切换 */}
+        <div className="md:hidden pb-3 space-y-3">
           <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索优惠信息..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+              className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-brand-primary hover:bg-brand-hover text-white transition-colors"
+              title="搜索"
+            >
+              <Search className="w-4 h-4" />
+            </button>
           </form>
+
+          {/* 语言切换按钮 - 移动端 */}
+          <div className="flex justify-center">
+            <TranslationControl />
+          </div>
         </div>
       </div>
 

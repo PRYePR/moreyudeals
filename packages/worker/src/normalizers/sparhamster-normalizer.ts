@@ -64,8 +64,14 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
     // 清理标题：移除末尾的价格段落
     const cleanedTitle = this.cleanPriceSuffix(rawTitle);
 
-    // originalTitle 保存原始标题，title 使用清理后的标题
+    // originalTitle 保存原始标题（归档）
     const originalTitle = rawTitle;
+
+    // titleDe 存储清理后的德语标题（清理逻辑：移除价格后缀）
+    // - 有价格后缀：存储清理后的标题
+    // - 无价格后缀：存储原标题（本身就是干净的）
+    // - 标题为空：不存储
+    const titleDe = cleanedTitle.length > 0 ? cleanedTitle : undefined;
 
     // 计算 content_hash (用于去重)
     const contentHash = this.calculateContentHash({
@@ -134,8 +140,9 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
       slug: this.extractSlug(post.link),
       contentHash,
 
-      title: cleanedTitle,
-      originalTitle,
+      title: undefined,  // 翻译后才写入（中文）
+      titleDe,  // 清理后的德语标题，只有清理成功才写入
+      originalTitle,  // 原始标题（含价格，归档）
       description: originalDescription,
       originalDescription,
 

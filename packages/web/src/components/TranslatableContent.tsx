@@ -76,6 +76,36 @@ export function TranslationControl({ className = '' }: TranslationControlProps) 
   )
 }
 
+// 悬浮语言切换按钮组件
+export function FloatingLanguageSwitch() {
+  const { showOriginal, toggleTranslation } = useTranslation()
+
+  return (
+    <button
+      onClick={toggleTranslation}
+      className="fixed bottom-24 right-6 z-40 group"
+      title={showOriginal ? '切换到中文' : '切换到德语'}
+    >
+      {/* 按钮主体 */}
+      <div className="bg-white hover:bg-orange-50 text-gray-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-2 border-orange-500">
+        <div className="flex items-center justify-center gap-1 font-bold text-sm sm:text-base whitespace-nowrap">
+          <span className={showOriginal ? 'text-gray-400' : 'text-orange-500'}>中</span>
+          <span className="text-gray-300 text-xs">↔</span>
+          <span className={showOriginal ? 'text-orange-500' : 'text-gray-400'}>DE</span>
+        </div>
+      </div>
+
+      {/* Tooltip */}
+      <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 whitespace-nowrap">
+        <div className="bg-gray-900 text-white text-xs sm:text-sm px-3 py-1.5 rounded-lg shadow-lg">
+          {showOriginal ? '切换到中文' : '切换到德语'}
+          <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 // 可翻译文本组件
 interface TranslatableTextProps {
   originalText: string

@@ -6,10 +6,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MessageCircle, Share2, Bookmark, ExternalLink, MapPin, Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
+import { TranslatableText } from '@/components/TranslatableContent'
 
 interface Deal {
   id: string
   title?: string
+  originalTitle?: string      // 清理后的德语标题
   translatedTitle?: string
   imageUrl?: string
   price?: number | string
@@ -198,11 +200,14 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
 
           {/* 内容主体 */}
           <div className="flex-1 flex flex-col gap-2 lg:gap-0">
-            {/* 标题 */}
+            {/* 标题 - 支持中文/德语切换 */}
             <Link href={`/deals/${deal.id}`}>
-              <h3 className="text-base lg:text-xl font-bold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors lg:mb-6">
-                {displayTitle}
-              </h3>
+              <TranslatableText
+                originalText={deal.originalTitle || deal.title || '无标题'}
+                translatedText={deal.translatedTitle || deal.title || '无标题'}
+                as="h3"
+                className="text-base lg:text-xl font-bold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors lg:mb-6"
+              />
             </Link>
 
             {/* 价格区块 */}

@@ -7,7 +7,8 @@ import {
   TranslationProvider,
   TranslationControl,
   TranslatableText,
-  TranslatableHtmlContent
+  TranslatableHtmlContent,
+  FloatingLanguageSwitch
 } from '@/components/TranslatableContent'
 
 interface DealPageClientProps {
@@ -127,7 +128,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                 <div className="mb-3 sm:mb-4">
                   <TranslatableText
                     originalText={deal.originalTitle || deal.title}
-                    translatedText={deal.title}
+                    translatedText={deal.translatedTitle || deal.title}
                     as="h1"
                     className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight"
                   />
@@ -252,6 +253,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
           )}
         </div>
       </main>
+      <FloatingLanguageSwitch />
     </TranslationProvider>
   )
 }

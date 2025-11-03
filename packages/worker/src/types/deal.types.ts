@@ -30,8 +30,9 @@ export interface Deal {
   contentHash?: string;          // 内容哈希,用于去重
 
   // 标题与描述
-  title?: string;                // 翻译后的标题
-  originalTitle?: string;        // 原始标题
+  title?: string;                // 中文翻译标题（前端默认显示，主字段）
+  titleDe?: string;              // 清理后的德语标题（前端德语切换时显示）
+  originalTitle?: string;        // 原始德语标题（含价格后缀，仅归档留存）
   description?: string;          // 翻译后的描述
   originalDescription?: string;  // 原始描述
 
@@ -120,6 +121,7 @@ export interface DealRow {
   content_hash?: string;
 
   title?: string;
+  title_de?: string;
   original_title?: string;
   description?: string;
   original_description?: string;

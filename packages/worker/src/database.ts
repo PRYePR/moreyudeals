@@ -210,7 +210,7 @@ export class DatabaseManager {
     const query = `
       INSERT INTO deals (
         source_site, source_post_id, feed_id, guid, slug, content_hash,
-        title, original_title, description, original_description,
+        title, title_de, original_title, description, original_description,
         content_html, content_text, content_blocks,
         link, image_url, images,
         merchant, merchant_logo, merchant_link, fallback_link,
@@ -226,19 +226,19 @@ export class DatabaseManager {
         created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10,
-        $11, $12, $13,
-        $14, $15, $16,
-        $17, $18, $19, $20,
-        $21, $22,
-        $23, $24, $25,
-        $26, $27, $28, $29, $30,
-        $31, $32,
-        $33, $34,
-        $35, $36,
-        $37, $38, $39, $40,
-        $41, $42,
-        $43, $44, $45, $46,
+        $7, $8, $9, $10, $11,
+        $12, $13, $14,
+        $15, $16, $17,
+        $18, $19, $20, $21,
+        $22, $23,
+        $24, $25, $26,
+        $27, $28, $29, $30, $31,
+        $32, $33,
+        $34, $35,
+        $36, $37,
+        $38, $39, $40, $41,
+        $42, $43,
+        $44, $45, $46, $47,
         NOW(), NOW()
       ) RETURNING id
     `;
@@ -266,6 +266,7 @@ export class DatabaseManager {
       deal.slug,
       deal.contentHash,
       deal.title,
+      deal.titleDe,
       deal.originalTitle,
       deal.description,
       deal.originalDescription,
@@ -505,6 +506,7 @@ export class DatabaseManager {
       slug: row.slug,
       contentHash: row.content_hash,
       title: row.title,
+      titleDe: row.title_de,
       originalTitle: row.original_title,
       description: row.description,
       originalDescription: row.original_description,
