@@ -167,7 +167,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
 
               {categoriesOpen && (
                 <div
-                  className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+                  className="absolute top-full left-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
                 >
                   {/* 热门分类 */}
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -239,7 +239,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
 
               {merchantsOpen && (
                 <div
-                  className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+                  className="absolute top-full left-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
                 >
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     热门商家
