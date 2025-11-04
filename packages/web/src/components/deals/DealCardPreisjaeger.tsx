@@ -273,7 +273,7 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
 
               {/* 主操作按钮 - 移动端空心橙色边框样式，桌面端实心样式 */}
               <a
-                href={deal.dealUrl}
+                href={deal.trackingUrl || deal.affiliateUrl || deal.dealUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full lg:w-auto lg:ml-auto flex items-center justify-center gap-1.5 px-4 lg:px-6 py-1.5 lg:py-2 text-xs lg:text-sm font-semibold rounded-full transition-colors whitespace-nowrap border-2 lg:bg-action-primary lg:hover:bg-action-hover lg:text-white lg:border-action-primary border-action-primary text-action-primary hover:bg-action-primary hover:text-white"

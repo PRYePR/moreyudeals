@@ -31,8 +31,9 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   }
 
   const isExpired = timeStatus.isExpired
+  // 优先使用trackingUrl(包含联盟码拼接和点击追踪)
   const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
-  const hasPurchaseLink = typeof purchaseUrl === 'string' && purchaseUrl.startsWith('http')
+  const hasPurchaseLink = typeof purchaseUrl === 'string' && (purchaseUrl.startsWith('http') || purchaseUrl.startsWith('/'))
 
   // 点击商家筛选
   const handleMerchantClick = () => {

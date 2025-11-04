@@ -1256,7 +1256,6 @@
     cron "^3.1.6"
     dotenv "^16.3.1"
     pg "^8.11.3"
-    rss-parser "^3.13.0"
 
 "@mux/mux-player-react@3.1.0":
   version "3.1.0"

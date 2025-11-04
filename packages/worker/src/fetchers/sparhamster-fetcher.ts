@@ -9,6 +9,7 @@ import { DatabaseManager } from '../database';
 import { SparhamsterNormalizer } from '../normalizers/sparhamster-normalizer';
 import { DeduplicationService } from '../services/deduplication-service';
 import { HomepageFetcher, HomepageArticle } from '../services/homepage-fetcher';
+import { AffiliateLinkService } from '../services/affiliate-link-service';
 import { FetchResult } from '../types/fetcher.types';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal } from '../types/deal.types';
@@ -33,11 +34,13 @@ export class SparhamsterFetcher {
   private readonly normalizer: SparhamsterNormalizer;
   private readonly deduplicator: DeduplicationService;
   private readonly homepageFetcher: HomepageFetcher;
+  private readonly affiliateLinkService: AffiliateLinkService;
 
   constructor(private readonly database: DatabaseManager) {
     this.normalizer = new SparhamsterNormalizer();
     this.deduplicator = new DeduplicationService(database);
     this.homepageFetcher = new HomepageFetcher();
+    this.affiliateLinkService = new AffiliateLinkService();
   }
 
   /**
@@ -193,22 +196,33 @@ export class SparhamsterFetcher {
     const homepageArticle = articleMap.get(postId) || (slug ? articleMap.get(slug) : undefined);
 
     if (homepageArticle) {
-      // 成功匹配到首页数据,补充真实链接
+      // 成功匹配到首页数据,保存 forward 链接
       if (homepageArticle.merchantLink) {
         deal.merchantLink = homepageArticle.merchantLink;
         enriched = true;
+        console.log(`✅ 已补充商家链接: ${deal.merchantLink}`);
+
+        // 处理联盟链接（如果商家支持联盟计划）
+        const affiliateResult = await this.affiliateLinkService.processAffiliateLink(
+          deal.merchant,
+          deal.canonicalMerchantName,
+          deal.merchantLink
+        );
+
+        if (affiliateResult.enabled && affiliateResult.affiliateLink) {
+          deal.affiliateLink = affiliateResult.affiliateLink;
+          deal.affiliateEnabled = true;
+          deal.affiliateNetwork = affiliateResult.network;
+          console.log(`✅ 已处理联盟链接 (${affiliateResult.network}): ${affiliateResult.affiliateLink}`);
+        } else {
+          deal.affiliateEnabled = false;
+        }
       }
 
       // 如果首页也有 logo,优先使用首页的（更可靠）
       if (homepageArticle.merchantLogo) {
         deal.merchantLogo = homepageArticle.merchantLogo;
       }
-
-      // 更新联盟信息（因为 merchantLink 已更新）
-      const affiliateInfo = this.detectAffiliateInfo(deal.merchantLink, deal.merchant);
-      deal.affiliateLink = affiliateInfo.affiliateLink;
-      deal.affiliateEnabled = affiliateInfo.enabled;
-      deal.affiliateNetwork = affiliateInfo.network;
     }
 
     // 3. 检查重复
@@ -294,30 +308,4 @@ export class SparhamsterFetcher {
     return undefined;
   }
 
-  /**
-   * 检测联盟信息
-   */
-  private detectAffiliateInfo(merchantLink?: string, merchant?: string): {
-    affiliateLink?: string;
-    enabled: boolean;
-    network?: string;
-  } {
-    if (!merchantLink) {
-      return { enabled: false };
-    }
-
-    if (merchantLink.includes('forward.sparhamster.at')) {
-      const isAmazon =
-        merchantLink.toLowerCase().includes('amazon') ||
-        merchant?.toLowerCase().includes('amazon');
-
-      return {
-        affiliateLink: merchantLink,
-        enabled: true,
-        network: isAmazon ? 'amazon' : undefined,
-      };
-    }
-
-    return { enabled: false };
-  }
 }

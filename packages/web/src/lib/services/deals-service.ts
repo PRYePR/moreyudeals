@@ -46,10 +46,10 @@ function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
     featured: dbDeal.isFeatured,
     voucherCode: dbDeal.couponCode || undefined,
 
-    // Link tracking
-    affiliateUrl: dbDeal.affiliateUrl || undefined,
+    // Link tracking - 使用 /api/go 路由实现联盟跳转和点击追踪
+    affiliateUrl: dbDeal.affiliateUrl || undefined, // 从DB读取affiliateUrl
     originalUrl: dbDeal.fallbackLink || dbDeal.dealUrl || undefined,
-    trackingUrl: dbDeal.merchantLink || undefined,
+    trackingUrl: `/api/go/${dbDeal.id}`, // 统一使用 /api/go 路由,实现联盟码拼接和点击追踪
     merchantHomepage: dbDeal.merchant ? `https://${dbDeal.merchant}` : undefined
   }
 }

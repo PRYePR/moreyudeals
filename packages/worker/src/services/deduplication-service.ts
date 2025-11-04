@@ -90,7 +90,17 @@ export class DeduplicationService {
     if (newDeal?.merchant) {
       updateData.merchant = newDeal.merchant;
       updateData.merchantLogo = newDeal.merchantLogo;
-      updateData.merchantLink = newDeal.merchantLink;
+
+      // 直接更新 merchantLink（不再保护旧链接）
+      if (newDeal.merchantLink) {
+        updateData.merchantLink = newDeal.merchantLink;
+      }
+
+      // 同时更新联盟信息
+      updateData.affiliateLink = newDeal.affiliateLink;
+      updateData.affiliateEnabled = newDeal.affiliateEnabled;
+      updateData.affiliateNetwork = newDeal.affiliateNetwork;
+
       console.log(`🔁 检测到重复内容,已更新 Deal ${dealId} 的统计信息和商家信息: ${newDeal.merchant}`);
     } else {
       console.log(`🔁 检测到重复内容,已更新 Deal ${dealId} 的统计信息`);

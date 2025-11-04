@@ -136,7 +136,8 @@ export interface DealRow {
   canonical_merchant_name: string | null
 
   deal_url: string | null
-  affiliate_url: string | null
+  affiliate_link: string | null  // 数据库字段名
+  affiliate_url: string | null   // 兼容旧代码
   coupon_code: string | null
   deal_type: string | null
 
@@ -209,7 +210,7 @@ export function mapRowToDeal(row: DealRow): Deal {
     canonicalMerchantName: row.canonical_merchant_name,
 
     dealUrl: row.deal_url,
-    affiliateUrl: row.affiliate_url,
+    affiliateUrl: row.affiliate_link || row.affiliate_url, // affiliate_link是正确的字段名
     couponCode: row.coupon_code,
     dealType: row.deal_type,
 

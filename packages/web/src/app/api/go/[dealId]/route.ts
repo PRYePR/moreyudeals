@@ -17,10 +17,10 @@ const logger = createModuleLogger('api:go')
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { dealId: string } }
+  { params }: { params: Promise<{ dealId: string }> }
 ) {
   try {
-    const dealId = params.dealId
+    const { dealId } = await params
 
     // 获取deal信息（从缓存或API）
     const deal = await getDealById(dealId)
@@ -33,11 +33,19 @@ export async function GET(
     }
 
     // 确定最终跳转URL（优先级顺序）
+    // Worker 已经在抓取时处理好了联盟链接，这里直接使用
     const targetUrl =
-      deal.affiliateUrl ||      // 1. 你自己的联盟链接（优先）
-      deal.dealUrl ||            // 2. sparhamster的forward链接
+      deal.affiliateUrl ||      // 1. 联盟链接（已包含我们的 tag，优先）
+      deal.dealUrl ||            // 2. 商品链接（forward 或真实链接）
       deal.merchantHomepage ||   // 3. 商家主页
       '#'                        // 4. fallback
+
+    logger.info('Redirecting to target URL', {
+      dealId,
+      merchant: deal.merchantName,
+      hasAffiliateUrl: !!deal.affiliateUrl,
+      targetUrl: targetUrl.substring(0, 100) // 只记录前100字符
+    })
 
     // 记录点击事件
     await trackClickEvent(request, deal, targetUrl)
@@ -124,3 +132,4 @@ function detectDeviceType(userAgent?: string): 'mobile' | 'tablet' | 'desktop' {
   }
   return 'desktop'
 }
+
