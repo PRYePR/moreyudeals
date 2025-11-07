@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 
 export const metadata: Metadata = {
   title: 'Moreyu Deals | 墨鱼折扣 - 奥地利优惠信息聚合',
@@ -32,7 +33,9 @@ export default function RootLayout({
         <meta name="generator" content="Next.js" />
       </head>
       <body className="min-h-screen bg-gray-50 text-gray-900">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   )

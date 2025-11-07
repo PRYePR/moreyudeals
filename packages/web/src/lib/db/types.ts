@@ -26,8 +26,12 @@ export interface Deal {
   title: string | null // 中文翻译标题（前端默认显示，主字段）
   titleDe: string | null // 清理后的德语标题（前端德语切换时显示）
   originalTitle: string | null // 原始德语标题（含价格后缀，仅归档留存）
+  titleZh?: string | null // 兼容新API返回的中文标题
+  translatedTitle?: string | null // API兼容字段
   description: string | null // 翻译后的描述
   originalDescription: string | null // 德语原描述
+  descriptionZh?: string | null
+  translatedDescription?: string | null
   contentHtml: string | null // 德语 HTML 内容
   translatedContentHtml: string | null // 中文翻译后的 HTML 内容
   contentText: string | null // 德语纯文本内容
@@ -49,9 +53,11 @@ export interface Deal {
 
   // Merchant fields
   merchant: string | null
+  merchantName?: string | null
   merchantLogo: string | null
   merchantLink: string | null
   fallbackLink: string | null
+  trackingUrl?: string | null
 
   // Canonical merchant fields (规范商家信息)
   canonicalMerchantId: string | null

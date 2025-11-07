@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createModuleLogger } from '@/lib/logger'
-import { dealsService } from '@/lib/services/deals-service'
+import { apiClient } from '@/lib/api-client'
 
 const logger = createModuleLogger('api:categories')
 const ALLOWED_SORT_FIELDS = new Set(['name', 'count', 'id'])
@@ -16,10 +16,36 @@ export async function GET(request: NextRequest) {
     const sortBy = ALLOWED_SORT_FIELDS.has(sortByParam) ? sortByParam : 'count'
     const sortOrder = sortOrderParam === 'asc' ? 'asc' : 'desc'
 
-    const summary = await dealsService.getCategories()
+    // 从API服务器获取分类
+    const apiResponse = await apiClient.getCategories()
 
-    // 复制数据以避免修改原始数据
-    let processedCategories = [...summary.categories]
+    // 暂时返回简化版本(后端API不支持完整的分类统计)
+    const response = {
+      categories: apiResponse.categories.map(cat => ({
+        id: cat.name.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-'),
+        name: cat.name,
+        translatedName: cat.name, // 后端已经返回英文名
+        count: cat.count,
+        icon: 'tag',
+        subcategories: []
+      })),
+      stats: {
+        totalDeals: apiResponse.categories.reduce((sum, cat) => sum + cat.count, 0),
+        totalCategories: apiResponse.categories.length
+      },
+      filters: {
+        includeSubcategories,
+        sortBy,
+        sortOrder,
+      },
+      meta: {
+        fetchedAt: new Date().toISOString(),
+        cacheHit: false
+      }
+    }
+
+    // 排序
+    let processedCategories = [...response.categories]
 
     // 排序
     processedCategories.sort((a, b) => {
@@ -53,30 +79,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // 如果不需要子分类，移除它们
-    let finalCategories: typeof processedCategories = processedCategories
-    if (!includeSubcategories) {
-      finalCategories = processedCategories.map(({ subcategories, ...category }) => ({
-        ...category,
-        subcategories: []
-      }))
-    }
-
-    const response = {
-      categories: finalCategories,
-      stats: {
-        ...summary.stats
-      },
-      filters: {
-        includeSubcategories,
-        sortBy,
-        sortOrder,
-      },
-      meta: {
-        fetchedAt: summary.fetchedAt,
-        cacheHit: summary.cacheHit
-      }
-    }
+    // 更新response中的categories为排序后的数据
+    response.categories = processedCategories
 
     return NextResponse.json(response)
 
@@ -102,7 +106,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = categories.find(cat => cat.id === categoryId)
+    // 从API获取所有分类
+    const apiResponse = await apiClient.getCategories()
+    const category = apiResponse.categories.find(cat =>
+      cat.name.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-') === categoryId
+    )
 
     if (!category) {
       return NextResponse.json(
@@ -113,11 +121,14 @@ export async function POST(request: NextRequest) {
 
     // 添加额外的分类详细信息
     const detailedCategory = {
-      ...category,
-      popularity: Math.floor(Math.random() * 100) + 1, // 模拟受欢迎程度
-      averageDiscount: Math.floor(Math.random() * 50) + 10, // 模拟平均折扣
+      id: category.name.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-'),
+      name: category.name,
+      translatedName: category.name,
+      count: category.count,
+      popularity: Math.floor(Math.random() * 100) + 1,
+      averageDiscount: Math.floor(Math.random() * 50) + 10,
       lastUpdated: new Date().toISOString(),
-      trendingDeals: 3, // 模拟热门优惠数量
+      trendingDeals: 3,
     }
 
     return NextResponse.json(detailedCategory)

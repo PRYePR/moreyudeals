@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createModuleLogger } from '@/lib/logger'
-import { dealsService } from '@/lib/services/deals-service'
+import { apiClient, convertApiDealToDeal } from '@/lib/api-client'
 
 const logger = createModuleLogger('api:deals:id')
 
@@ -112,8 +112,19 @@ export async function GET(
       )
     }
 
-    // 查找特定优惠信息（从数据库读取，包含完整字段如 contentHtml）
-    const deal = await dealsService.getDealById(id, { fromDatabase: true })
+    // 从API服务器获取优惠详情
+    let deal
+    try {
+      const apiResponse = await apiClient.getDealById(id)
+      deal = convertApiDealToDeal(apiResponse.deal)
+    } catch (error) {
+      // API返回404或其他错误
+      logger.warn('Deal not found in API', { dealId: id, error })
+      return NextResponse.json(
+        { error: 'Deal not found' },
+        { status: 404 }
+      )
+    }
 
     if (!deal) {
       return NextResponse.json(

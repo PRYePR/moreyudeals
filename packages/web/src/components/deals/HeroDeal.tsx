@@ -19,6 +19,8 @@ export default function HeroDeal({ deal }: HeroDealProps) {
     ? deal.originalPrice - deal.price
     : null
 
+  const altText = (deal.titleZh || deal.title || '精选优惠') as string
+
   return (
     <div className="relative w-full bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl overflow-hidden shadow-2xl">
       <div className="grid lg:grid-cols-2 gap-8 items-center">
@@ -99,7 +101,7 @@ export default function HeroDeal({ deal }: HeroDealProps) {
           {deal.imageUrl ? (
             <Image
               src={deal.imageUrl}
-              alt={deal.titleZh || deal.title}
+              alt={altText}
               fill
               className="object-cover"
               priority

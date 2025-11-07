@@ -5,7 +5,7 @@ import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
-import { dealsService } from '@/lib/services/deals-service'
+import { apiClient } from '@/lib/api-client'
 
 const PAGE_SIZE = 20
 
@@ -64,28 +64,78 @@ async function getDealsData(searchParams: { [key: string]: string | string[] | u
 
 async function getCategoriesAndMerchants() {
   try {
-    const [categoriesData, merchants, crossFilters] = await Promise.all([
-      dealsService.getCategories(),
-      dealsService.getMerchants(),
-      dealsService.getCategoryMerchantCrossFilters()
+    console.log('[HomePage] Fetching categories and merchants from API...')
+    const [categoriesResponse, merchantsResponse] = await Promise.all([
+      apiClient.getCategories().catch(err => {
+        console.error('[HomePage] Failed to fetch categories:', err)
+        throw err
+      }),
+      apiClient.getMerchants().catch(err => {
+        console.error('[HomePage] Failed to fetch merchants:', err)
+        throw err
+      })
     ])
+    console.log('[HomePage] Successfully fetched data')
 
-    // Convert Maps to plain objects for client components
-    const categoryByMerchant: Record<string, Record<string, number>> = {}
-    for (const [merchant, categoryMap] of crossFilters.categoryByMerchant.entries()) {
-      categoryByMerchant[merchant] = Object.fromEntries(categoryMap)
+    // 定义标准分类（与前端UI保持一致）
+    const standardCategories = [
+      { id: 'gaming', name: 'Gaming', translatedName: '游戏娱乐', icon: 'gamepad' },
+      { id: 'electronics', name: 'Electronics', translatedName: '电子产品', icon: 'laptop' },
+      { id: 'fashion', name: 'Fashion', translatedName: '时尚服饰', icon: 'shirt' },
+      { id: 'home-kitchen', name: 'Home & Kitchen', translatedName: '家居厨房', icon: 'home' },
+      { id: 'sports-outdoor', name: 'Sports & Outdoor', translatedName: '运动户外', icon: 'bike' },
+      { id: 'beauty-health', name: 'Beauty & Health', translatedName: '美妆护肤', icon: 'heart' },
+      { id: 'automotive', name: 'Automotive', translatedName: '汽车用品', icon: 'car' },
+      { id: 'food-drinks', name: 'Food & Drinks', translatedName: '食品饮料', icon: 'utensils' },
+      { id: 'toys-kids', name: 'Toys & Kids', translatedName: '玩具儿童', icon: 'baby' },
+      { id: 'books-media', name: 'Books & Media', translatedName: '图书影音', icon: 'book' },
+      { id: 'pets', name: 'Pets', translatedName: '宠物用品', icon: 'paw' },
+      { id: 'office', name: 'Office', translatedName: '办公用品', icon: 'briefcase' },
+      { id: 'garden', name: 'Garden', translatedName: '园艺花园', icon: 'leaf' },
+      { id: 'general', name: 'General', translatedName: '综合', icon: 'tag' },
+    ]
+
+    // 映射后端分类名到标准分类ID
+    const categoryNameToId: Record<string, string> = {
+      'gaming': 'gaming',
+      'electronics': 'electronics',
+      'fashion': 'fashion',
+      'home & kitchen': 'home-kitchen',
+      'sports & outdoor': 'sports-outdoor',
+      'beauty & health': 'beauty-health',
+      'automotive': 'automotive',
+      'food & drinks': 'food-drinks',
+      'toys & kids': 'toys-kids',
+      'books & media': 'books-media',
+      'pets': 'pets',
+      'office': 'office',
+      'garden': 'garden',
+      'general': 'general',
     }
 
-    const merchantByCategory: Record<string, Record<string, number>> = {}
-    for (const [category, merchantMap] of crossFilters.merchantByCategory.entries()) {
-      merchantByCategory[category] = Object.fromEntries(merchantMap)
-    }
+    // 合并后端数据和标准分类
+    const categories = standardCategories.map(stdCat => {
+      const backendCat = categoriesResponse.categories.find(
+        c => categoryNameToId[c.name.toLowerCase()] === stdCat.id
+      )
+      return {
+        ...stdCat,
+        count: backendCat?.count || 0
+      }
+    }).filter(cat => cat.count > 0) // 只显示有数据的分类
 
+    // 转换商家数据格式
+    const merchants = merchantsResponse.merchants.map(m => ({
+      name: m.merchant,
+      count: m.deal_count
+    }))
+
+    // 暂时返回空的交叉筛选数据（后续可以从后端获取）
     return {
-      categories: categoriesData.categories,
+      categories,
       merchants,
-      categoryByMerchant,
-      merchantByCategory
+      categoryByMerchant: {},
+      merchantByCategory: {}
     }
   } catch (error) {
     console.error('Error fetching categories and merchants:', error)

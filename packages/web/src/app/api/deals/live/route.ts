@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createModuleLogger } from '@/lib/logger'
-import { dealsService, type DealSortField } from '@/lib/services/deals-service'
+import { apiClient, convertApiDealsToDeals } from '@/lib/api-client'
 
 const logger = createModuleLogger('api:deals:live')
 
-const ALLOWED_SORT_FIELDS: DealSortField[] = ['price', 'discount', 'publishedAt', 'expiresAt', 'relevance']
+// 映射sortBy字段名(前端 -> 后端API)
+function mapSortField(sortBy?: string): 'created_at' | 'price' | 'discount' | 'published_at' | 'expires_at' | undefined {
+  const mapping: Record<string, 'created_at' | 'price' | 'discount' | 'published_at' | 'expires_at'> = {
+    'price': 'price',
+    'discount': 'discount',
+    'publishedAt': 'published_at',
+    'expiresAt': 'expires_at',
+    'relevance': 'created_at',
+  }
+  return sortBy ? mapping[sortBy] : undefined
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,12 +28,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const sortByParam = searchParams.get('sortBy')
     const sortOrderParam = searchParams.get('sortOrder')
-    const forceRefresh = searchParams.get('refresh') === 'true'
-
-    const sortBy = sortByParam && ALLOWED_SORT_FIELDS.includes(sortByParam as DealSortField)
-      ? (sortByParam as DealSortField)
-      : undefined
-    const sortOrder = sortOrderParam === 'asc' ? 'asc' : sortOrderParam === 'desc' ? 'desc' : undefined
 
     // 验证参数
     if (page < 1) {
@@ -40,31 +44,40 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await dealsService.getDeals({
+    // 调用后端API
+    const apiResponse = await apiClient.getDeals({
       page,
       limit,
-      category: category ?? undefined,
-      merchant: merchant ?? undefined,
-      search: search ?? undefined,
-      sortBy,
-      sortOrder,
-      forceRefresh
+      category: category || undefined,
+      merchant: merchant || undefined,
+      search: search || undefined,
+      sort: mapSortField(sortByParam || undefined),
+      order: sortOrderParam === 'asc' ? 'ASC' : sortOrderParam === 'desc' ? 'DESC' : 'DESC',
     })
 
+    // 转换API数据为前端Deal格式 (后端返回data字段,不是deals)
+    const deals = convertApiDealsToDeals(apiResponse.data)
+
+    // 构造分页信息,添加hasNext和hasPrev
+    const pagination = {
+      ...apiResponse.pagination,
+      hasNext: apiResponse.pagination.page < apiResponse.pagination.totalPages,
+      hasPrev: apiResponse.pagination.page > 1
+    }
+
     return NextResponse.json({
-      deals: result.deals,
-      pagination: result.pagination,
-      filters: result.filters,
-      source: result.meta.cacheHit ? 'Sparhamster.at (Cached)' : 'Sparhamster.at (Live)',
-      fetchedAt: result.meta.fetchedAt,
-      cached: result.meta.cacheHit
+      deals,
+      pagination,
+      filters: apiResponse.filters,
+      source: 'API Server',
+      fetchedAt: new Date().toISOString(),
     })
 
   } catch (error) {
-    logger.error('Error fetching live deals', error as Error)
+    logger.error('Error fetching deals from API', error as Error)
     return NextResponse.json(
       {
-        error: 'Failed to fetch live deals from Sparhamster.at',
+        error: 'Failed to fetch deals from API server',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

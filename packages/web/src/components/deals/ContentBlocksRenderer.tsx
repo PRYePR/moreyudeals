@@ -23,7 +23,7 @@ export default function ContentBlocksRenderer({ blocks }: ContentBlocksRendererP
 
           case 'heading':
             const HeadingTag = `h${block.level || 2}` as keyof JSX.IntrinsicElements
-            const headingClasses = {
+            const headingClasses: Record<number, string> = {
               1: 'text-3xl font-bold mt-8 mb-4 text-gray-900',
               2: 'text-2xl font-bold mt-6 mb-3 text-gray-900',
               3: 'text-xl font-semibold mt-5 mb-2 text-gray-900',
@@ -31,8 +31,9 @@ export default function ContentBlocksRenderer({ blocks }: ContentBlocksRendererP
               5: 'text-base font-semibold mt-3 mb-2 text-gray-800',
               6: 'text-sm font-semibold mt-2 mb-1 text-gray-800',
             }
+            const level = block.level && headingClasses[block.level] ? block.level : 2
             return (
-              <HeadingTag key={index} className={headingClasses[block.level || 2]}>
+              <HeadingTag key={index} className={headingClasses[level]}>
                 {block.content}
               </HeadingTag>
             )

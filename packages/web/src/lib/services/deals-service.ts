@@ -16,9 +16,9 @@ const DATASET_LIMIT = Math.min(Math.max(Number.isNaN(ENV_LIMIT) ? 200 : ENV_LIMI
 function convertDbDealToFetcherDeal(dbDeal: DbDeal): Deal {
   return {
     id: dbDeal.id,
-    title: dbDeal.title, // 已翻译的标题（中文）
-    originalTitle: dbDeal.titleDe || dbDeal.title, // 清理后的德语标题（用于语言切换）
-    translatedTitle: dbDeal.title, // 已翻译的标题（中文）
+    title: dbDeal.title ?? '', // 已翻译的标题（中文）
+    originalTitle: dbDeal.titleDe || dbDeal.title || '', // 清理后的德语标题（用于语言切换）
+    translatedTitle: dbDeal.title ?? '', // 已翻译的标题（中文）
     description: dbDeal.description || '', // 已翻译的HTML描述
     price: dbDeal.price?.toString() || undefined,
     originalPrice: dbDeal.originalPrice?.toString() || undefined,
@@ -294,8 +294,8 @@ export class DealsService {
     }
 
     workingList.sort((a, b) => {
-      let aValue: number | string = 0
-      let bValue: number | string = 0
+      let aValue = 0
+      let bValue = 0
 
       switch (sortBy) {
         case 'price':
@@ -322,15 +322,9 @@ export class DealsService {
           break
       }
 
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortOrder === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
       return sortOrder === 'asc'
-        ? (aValue as number) - (bValue as number)
-        : (bValue as number) - (aValue as number)
+        ? aValue - bValue
+        : bValue - aValue
     })
 
     const total = workingList.length
@@ -573,14 +567,14 @@ export class DealsService {
         if (!categoryByMerchant.has(merchantName)) {
           categoryByMerchant.set(merchantName, new Map())
         }
-        const categoryMap = categoryByMerchant.get(merchantName)!
+        const categoryMap: Map<string, number> = categoryByMerchant.get(merchantName)!
         categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1)
 
         // Update merchantByCategory
         if (!merchantByCategory.has(categoryId)) {
           merchantByCategory.set(categoryId, new Map())
         }
-        const merchantMap = merchantByCategory.get(categoryId)!
+        const merchantMap: Map<string, number> = merchantByCategory.get(categoryId)!
         merchantMap.set(merchantName, (merchantMap.get(merchantName) || 0) + 1)
       }
     }

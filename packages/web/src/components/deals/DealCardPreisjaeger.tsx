@@ -25,6 +25,8 @@ interface Deal {
   publishedAt?: Date | string
   expiresAt?: Date | string
   dealUrl: string
+  affiliateUrl?: string
+  trackingUrl?: string
   category?: string
   tags?: string[]
   location?: string

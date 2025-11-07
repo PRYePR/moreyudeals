@@ -5,8 +5,12 @@ import { formatDistance } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { TranslatableText } from '@/components/TranslatableContent'
 
+type DealWithTranslations = Deal & {
+  translatedTitle?: string | null
+}
+
 interface DealCardProps {
-  deal: Deal
+  deal: DealWithTranslations
 }
 
 export default function DealCard({ deal }: DealCardProps) {

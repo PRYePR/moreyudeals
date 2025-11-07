@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { dealsRepository } from '@/lib/db/deals-repository'
+import { apiClient } from '@/lib/api-client'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const stats = await dealsRepository.getStats()
+    const stats = await apiClient.getStats()
     return NextResponse.json(stats)
   } catch (error) {
     console.error('Error fetching stats:', error)

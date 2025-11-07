@@ -5,6 +5,8 @@ export interface Deal {
   originalTitle: string
   translatedTitle: string
   description: string
+  originalDescription?: string
+  translatedDescription?: string
   price?: string
   originalPrice?: string
   currency: string
