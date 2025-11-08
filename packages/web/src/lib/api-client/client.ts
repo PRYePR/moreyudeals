@@ -4,6 +4,7 @@
  */
 
 import type {
+  ApiDeal,
   ApiDealsResponse,
   ApiDealDetailResponse,
   ApiCategoriesResponse,
@@ -99,7 +100,9 @@ export class ApiClient {
    * 获取优惠详情
    */
   async getDealById(id: string): Promise<ApiDealDetailResponse> {
-    return this.fetch<ApiDealDetailResponse>(`/api/deals/${id}`)
+    // 后端API返回 { data: {...} }，需要转换为 { deal: {...} }
+    const response = await this.fetch<{ data: ApiDeal }>(`/api/deals/${id}`)
+    return { deal: response.data }
   }
 
   /**
@@ -131,6 +134,13 @@ export class ApiClient {
       ...params,
       search: query,
     })
+  }
+
+  /**
+   * 获取交叉筛选数据（分类-商家矩阵）
+   */
+  async getCrossFilter(): Promise<import('./types').ApiCrossFilterResponse> {
+    return this.fetch<import('./types').ApiCrossFilterResponse>('/api/cross-filter')
   }
 
   /**

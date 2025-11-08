@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clickTracker } from '@/lib/tracking/click-tracker'
 import { createModuleLogger } from '@/lib/logger'
-import { dealsService } from '@/lib/services/deals-service'
+import { apiClient } from '@/lib/api-client'
 
 const logger = createModuleLogger('api:go')
 
@@ -65,13 +65,28 @@ export async function GET(
 /**
  * 根据ID获取deal信息
  *
- * 当前实现：从数据库获取
- * 使用dealsService（已包含缓存层）
+ * 使用API客户端从后端API服务器获取
  */
 async function getDealById(dealId: string) {
   try {
-    // 从数据库获取deal（包含缓存）
-    return await dealsService.getDealById(dealId)
+    // 从后端API获取deal
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
+      : 'http://localhost:3000'
+
+    const response = await fetch(`${baseUrl}/api/deals/${dealId}`, {
+      cache: 'no-store',
+      headers: {
+        'User-Agent': 'Moreyudeals-Server'
+      }
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const deal = await response.json()
+    return deal
   } catch (error) {
     logger.error('Error fetching deal', error as Error, { dealId })
     return null

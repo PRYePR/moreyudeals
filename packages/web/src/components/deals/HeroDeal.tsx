@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { Deal } from '@/lib/db/types'
+import { Deal } from '@/lib/api-client/types'
 
 interface HeroDealProps {
   deal: Deal

@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { ContentBlock } from '@/lib/db/types'
+import { ContentBlock } from '@/lib/api-client/types'
 
 interface ContentBlocksRendererProps {
   blocks: ContentBlock[] | null
@@ -42,7 +42,7 @@ export default function ContentBlocksRenderer({ blocks }: ContentBlocksRendererP
             if (!block.items || block.items.length === 0) return null
             return (
               <ul key={index} className="list-disc pl-6 mb-4 space-y-2">
-                {block.items.map((item, i) => (
+                {block.items.map((item: any, i: number) => (
                   <li key={i} className="text-gray-700">
                     {item}
                   </li>

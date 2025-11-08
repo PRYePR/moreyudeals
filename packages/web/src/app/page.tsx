@@ -64,16 +64,24 @@ async function getDealsData(searchParams: { [key: string]: string | string[] | u
 
 async function getCategoriesAndMerchants() {
   try {
-    console.log('[HomePage] Fetching categories and merchants from API...')
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
+      : 'http://localhost:3000'
+
+    console.log('[HomePage] Fetching categories and merchants from Next.js API routes...')
     const [categoriesResponse, merchantsResponse] = await Promise.all([
-      apiClient.getCategories().catch(err => {
-        console.error('[HomePage] Failed to fetch categories:', err)
-        throw err
-      }),
-      apiClient.getMerchants().catch(err => {
-        console.error('[HomePage] Failed to fetch merchants:', err)
-        throw err
-      })
+      fetch(`${baseUrl}/api/categories`, { cache: 'no-store' })
+        .then(res => res.json())
+        .catch(err => {
+          console.error('[HomePage] Failed to fetch categories:', err)
+          return { categories: [] }
+        }),
+      fetch(`${baseUrl}/api/merchants`, { cache: 'no-store' })
+        .then(res => res.json())
+        .catch(err => {
+          console.error('[HomePage] Failed to fetch merchants:', err)
+          return { merchants: [] }
+        })
     ])
     console.log('[HomePage] Successfully fetched data')
 
@@ -95,8 +103,9 @@ async function getCategoriesAndMerchants() {
       { id: 'general', name: 'General', translatedName: '综合', icon: 'tag' },
     ]
 
-    // 映射后端分类名到标准分类ID
+    // 映射后端分类名到标准分类ID（支持德语和英语）
     const categoryNameToId: Record<string, string> = {
+      // 英语名称
       'gaming': 'gaming',
       'electronics': 'electronics',
       'fashion': 'fashion',
@@ -111,31 +120,104 @@ async function getCategoriesAndMerchants() {
       'office': 'office',
       'garden': 'garden',
       'general': 'general',
+
+      // 德语名称映射
+      'elektronik': 'electronics',
+      'computer': 'electronics',
+      'haushalt': 'home-kitchen',
+      'fashion & beauty': 'fashion',
+      'freizeit': 'sports-outdoor',
+      'entertainment': 'gaming',
+      'lebensmittel': 'food-drinks',
+      'spielzeug': 'toys-kids',
+      'werkzeug & baumarkt': 'automotive',
+      'erotik': 'beauty-health',
+      'reisen': 'general',
+      'schnäppchen': 'general',
+      'sonstiges': 'general',
+
+      // 品牌/商家名称（映射到综合分类）
+      'amazon': 'general',
+      'sparhamsterin': 'general',
+      'marktguru': 'general',
+      'mediamarkt': 'electronics',
+      'billa': 'food-drinks',
+      'interspar': 'food-drinks',
     }
 
     // 合并后端数据和标准分类
     const categories = standardCategories.map(stdCat => {
-      const backendCat = categoriesResponse.categories.find(
-        c => categoryNameToId[c.name.toLowerCase()] === stdCat.id
-      )
+      // 聚合所有映射到同一标准分类的后端分类计数
+      const totalCount = categoriesResponse.categories
+        .filter((c: any) => categoryNameToId[c.name.toLowerCase()] === stdCat.id)
+        .reduce((sum: number, cat: any) => sum + (cat.count || 0), 0)
+
       return {
         ...stdCat,
-        count: backendCat?.count || 0
+        count: totalCount
       }
-    }).filter(cat => cat.count > 0) // 只显示有数据的分类
+    })
+      .filter(cat => cat.count > 0) // 显示所有有商品的分类
+      .sort((a, b) => b.count - a.count) // 按商品数量降序排列
 
-    // 转换商家数据格式
-    const merchants = merchantsResponse.merchants.map(m => ({
+    // 转换商家数据格式（后端通过/api/merchants返回的是 {merchants: [...]}）
+    const merchantsData = merchantsResponse.merchants || []
+    const merchants = merchantsData.map((m: any) => ({
       name: m.merchant,
-      count: m.deal_count
+      count: typeof m.deal_count === 'string' ? parseInt(m.deal_count) : m.deal_count
     }))
 
-    // 暂时返回空的交叉筛选数据（后续可以从后端获取）
+    // 获取交叉筛选数据
+    const crossFilterResponse = await fetch(`${baseUrl}/api/cross-filter`, { cache: 'no-store' })
+      .then(res => res.json())
+      .catch(err => {
+        console.error('[HomePage] Failed to fetch cross-filter data:', err)
+        return { categoryByMerchant: {}, merchantByCategory: {} }
+      })
+
+    // 转换交叉筛选数据：德语分类名 → 标准英语分类ID
+    const rawCategoryByMerchant = crossFilterResponse.categoryByMerchant || {}
+    const rawMerchantByCategory = crossFilterResponse.merchantByCategory || {}
+
+    // 转换 categoryByMerchant: 聚合同一标准分类的数据
+    const categoryByMerchant: Record<string, Record<string, number>> = {}
+    Object.keys(rawCategoryByMerchant).forEach(merchantName => {
+      categoryByMerchant[merchantName] = {}
+      const merchantCategories = rawCategoryByMerchant[merchantName]
+
+      Object.keys(merchantCategories).forEach(germanCategory => {
+        const standardId = categoryNameToId[germanCategory.toLowerCase()]
+        if (standardId) {
+          const count = merchantCategories[germanCategory]
+          categoryByMerchant[merchantName][standardId] =
+            (categoryByMerchant[merchantName][standardId] || 0) + count
+        }
+      })
+    })
+
+    // 转换 merchantByCategory: 聚合同一标准分类的数据
+    const merchantByCategory: Record<string, Record<string, number>> = {}
+    Object.keys(rawMerchantByCategory).forEach(germanCategory => {
+      const standardId = categoryNameToId[germanCategory.toLowerCase()]
+      if (standardId) {
+        if (!merchantByCategory[standardId]) {
+          merchantByCategory[standardId] = {}
+        }
+
+        const categoryMerchants = rawMerchantByCategory[germanCategory]
+        Object.keys(categoryMerchants).forEach(merchantName => {
+          const count = categoryMerchants[merchantName]
+          merchantByCategory[standardId][merchantName] =
+            (merchantByCategory[standardId][merchantName] || 0) + count
+        })
+      }
+    })
+
     return {
       categories,
       merchants,
-      categoryByMerchant: {},
-      merchantByCategory: {}
+      categoryByMerchant,
+      merchantByCategory
     }
   } catch (error) {
     console.error('Error fetching categories and merchants:', error)

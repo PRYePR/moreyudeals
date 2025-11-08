@@ -1,290 +1,357 @@
-'use client'
-
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import DealsListClient from '@/components/deals/DealsListClient'
+import SiteHeader from '@/components/layout/SiteHeader'
+import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
+import FilterSidebar from '@/components/filters/FilterSidebar'
+import MobileFilterButton from '@/components/filters/MobileFilterButton'
+import TranslationWrapper from '@/components/layout/TranslationWrapper'
+import { apiClient } from '@/lib/api-client'
 import Link from 'next/link'
-import Image from 'next/image'
-import DealCard from '@/components/DealCard'
-import { createModuleLogger } from '@/lib/logger'
 
-const logger = createModuleLogger('app:deals-page')
+const PAGE_SIZE = 20
 
-interface Deal {
-  id: string
-  title: string
-  originalTitle: string
-  translatedTitle: string
-  description: string
-  originalDescription: string
-  translatedDescription: string
-  price: string
-  originalPrice?: string
-  currency: string
-  discountPercentage?: number
-  categories: string[]
-  category: string
-  imageUrl: string
-  dealUrl: string
-  source: string
-  publishedAt: Date | string
-  expiresAt: Date | string
-  language: 'de' | 'en'
-  translationProvider: 'deepl' | 'microsoft' | 'google'
-  isTranslated: boolean
-  isExpired: boolean
-  daysRemaining: number
+/**
+ * 获取优惠列表数据
+ */
+async function getDealsData(searchParams: { [key: string]: string | string[] | undefined }) {
+  try {
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
+      : 'http://localhost:3000'
+
+    // 构建查询参数
+    const params = new URLSearchParams()
+    params.set('page', '1')
+    params.set('limit', PAGE_SIZE.toString())
+
+    // 添加筛选参数
+    if (searchParams.merchant && typeof searchParams.merchant === 'string') {
+      params.set('merchant', searchParams.merchant)
+    }
+    if (searchParams.category && typeof searchParams.category === 'string') {
+      params.set('category', searchParams.category)
+    }
+    if (searchParams.search && typeof searchParams.search === 'string') {
+      params.set('search', searchParams.search)
+    }
+    if (searchParams.sortBy && typeof searchParams.sortBy === 'string') {
+      params.set('sortBy', searchParams.sortBy)
+    }
+    if (searchParams.sortOrder && typeof searchParams.sortOrder === 'string') {
+      params.set('sortOrder', searchParams.sortOrder)
+    }
+
+    // 获取初始数据
+    const response = await fetch(`${baseUrl}/api/deals/live?${params.toString()}`, {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch deals')
+    }
+
+    const data = await response.json()
+
+    return {
+      deals: data.deals || [],
+      totalCount: data.pagination?.total || 0
+    }
+  } catch (error) {
+    console.error('Error fetching deals:', error)
+    return {
+      deals: [],
+      totalCount: 0
+    }
+  }
 }
 
-function DealsContent() {
-  const searchParams = useSearchParams()
-  const categoryFilter = searchParams.get('category')
+/**
+ * 获取分类和商家数据
+ */
+async function getCategoriesAndMerchants() {
+  try {
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
+      : 'http://localhost:3000'
 
-  const [deals, setDeals] = useState<Deal[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedCategory, setSelectedCategory] = useState<string>(categoryFilter || '')
-  const [availableCategories, setAvailableCategories] = useState<string[]>([])
-
-  const dealsPerPage = 12
-
-  useEffect(() => {
-    fetchDeals()
-  }, [])
-
-  useEffect(() => {
-    if (categoryFilter) {
-      setSelectedCategory(categoryFilter)
-    }
-  }, [categoryFilter])
-
-  const fetchDeals = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const response = await fetch('/api/deals/live?limit=100')
-      const data = await response.json()
-
-      if (data.deals && Array.isArray(data.deals)) {
-        setDeals(data.deals)
-
-        // Extract all unique categories
-        const categories = new Set<string>()
-        data.deals.forEach((deal: Deal) => {
-          if (deal.category) categories.add(deal.category)
-          if (deal.categories) {
-            deal.categories.forEach(cat => categories.add(cat))
-          }
+    const [categoriesResponse, merchantsResponse, crossFilterResponse] = await Promise.all([
+      fetch(`${baseUrl}/api/categories`, { cache: 'no-store' })
+        .then(res => res.json())
+        .catch(err => {
+          console.error('[DealsPage] Failed to fetch categories:', err)
+          return { categories: [] }
+        }),
+      fetch(`${baseUrl}/api/merchants`, { cache: 'no-store' })
+        .then(res => res.json())
+        .catch(err => {
+          console.error('[DealsPage] Failed to fetch merchants:', err)
+          return { merchants: [] }
+        }),
+      fetch(`${baseUrl}/api/cross-filter`, { cache: 'no-store' })
+        .then(res => res.json())
+        .catch(err => {
+          console.error('[DealsPage] Failed to fetch cross-filter data:', err)
+          return { categoryByMerchant: {}, merchantByCategory: {} }
         })
-        setAvailableCategories(Array.from(categories).sort())
-      } else {
-        setError('Failed to load deals')
+    ])
+
+    // 定义标准分类（与前端UI保持一致）
+    const standardCategories = [
+      { id: 'gaming', name: 'Gaming', translatedName: '游戏娱乐', icon: 'gamepad' },
+      { id: 'electronics', name: 'Electronics', translatedName: '电子产品', icon: 'laptop' },
+      { id: 'fashion', name: 'Fashion', translatedName: '时尚服饰', icon: 'shirt' },
+      { id: 'home-kitchen', name: 'Home & Kitchen', translatedName: '家居厨房', icon: 'home' },
+      { id: 'sports-outdoor', name: 'Sports & Outdoor', translatedName: '运动户外', icon: 'bike' },
+      { id: 'beauty-health', name: 'Beauty & Health', translatedName: '美妆护肤', icon: 'heart' },
+      { id: 'automotive', name: 'Automotive', translatedName: '汽车用品', icon: 'car' },
+      { id: 'food-drinks', name: 'Food & Drinks', translatedName: '食品饮料', icon: 'utensils' },
+      { id: 'toys-kids', name: 'Toys & Kids', translatedName: '玩具儿童', icon: 'baby' },
+      { id: 'books-media', name: 'Books & Media', translatedName: '图书影音', icon: 'book' },
+      { id: 'pets', name: 'Pets', translatedName: '宠物用品', icon: 'paw' },
+      { id: 'office', name: 'Office', translatedName: '办公用品', icon: 'briefcase' },
+      { id: 'garden', name: 'Garden', translatedName: '园艺花园', icon: 'leaf' },
+      { id: 'general', name: 'General', translatedName: '综合', icon: 'tag' },
+    ]
+
+    // 映射后端分类名到标准分类ID（支持德语和英语）
+    const categoryNameToId: Record<string, string> = {
+      // 英语名称
+      'gaming': 'gaming',
+      'electronics': 'electronics',
+      'fashion': 'fashion',
+      'home & kitchen': 'home-kitchen',
+      'sports & outdoor': 'sports-outdoor',
+      'beauty & health': 'beauty-health',
+      'automotive': 'automotive',
+      'food & drinks': 'food-drinks',
+      'toys & kids': 'toys-kids',
+      'books & media': 'books-media',
+      'pets': 'pets',
+      'office': 'office',
+      'garden': 'garden',
+      'general': 'general',
+
+      // 德语名称映射
+      'elektronik': 'electronics',
+      'computer': 'electronics',
+      'haushalt': 'home-kitchen',
+      'fashion & beauty': 'fashion',
+      'fashion &amp; beauty': 'fashion',
+      'freizeit': 'sports-outdoor',
+      'entertainment': 'gaming',
+      'lebensmittel': 'food-drinks',
+      'spielzeug': 'toys-kids',
+      'werkzeug & baumarkt': 'automotive',
+      'werkzeug &amp; baumarkt': 'automotive',
+      'erotik': 'beauty-health',
+      'reisen': 'general',
+      'schnäppchen': 'general',
+      'sonstiges': 'general',
+
+      // 品牌/商家名称（映射到综合分类）
+      'amazon': 'general',
+      'sparhamsterin': 'general',
+      'marktguru': 'general',
+      'mediamarkt': 'electronics',
+      'billa': 'food-drinks',
+      'interspar': 'food-drinks',
+    }
+
+    // 合并后端数据和标准分类（聚合所有匹配的分类）
+    const categories = standardCategories.map(stdCat => {
+      // 聚合所有映射到同一标准分类的后端分类计数
+      const totalCount = categoriesResponse.categories
+        .filter((c: any) => categoryNameToId[c.name.toLowerCase()] === stdCat.id)
+        .reduce((sum: number, cat: any) => sum + (cat.count || 0), 0)
+
+      return {
+        ...stdCat,
+        count: totalCount
       }
-    } catch (err) {
-      setError('Network error occurred')
-      logger.error('Error fetching deals', err as Error)
-    } finally {
-      setLoading(false)
+    })
+      .filter(cat => cat.count > 0) // 显示所有有商品的分类
+      .sort((a, b) => b.count - a.count) // 按商品数量降序排列
+
+    // 转换商家数据格式（后端通过/api/merchants返回的是 {merchants: [...]}）
+    const merchantsData = merchantsResponse.merchants || []
+    const merchants = merchantsData.map((m: any) => ({
+      name: m.merchant,
+      count: typeof m.deal_count === 'string' ? parseInt(m.deal_count) : m.deal_count
+    }))
+
+    // 转换交叉筛选数据：德语分类名 -> 标准英语分类ID
+    const rawCategoryByMerchant = crossFilterResponse.categoryByMerchant || {}
+    const rawMerchantByCategory = crossFilterResponse.merchantByCategory || {}
+
+    // 转换 categoryByMerchant: 聚合同一标准分类的数据
+    const categoryByMerchant: Record<string, Record<string, number>> = {}
+    Object.keys(rawCategoryByMerchant).forEach(merchantName => {
+      categoryByMerchant[merchantName] = {}
+      const merchantCategories = rawCategoryByMerchant[merchantName]
+
+      Object.keys(merchantCategories).forEach(germanCategory => {
+        const standardId = categoryNameToId[germanCategory.toLowerCase()]
+        if (standardId) {
+          const count = merchantCategories[germanCategory]
+          categoryByMerchant[merchantName][standardId] =
+            (categoryByMerchant[merchantName][standardId] || 0) + count
+        }
+      })
+    })
+
+    // 转换 merchantByCategory: 聚合同一标准分类的数据
+    const merchantByCategory: Record<string, Record<string, number>> = {}
+    Object.keys(rawMerchantByCategory).forEach(germanCategory => {
+      const standardId = categoryNameToId[germanCategory.toLowerCase()]
+      if (standardId) {
+        if (!merchantByCategory[standardId]) {
+          merchantByCategory[standardId] = {}
+        }
+
+        const categoryMerchants = rawMerchantByCategory[germanCategory]
+        Object.keys(categoryMerchants).forEach(merchantName => {
+          const count = categoryMerchants[merchantName]
+          merchantByCategory[standardId][merchantName] =
+            (merchantByCategory[standardId][merchantName] || 0) + count
+        })
+      }
+    })
+
+    return {
+      categories,
+      merchants,
+      categoryByMerchant,
+      merchantByCategory
+    }
+  } catch (error) {
+    console.error('Error fetching categories and merchants:', error)
+    return {
+      categories: [],
+      merchants: [],
+      categoryByMerchant: {},
+      merchantByCategory: {}
     }
   }
+}
 
-  const filteredDeals = deals.filter(deal => {
-    if (!selectedCategory) return true
-    return deal.category === selectedCategory || deal.categories?.includes(selectedCategory)
-  })
+interface DealsPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
 
-  const totalPages = Math.ceil(filteredDeals.length / dealsPerPage)
-  const currentDeals = filteredDeals.slice(
-    (currentPage - 1) * dealsPerPage,
-    currentPage * dealsPerPage
-  )
+export default async function DealsPage({ searchParams }: DealsPageProps) {
+  const params = await searchParams
+  const { deals, totalCount } = await getDealsData(params)
+  const { categories, merchants, categoryByMerchant, merchantByCategory } = await getCategoriesAndMerchants()
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  // 获取当前筛选参数
+  const currentCategory = typeof params.category === 'string' ? params.category : null
+  const currentMerchant = typeof params.merchant === 'string' ? params.merchant : null
+  const currentSearch = typeof params.search === 'string' ? params.search : null
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="h-12 bg-gray-100 border-b border-gray-200"></div>
-                  <div className="p-4 flex gap-4">
-                    <div className="w-32 h-32 bg-gray-200 rounded"></div>
-                    <div className="flex-1 space-y-3">
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-6 bg-gray-200 rounded w-1/2 mt-auto"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // 获取当前分类信息
+  const categoryInfo = categories.find(cat => cat.id === currentCategory?.toLowerCase())
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">❌</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">加载失败</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchDeals}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            重试
-          </button>
-        </div>
-      </div>
-    )
+  // 构建页面标题
+  let pageTitle = '所有优惠'
+  let pageDescription = '浏览奥地利最新优惠信息'
+
+  if (categoryInfo?.translatedName && currentMerchant) {
+    pageTitle = `${categoryInfo.translatedName} - ${currentMerchant}`
+    pageDescription = `${categoryInfo.translatedName} 分类下 ${currentMerchant} 的优惠`
+  } else if (categoryInfo?.translatedName) {
+    pageTitle = categoryInfo.translatedName
+    pageDescription = `${categoryInfo.translatedName} 分类的所有优惠`
+  } else if (currentMerchant) {
+    pageTitle = currentMerchant
+    pageDescription = `${currentMerchant} 的所有优惠`
+  } else if (currentSearch) {
+    pageTitle = `搜索：${currentSearch}`
+    pageDescription = `搜索 "${currentSearch}" 的相关优惠`
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <TranslationWrapper>
+      <div className="min-h-screen bg-neutral-bg">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">所有优惠</h1>
-          <p className="text-gray-600">
-            浏览最新的奥地利优惠信息 • 共 {filteredDeals.length} 个优惠
-            {selectedCategory && ` • 分类：${selectedCategory}`}
-          </p>
-        </div>
+        <SiteHeader merchants={merchants} categories={categories} />
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">
-            按分类筛选：
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value)
-              setCurrentPage(1) // Reset to first page
-            }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">所有分类</option>
-            {availableCategories.map(category => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-
-          {selectedCategory && (
-            <button
-              onClick={() => {
-                setSelectedCategory('')
-                setCurrentPage(1)
-              }}
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
-              清除筛选
-            </button>
-          )}
-        </div>
-
-        {/* Deals Grid - Responsive: Mobile 1 column, Desktop 2 columns */}
-        {currentDeals.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {currentDeals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  上一页
-                </button>
-
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum = currentPage <= 3 ? i + 1 :
-                                   currentPage >= totalPages - 2 ? totalPages - 4 + i :
-                                   currentPage - 2 + i
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-2 text-sm rounded-lg ${
-                        currentPage === pageNum
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  下一页
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">🔍</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              {selectedCategory ? '该分类下暂无优惠' : '暂无优惠信息'}
-            </h2>
-            <p className="text-gray-600">
-              {selectedCategory ? (
-                <>
-                  尝试 <button onClick={() => setSelectedCategory('')} className="text-blue-600 hover:text-blue-700">浏览所有分类</button> 或稍后再试
-                </>
-              ) : (
-                '请稍后再试，或返回首页查看最新内容'
-              )}
+        {/* Main Content */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          {/* Page Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+              {pageTitle}
+            </h1>
+            <p className="text-gray-600 text-sm md:text-base">
+              {totalCount} 个优惠 · {pageDescription}
             </p>
           </div>
-        )}
 
-        {/* Back to Home */}
-        <div className="mt-8 text-center">
-          <Link
-            href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            ← 返回首页
-          </Link>
-        </div>
+          {/* Category Tabs */}
+          <div className="mb-8">
+            <CategoryTabs
+              categories={categories}
+              currentCategory={currentCategory}
+              currentMerchant={currentMerchant}
+              categoryByMerchant={categoryByMerchant}
+            />
+          </div>
+
+          {/* Main Layout: 左侧筛选 + 右侧列表 */}
+          <div className="flex gap-6">
+            {/* 左侧：筛选面板（桌面端显示） */}
+            <aside className="hidden lg:block w-64 flex-shrink-0">
+              <div className="sticky top-20">
+                <FilterSidebar
+                  merchants={merchants}
+                  currentMerchant={currentMerchant}
+                  currentCategory={currentCategory}
+                  merchantByCategory={merchantByCategory}
+                />
+              </div>
+            </aside>
+
+            {/* 右侧：优惠列表 */}
+            <div className="flex-1 min-w-0">
+              <DealsListClient
+                initialDeals={deals}
+                totalCount={totalCount}
+                initialPage={1}
+                pageSize={PAGE_SIZE}
+                categories={categories}
+              />
+            </div>
+          </div>
+
+          {/* 移动端筛选按钮 */}
+          <MobileFilterButton
+            merchants={merchants}
+            currentMerchant={currentMerchant}
+          />
+
+          {/* Back to Home */}
+          <div className="mt-8 text-center">
+            <Link
+              href="/"
+              className="text-brand-primary hover:text-brand-hover font-medium transition-colors"
+            >
+              ← 返回首页
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-gray-400 py-8 mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center text-sm">
+              <p>&copy; 2025 Moreyudeals. 奥地利优惠信息聚合平台</p>
+              <p className="mt-2">
+                数据来源于公开渠道 | 由 AI 自动翻译 | 仅供参考
+              </p>
+            </div>
+          </div>
+        </footer>
       </div>
-    </div>
-  )
-}
-
-export default function DealsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">加载中...</div>}>
-      <DealsContent />
-    </Suspense>
+    </TranslationWrapper>
   )
 }

@@ -16,6 +16,28 @@ function mapSortField(sortBy?: string): 'created_at' | 'price' | 'discount' | 'p
   return sortBy ? mapping[sortBy] : undefined
 }
 
+// 映射前端标准分类ID到后端德语分类名（一对多关系）
+function mapCategoryToBackend(category?: string): string[] | undefined {
+  if (!category) return undefined
+
+  const categoryMapping: Record<string, string[]> = {
+    'electronics': ['Elektronik', 'Computer'],
+    'gaming': ['Entertainment', 'Gaming'],
+    'fashion': ['Fashion & Beauty', 'Fashion &amp; Beauty'],
+    'beauty-health': ['Erotik'], // 只包含Erotik，Fashion & Beauty属于fashion
+    'home-kitchen': ['Haushalt'],
+    'sports-outdoor': ['Freizeit', 'Sport'],
+    'food-drinks': ['Lebensmittel'],
+    'toys-kids': ['Spielzeug'],
+    'automotive': ['Werkzeug & Baumarkt', 'Werkzeug &amp; Baumarkt'],
+    'office': ['Büro', 'B\u00fcro'],
+    'garden': ['Garten'],
+    'general': ['Schnäppchen', 'Sonstiges', 'Reisen'],
+  }
+
+  return categoryMapping[category.toLowerCase()]
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -44,11 +66,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // 映射前端分类ID到后端德语分类名
+    const backendCategory = category ? mapCategoryToBackend(category)?.[0] : undefined
+
     // 调用后端API
     const apiResponse = await apiClient.getDeals({
       page,
       limit,
-      category: category || undefined,
+      category: backendCategory,
       merchant: merchant || undefined,
       search: search || undefined,
       sort: mapSortField(sortByParam || undefined),

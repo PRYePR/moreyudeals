@@ -86,41 +86,52 @@ export default function CategoryTabsCollapsible({
     router.push(queryString ? `/?${queryString}` : '/')
   }
 
+  // 根据是否选中商家，筛选要显示的分类
+  let filteredCategories: Category[]
+
+  if (currentMerchant && categoryByMerchant[currentMerchant]) {
+    // 如果选中了商家，只显示该商家有商品的分类
+    const merchantCategories = categoryByMerchant[currentMerchant]
+    filteredCategories = categories.filter(cat =>
+      merchantCategories[cat.id] && merchantCategories[cat.id] > 0
+    )
+  } else {
+    // 如果没有选中商家，显示所有有商品的分类
+    filteredCategories = categories
+  }
+
+  // 添加"全部"分类，计数为当前筛选条件下的总数
   const allCategory = {
     id: 'all',
     name: 'All',
     translatedName: '全部',
-    count: categories.reduce((sum, cat) => sum + cat.count, 0),
+    count: filteredCategories.reduce((sum, cat) => sum + cat.count, 0),
     icon: <Tag className="w-4 h-4" />
   }
 
-  // 根据当前选中的商家动态过滤分类
-  let displayCategories: typeof categories
-  if (currentMerchant && categoryByMerchant[currentMerchant]) {
-    const merchantCategories = categoryByMerchant[currentMerchant]
-    displayCategories = categories.filter(cat => {
-      return merchantCategories[cat.id] && merchantCategories[cat.id] > 0
-    })
-  } else {
-    displayCategories = categories.slice(0, 14)
-  }
-
-  const allDisplayCategories = [allCategory, ...displayCategories]
+  const allDisplayCategories = [allCategory, ...filteredCategories]
   const normalizedCurrent = currentCategory?.toLowerCase()
 
   // 移动端：显示前6个 + "更多"按钮
-  // 桌面端：显示全部
+  // 桌面端：显示前10个 + "更多"按钮
   const MOBILE_DISPLAY_COUNT = 6
+  const DESKTOP_DISPLAY_COUNT = 10
+
   const visibleCategories = isExpanded
     ? allDisplayCategories
     : allDisplayCategories.slice(0, MOBILE_DISPLAY_COUNT)
 
-  const hasMore = allDisplayCategories.length > MOBILE_DISPLAY_COUNT
+  const desktopVisibleCategories = isExpanded
+    ? allDisplayCategories
+    : allDisplayCategories.slice(0, DESKTOP_DISPLAY_COUNT)
+
+  const hasMobileMore = allDisplayCategories.length > MOBILE_DISPLAY_COUNT
+  const hasDesktopMore = allDisplayCategories.length > DESKTOP_DISPLAY_COUNT
 
   return (
     <div className="relative space-y-2">
-      {/* 主要分类网格 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
+      {/* 移动端分类网格 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:hidden gap-2">
         {visibleCategories.map((category) => {
           const isActive = category.id === 'all'
             ? !normalizedCurrent
@@ -150,8 +161,39 @@ export default function CategoryTabsCollapsible({
         })}
       </div>
 
-      {/* 展开/收起按钮 (仅在移动端且有更多分类时显示) */}
-      {hasMore && (
+      {/* 桌面端分类网格 */}
+      <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
+        {desktopVisibleCategories.map((category) => {
+          const isActive = category.id === 'all'
+            ? !normalizedCurrent
+            : normalizedCurrent === category.id
+
+          return (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryClick(category.id)}
+              className={`
+                flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg
+                border transition-all duration-200 min-w-0
+                ${isActive
+                  ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-brand-primary hover:text-brand-primary hover:shadow-sm'
+                }
+              `}
+            >
+              <span className="flex-shrink-0">
+                {CATEGORY_ICONS[category.id] || category.icon}
+              </span>
+              <span className="font-medium text-sm truncate">
+                {category.translatedName}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 移动端展开/收起按钮 */}
+      {hasMobileMore && (
         <div className="flex justify-center md:hidden">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -161,6 +203,28 @@ export default function CategoryTabsCollapsible({
               {isExpanded
                 ? `收起 (${allDisplayCategories.length - MOBILE_DISPLAY_COUNT} 个分类)`
                 : `显示更多 (${allDisplayCategories.length - MOBILE_DISPLAY_COUNT} 个分类)`
+              }
+            </span>
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* 桌面端展开/收起按钮 */}
+      {hasDesktopMore && (
+        <div className="hidden md:flex justify-center">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-primary hover:text-brand-primary-dark transition-colors"
+          >
+            <span>
+              {isExpanded
+                ? `收起 (${allDisplayCategories.length - DESKTOP_DISPLAY_COUNT} 个分类)`
+                : `显示更多 (${allDisplayCategories.length - DESKTOP_DISPLAY_COUNT} 个分类)`
               }
             </span>
             {isExpanded ? (

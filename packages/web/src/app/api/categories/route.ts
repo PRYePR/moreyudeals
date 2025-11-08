@@ -16,8 +16,31 @@ export async function GET(request: NextRequest) {
     const sortBy = ALLOWED_SORT_FIELDS.has(sortByParam) ? sortByParam : 'count'
     const sortOrder = sortOrderParam === 'asc' ? 'asc' : 'desc'
 
-    // 从API服务器获取分类
-    const apiResponse = await apiClient.getCategories()
+    // 临时方案：从优惠数据中提取分类，因为后端/api/categories有bug
+    let apiResponse
+    try {
+      apiResponse = await apiClient.getCategories()
+    } catch (error) {
+      logger.warn('Failed to fetch categories from backend, using fallback', error as Error)
+      // 备用方案：从deals中提取分类
+      const dealsResponse = await apiClient.getDeals({ limit: 1000 })
+      const categoryCount: Record<string, number> = {}
+
+      dealsResponse.data.forEach(deal => {
+        if (deal.categories && Array.isArray(deal.categories)) {
+          deal.categories.forEach(cat => {
+            categoryCount[cat] = (categoryCount[cat] || 0) + 1
+          })
+        }
+      })
+
+      apiResponse = {
+        categories: Object.entries(categoryCount).map(([name, count]) => ({
+          name,
+          count
+        }))
+      }
+    }
 
     // 暂时返回简化版本(后端API不支持完整的分类统计)
     const response = {

@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { Deal } from '@/lib/db/types'
+import { Deal } from '@/lib/api-client/types'
 import { formatDistance } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { TranslatableText } from '@/components/TranslatableContent'
@@ -33,10 +33,10 @@ export default function DealCard({ deal }: DealCardProps) {
 
   const isExpired = deal.expiresAt ? new Date(deal.expiresAt) < new Date() : false
   const daysRemaining = getDaysRemaining(deal.expiresAt)
-  const timeAgo = formatDistance(new Date(deal.publishedAt), new Date(), {
+  const timeAgo = deal.publishedAt ? formatDistance(new Date(deal.publishedAt), new Date(), {
     addSuffix: true,
     locale: zhCN,
-  })
+  }) : '未知时间'
 
   return (
     <Link href={`/deals/${deal.id}`}>

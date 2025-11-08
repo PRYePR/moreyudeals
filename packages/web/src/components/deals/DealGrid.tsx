@@ -1,4 +1,4 @@
-import { Deal } from '@/lib/db/types'
+import { Deal } from '@/lib/api-client/types'
 import DealCard from './DealCard'
 
 interface DealGridProps {
