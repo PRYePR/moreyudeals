@@ -113,7 +113,7 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       NODE_ENV: 'production',
-      TRANSLATION_ENABLED: 'false',
+      TRANSLATION_ENABLED: 'true',
       DB_HOST: '43.157.40.96',
       DB_PORT: '5432',
       DB_NAME: 'moreyudeals',
@@ -155,7 +155,7 @@ echo "   pm2 logs $PM2_APP_NAME"
 echo ""
 echo "3. 手动触发一次抓取(测试):"
 echo "   cd $WORKER_DIR/packages/worker"
-echo "   TRANSLATION_ENABLED=false npx tsx src/index.ts"
+echo "   TRANSLATION_ENABLED=true npx tsx src/index.ts"
 echo ""
 echo "4. 检查数据库最新记录:"
 echo "   PGPASSWORD=bTXsPFtiLb7tNH87 psql -h 43.157.22.182 -p 5432 -U moreyu_admin -d moreyudeals -c \"SELECT title, merchant, LEFT(merchant_link, 60) FROM deals ORDER BY created_at DESC LIMIT 5;\""

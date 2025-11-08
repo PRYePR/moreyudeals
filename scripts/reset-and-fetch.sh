@@ -132,8 +132,8 @@ echo ""
 
 cd "$WORKER_DIR"
 
-# 使用环境变量临时禁用翻译(加快首次抓取)
-export TRANSLATION_ENABLED=false
+# 使用环境变量强制启用翻译，保持与线上一致
+export TRANSLATION_ENABLED=true
 
 if [ -f "dist/index.js" ]; then
     # 如果已编译,直接运行

@@ -131,7 +131,7 @@ app.get('/api/deals', async (req, res) => {
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         // Validate sort field (prevent SQL injection)
         const allowedSortFields = ['created_at', 'price', 'title', 'merchant', 'published_at', 'discount', 'expires_at'];
-        const sortField = allowedSortFields.includes(sort) ? sort : 'published_at';  // 默认按 published_at 排序
+        const sortField = allowedSortFields.includes(sort) ? sort : 'published_at'; // 默认按 published_at 排序
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
         // Get total count
         const countQuery = `SELECT COUNT(*) as total FROM deals ${whereClause}`;
@@ -224,14 +224,20 @@ app.get('/api/categories', async (req, res) => {
         category,
         COUNT(*) as deal_count,
         MAX(created_at) as last_deal_at
-      FROM deals
+      FROM deals,
+           jsonb_array_elements_text(categories) as category
       WHERE category IS NOT NULL
         AND translation_status = 'completed'
       GROUP BY category
       ORDER BY deal_count DESC
     `;
         const result = await pool.query(query);
-        res.json({ data: result.rows });
+        // Transform to match frontend expectation: {categories: [{name, count}]}
+        const categories = result.rows.map(row => ({
+            name: row.category,
+            count: parseInt(row.deal_count)
+        }));
+        res.json({ categories });
     }
     catch (error) {
         console.error('Error fetching categories:', error);
@@ -256,28 +262,23 @@ app.get('/api/cross-filter', async (req, res) => {
       ORDER BY category, deal_count DESC
     `;
         const result = await pool.query(query);
-
         // Transform into two lookup objects
         const categoryByMerchant = {};
         const merchantByCategory = {};
-
         result.rows.forEach(row => {
             const { category, merchant, deal_count } = row;
             const count = parseInt(deal_count);
-
             // categoryByMerchant[merchant][category] = count
             if (!categoryByMerchant[merchant]) {
                 categoryByMerchant[merchant] = {};
             }
             categoryByMerchant[merchant][category] = count;
-
             // merchantByCategory[category][merchant] = count
             if (!merchantByCategory[category]) {
                 merchantByCategory[category] = {};
             }
             merchantByCategory[category][merchant] = count;
         });
-
         res.json({
             data: {
                 categoryByMerchant,
@@ -293,11 +294,11 @@ app.get('/api/cross-filter', async (req, res) => {
 // Get statistics
 app.get('/api/stats', async (req, res) => {
     try {
-        const query = `
+        // Get basic stats
+        const basicStatsQuery = `
       SELECT
         COUNT(*) as total_deals,
         COUNT(DISTINCT merchant) as total_merchants,
-        COUNT(DISTINCT category) as total_categories,
         AVG(price) as avg_price,
         MIN(price) as min_price,
         MAX(price) as max_price,
@@ -306,8 +307,23 @@ app.get('/api/stats', async (req, res) => {
       FROM deals
       WHERE translation_status = 'completed'
     `;
-        const result = await pool.query(query);
-        res.json({ data: result.rows[0] });
+        // Get total categories count from JSONB array
+        const categoriesCountQuery = `
+      SELECT COUNT(DISTINCT category) as total_categories
+      FROM deals,
+           jsonb_array_elements_text(categories) as category
+      WHERE translation_status = 'completed'
+    `;
+        const [basicResult, categoriesResult] = await Promise.all([
+            pool.query(basicStatsQuery),
+            pool.query(categoriesCountQuery)
+        ]);
+        res.json({
+            data: {
+                ...basicResult.rows[0],
+                total_categories: categoriesResult.rows[0].total_categories
+            }
+        });
     }
     catch (error) {
         console.error('Error fetching stats:', error);

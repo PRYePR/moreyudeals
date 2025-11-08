@@ -39,20 +39,13 @@ export $(grep -v '^#' "$ENV_FILE" | xargs)
 echo ""
 echo "抓取配置:"
 echo "  数据库: $DB_NAME"
-echo "  翻译功能: ${TRANSLATION_ENABLED:-false}"
+echo "  翻译功能: ${TRANSLATION_ENABLED:-true}"
 echo "  目标语言: ${TRANSLATION_TARGET_LANGUAGES:-zh,en}"
 echo ""
 
-# 询问是否启用翻译
-read -p "是否启用翻译? (y/n, 默认: n): " enable_translation
-
-if [ "$enable_translation" = "y" ] || [ "$enable_translation" = "Y" ]; then
-    export TRANSLATION_ENABLED=true
-    echo -e "${GREEN}✓ 翻译功能已启用${NC}"
-else
-    export TRANSLATION_ENABLED=false
-    echo -e "${YELLOW}⊘ 翻译功能已禁用${NC}"
-fi
+# 强制启用翻译, 避免出现未翻译内容
+export TRANSLATION_ENABLED=true
+echo -e "${GREEN}✓ 翻译功能已自动开启${NC}"
 
 echo ""
 echo -e "${YELLOW}开始抓取数据...${NC}"
