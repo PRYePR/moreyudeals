@@ -22,7 +22,7 @@ async function resetTranslations() {
       GROUP BY translation_status
       ORDER BY translation_status
     `);
-    console.table(currentStatus.rows);
+    console.table(currentStatus);
 
     // 2. 重置已翻译的记录
     console.log('\n🔄 重置翻译状态...');
@@ -36,7 +36,7 @@ async function resetTranslations() {
       RETURNING id
     `);
 
-    console.log(`✅ 已重置 ${resetResult.rowCount} 条记录\n`);
+    console.log(`✅ 已重置 ${resetResult.length} 条记录\n`);
 
     // 3. 显示重置后的状态
     console.log('📊 重置后状态:');
@@ -46,7 +46,7 @@ async function resetTranslations() {
       GROUP BY translation_status
       ORDER BY translation_status
     `);
-    console.table(newStatus.rows);
+    console.table(newStatus);
 
     console.log('\n✅ 重置完成！');
     console.log('💡 提示: 启动翻译 worker 会自动开始重新翻译这些记录');
@@ -55,7 +55,7 @@ async function resetTranslations() {
     console.error('❌ 重置失败:', error);
     throw error;
   } finally {
-    await db.disconnect();
+    await db.close();
   }
 }
 

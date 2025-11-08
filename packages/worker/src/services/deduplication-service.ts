@@ -75,6 +75,7 @@ export class DeduplicationService {
    * 处理重复内容
    * 增加 duplicate_count 并更新 last_seen_at
    * 同时更新商家信息(如果新数据包含商家信息且原记录缺失)
+   * 同时更新 published_at (跟随源网站的更新)
    *
    * @param dealId 已存在的 Deal ID
    * @param newDeal 新抓取的 Deal 数据(可选,用于更新商家信息)
@@ -85,6 +86,11 @@ export class DeduplicationService {
     const updateData: Partial<Deal> = {
       lastSeenAt: new Date(),
     };
+
+    // 始终更新 published_at (跟随源网站的发布时间变化)
+    if (newDeal?.publishedAt) {
+      updateData.publishedAt = newDeal.publishedAt;
+    }
 
     // 如果新数据包含商家信息,更新到数据库
     if (newDeal?.merchant) {

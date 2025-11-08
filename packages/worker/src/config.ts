@@ -37,6 +37,11 @@ export interface WorkerConfig {
       apiKey: string;
       endpoint: string;
     };
+    microsoft?: {
+      apiKey: string;
+      region: string;
+      endpoint: string;
+    };
     redis?: {
       url: string;
     };
@@ -87,6 +92,15 @@ export function loadConfig(): WorkerConfig {
             apiKey: process.env.DEEPL_API_KEY,
             endpoint:
               process.env.DEEPL_ENDPOINT || 'https://api-free.deepl.com/v2',
+          }
+        : undefined,
+      microsoft: process.env.MICROSOFT_TRANSLATOR_KEY
+        ? {
+            apiKey: process.env.MICROSOFT_TRANSLATOR_KEY,
+            region: process.env.MICROSOFT_TRANSLATOR_REGION || 'global',
+            endpoint:
+              process.env.MICROSOFT_TRANSLATOR_ENDPOINT ||
+              'https://api.cognitive.microsofttranslator.com',
           }
         : undefined,
       redis: process.env.REDIS_URL

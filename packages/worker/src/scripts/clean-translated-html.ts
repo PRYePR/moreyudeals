@@ -24,8 +24,7 @@ async function cleanAllTranslatedHtml() {
         AND description != ''
     `;
 
-    const result = await db.query(query);
-    const deals = result.rows;
+    const deals = await db.query(query);
 
     console.log(`📊 找到 ${deals.length} 条已翻译的记录\n`);
 
@@ -69,7 +68,7 @@ async function cleanAllTranslatedHtml() {
   } catch (error) {
     console.error('❌ 清理失败:', error);
   } finally {
-    await db.disconnect();
+    await db.close();
   }
 }
 

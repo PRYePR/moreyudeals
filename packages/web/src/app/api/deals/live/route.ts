@@ -70,13 +70,14 @@ export async function GET(request: NextRequest) {
     const backendCategory = category ? mapCategoryToBackend(category)?.[0] : undefined
 
     // 调用后端API
+    // 默认按源网站发布时间 (published_at) 排序，跟随源网站的排序逻辑
     const apiResponse = await apiClient.getDeals({
       page,
       limit,
       category: backendCategory,
       merchant: merchant || undefined,
       search: search || undefined,
-      sort: mapSortField(sortByParam || undefined),
+      sort: mapSortField(sortByParam || undefined) || 'published_at',
       order: sortOrderParam === 'asc' ? 'ASC' : sortOrderParam === 'desc' ? 'DESC' : 'DESC',
     })
 

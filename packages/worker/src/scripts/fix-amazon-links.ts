@@ -8,9 +8,11 @@ dotenv.config();
 
 import { DatabaseManager } from '../database';
 import { AffiliateLinkService } from '../services/affiliate-link-service';
+import { loadConfig } from '../config';
 
 async function fixAmazonLinks() {
-  const db = new DatabaseManager();
+  const config = loadConfig();
+  const db = new DatabaseManager(config.database);
   const affiliateService = new AffiliateLinkService();
 
   try {
@@ -18,7 +20,7 @@ async function fixAmazonLinks() {
     console.log('✅ 数据库连接成功');
 
     // 获取所有 Amazon deals（没有 affiliate_link 或 affiliate_link 是 forward 链接的）
-    const result = await db.pool.query(`
+    const deals = await db.query(`
       SELECT id, merchant, canonical_merchant_name, merchant_link, affiliate_link
       FROM deals
       WHERE (merchant LIKE '%Amazon%' OR canonical_merchant_name LIKE '%Amazon%')
@@ -29,8 +31,6 @@ async function fixAmazonLinks() {
         )
       ORDER BY created_at DESC
     `);
-
-    const deals = result.rows;
     console.log(`\n📊 找到 ${deals.length} 个需要修复的 Amazon deals\n`);
 
     if (deals.length === 0) {
@@ -63,7 +63,7 @@ async function fixAmazonLinks() {
 
         if (result.enabled && result.affiliateLink) {
           // 更新数据库
-          await db.pool.query(
+          await db.query(
             `UPDATE deals
              SET affiliate_link = $1,
                  affiliate_enabled = true,
@@ -98,7 +98,7 @@ async function fixAmazonLinks() {
   } catch (error) {
     console.error('❌ 脚本执行失败:', error);
   } finally {
-    await db.disconnect();
+    await db.close();
   }
 }
 
