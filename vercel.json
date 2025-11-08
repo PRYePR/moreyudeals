@@ -1,8 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "yarn install --ignore-engines",
-  "buildCommand": "bash build-for-vercel.sh",
-  "outputDirectory": "packages/web/.next",
   "build": {
     "env": {
       "NODE_VERSION": "20"
