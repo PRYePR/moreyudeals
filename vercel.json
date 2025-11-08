@@ -2,7 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "yarn workspace @moreyudeals/web build",
   "devCommand": "yarn workspace @moreyudeals/web dev",
-  "installCommand": "yarn install",
+  "installCommand": "yarn install --ignore-engines",
   "framework": null,
-  "outputDirectory": "packages/web/.next"
+  "outputDirectory": "packages/web/.next",
+  "build": {
+    "env": {
+      "NODE_VERSION": "20"
+    }
+  }
 }
