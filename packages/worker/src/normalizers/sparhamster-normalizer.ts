@@ -3,14 +3,11 @@
  * 将 Sparhamster WordPress API 数据转换为统一的 Deal 数据模型
  */
 
-import { load as cheerioLoad } from '@moreyudeals/shared-html';
+import * as cheerio from '@moreyudeals/shared-html';
 import { BaseNormalizer } from './base-normalizer';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal, ContentBlock } from '../types/deal.types';
 import { getMerchantLogo } from '../config/merchant-logos';
-
-// 兼容旧代码的 cheerio 命名空间
-const cheerio = { load: cheerioLoad };
 import { normalizeMerchant } from '../utils/merchant-normalizer';
 
 /**

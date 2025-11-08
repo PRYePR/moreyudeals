@@ -109,8 +109,8 @@ export class DatabaseManager {
   }
 
   async updateRSSItem(id: string, updates: Partial<RSSItem>): Promise<void> {
-    const setClause = [];
-    const values = [];
+    const setClause: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     for (const [key, value] of Object.entries(updates)) {
@@ -168,8 +168,8 @@ export class DatabaseManager {
   }
 
   async updateTranslationJob(id: string, updates: Partial<TranslationJob>): Promise<void> {
-    const setClause = [];
-    const values = [];
+    const setClause: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     for (const [key, value] of Object.entries(updates)) {
@@ -363,8 +363,8 @@ export class DatabaseManager {
    * 更新 Deal
    */
   async updateDeal(id: string, updates: Partial<Deal>): Promise<void> {
-    const setClause = [];
-    const values = [];
+    const setClause: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     for (const [key, value] of Object.entries(updates)) {

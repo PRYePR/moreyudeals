@@ -4,10 +4,7 @@
  */
 
 import * as crypto from 'crypto';
-import { load as cheerioLoad } from '@moreyudeals/shared-html';
-
-// 兼容旧代码的 cheerio 命名空间
-const cheerio = { load: cheerioLoad };
+import * as cheerio from '@moreyudeals/shared-html';
 
 /**
  * Normalizer 接口定义
