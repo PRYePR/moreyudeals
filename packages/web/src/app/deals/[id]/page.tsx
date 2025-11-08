@@ -8,9 +8,11 @@ const logger = createModuleLogger('app:deal-page')
 // 服务端获取单个deal的函数
 async function getDeal(id: string) {
   try {
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://your-domain.com'
-      : 'http://localhost:3000'
+    // 服务端组件调用自己的 API 路由，使用相对路径或当前域名
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+                    (process.env.NODE_ENV === 'production'
+                      ? 'https://deals.moreyu.com'
+                      : 'http://localhost:3000')
 
     const url = `${baseUrl}/api/deals/${encodeURIComponent(id)}`
     logger.debug('Fetching deal from API', { url, dealId: id })
