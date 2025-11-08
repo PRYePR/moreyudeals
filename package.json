@@ -12,6 +12,7 @@
     "dev:web": "yarn workspace @moreyudeals/web dev",
     "dev:worker": "yarn workspace @moreyudeals/worker dev",
     "build": "yarn workspace @moreyudeals/cms build && yarn workspace @moreyudeals/web build",
+    "build:web": "yarn workspace @moreyudeals/web build",
     "start": "yarn workspace @moreyudeals/cms start",
     "test": "yarn workspaces run test",
     "lint": "yarn workspaces run lint",
