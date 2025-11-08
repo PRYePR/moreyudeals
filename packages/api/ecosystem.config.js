@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'moreyudeals-api',
     script: 'dist/index.js',
-    cwd: '/var/www/Moreyudeals/packages/api',
+    // cwd 不设置，使用当前目录（执行 pm2 start 的目录）
 
     // Cluster 模式 - 支持零停机部署
     instances: 2,
@@ -13,8 +13,8 @@ module.exports = {
     watch: false,
     max_memory_restart: '500M',
 
-    // 环境变量 - 从 .env.production 文件加载
-    env_file: '.env.production',
+    // 环境变量 - 从 .env 文件加载（dotenv 默认读取 .env）
+    // PM2 会自动加载当前目录的 .env 文件
 
     // 日志配置
     error_file: '../../logs/api-error.log',
