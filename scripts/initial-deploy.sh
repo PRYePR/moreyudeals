@@ -170,8 +170,26 @@ fi
 echo -e "${GREEN}✓ 根依赖已安装${NC}"
 echo ""
 
-# 步骤 6: 编译 API 和 Worker
+# 步骤 6: 编译依赖包和服务
 echo -e "${YELLOW}[6/8] 编译 TypeScript...${NC}"
+
+# 编译 shared-html (Worker 依赖)
+echo "编译 shared-html 共享包..."
+cd "$PROJECT_DIR/packages/shared-html"
+npm install
+npm run build
+echo -e "${GREEN}✓ shared-html 编译完成${NC}"
+
+# 编译 translation (Worker 依赖)
+if [ -d "$PROJECT_DIR/packages/translation" ]; then
+    echo "编译 translation 共享包..."
+    cd "$PROJECT_DIR/packages/translation"
+    npm install
+    if [ -f "package.json" ] && grep -q "\"build\"" package.json; then
+        npm run build
+    fi
+    echo -e "${GREEN}✓ translation 编译完成${NC}"
+fi
 
 # 编译 API
 echo "编译 API..."

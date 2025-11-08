@@ -46,6 +46,13 @@ git reset --hard HEAD~"$ROLLBACK_STEPS"
 echo -e "${GREEN}✓ 代码已回滚${NC}"
 echo ""
 
+# 重新编译 shared-html
+echo -e "${YELLOW}重新编译 shared-html...${NC}"
+cd "$PROJECT_DIR/packages/shared-html"
+npm run build
+echo -e "${GREEN}✓ shared-html 编译完成${NC}"
+echo ""
+
 # 重新编译 API
 echo -e "${YELLOW}重新编译 API...${NC}"
 cd "$PROJECT_DIR/packages/api"

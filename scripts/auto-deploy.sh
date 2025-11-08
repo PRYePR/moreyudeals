@@ -54,8 +54,24 @@ else
     NEED_INSTALL=false
 fi
 
+# 编译 shared-html (Worker 依赖)
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 2. 编译 shared-html..." >> "$LOG_FILE"
+cd "$PROJECT_DIR/packages/shared-html"
+if [ "$NEED_INSTALL" = true ]; then
+    npm install --production=false >> "$LOG_FILE" 2>&1
+fi
+if npm run build >> "$LOG_FILE" 2>&1; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ shared-html 编译成功" >> "$LOG_FILE"
+else
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✗ shared-html 编译失败" >> "$LOG_FILE"
+    cd "$PROJECT_DIR"
+    git reset --hard "$BEFORE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ 已回滚到之前版本" >> "$LOG_FILE"
+    exit 1
+fi
+
 # 编译 API
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 2. 编译 API..." >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 3. 编译 API..." >> "$LOG_FILE"
 cd "$PROJECT_DIR/packages/api"
 if [ "$NEED_INSTALL" = true ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')]    安装 API 依赖..." >> "$LOG_FILE"
@@ -73,7 +89,7 @@ else
 fi
 
 # 编译 Worker
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 3. 编译 Worker..." >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 4. 编译 Worker..." >> "$LOG_FILE"
 cd "$PROJECT_DIR/packages/worker"
 if [ "$NEED_INSTALL" = true ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')]    安装 Worker 依赖..." >> "$LOG_FILE"
@@ -86,7 +102,9 @@ else
     # 编译失败,回滚代码
     cd "$PROJECT_DIR"
     git reset --hard "$BEFORE"
-    # 重新编译 API(因为刚才编译成功了,需要回退)
+    # 重新编译依赖包(因为刚才编译成功了,需要回退)
+    cd "$PROJECT_DIR/packages/shared-html"
+    npm run build >> "$LOG_FILE" 2>&1
     cd "$PROJECT_DIR/packages/api"
     npm run build >> "$LOG_FILE" 2>&1
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ 已回滚到之前版本" >> "$LOG_FILE"
@@ -94,7 +112,7 @@ else
 fi
 
 # 重启服务(零停机)
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 4. 重启服务..." >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 5. 重启服务..." >> "$LOG_FILE"
 if pm2 reload moreyudeals-api >> "$LOG_FILE" 2>&1; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ API 已重启" >> "$LOG_FILE"
 else
@@ -108,7 +126,7 @@ else
 fi
 
 # 健康检查
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] 5. 健康检查..." >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] 6. 健康检查..." >> "$LOG_FILE"
 sleep 3  # 等待服务启动
 
 if curl -f -s http://localhost:3001/health > /dev/null 2>&1; then

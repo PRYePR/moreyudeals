@@ -9,7 +9,10 @@
  */
 
 import axios from 'axios';
-import * as cheerio from '@moreyudeals/shared-html';
+import { load as cheerioLoad } from '@moreyudeals/shared-html';
+
+// 兼容旧代码的 cheerio 命名空间
+const cheerio = { load: cheerioLoad };
 
 /**
  * 从首页提取的文章信息

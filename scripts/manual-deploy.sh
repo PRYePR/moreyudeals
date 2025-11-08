@@ -53,22 +53,29 @@ npm install --production=false
 echo -e "${GREEN}✓ Worker 依赖已更新${NC}"
 echo ""
 
+# 编译 shared-html
+echo -e "${YELLOW}[3/6] 编译 shared-html...${NC}"
+cd "$PROJECT_DIR/packages/shared-html"
+npm run build
+echo -e "${GREEN}✓ shared-html 编译完成${NC}"
+echo ""
+
 # 编译 API
-echo -e "${YELLOW}[3/5] 编译 API...${NC}"
+echo -e "${YELLOW}[4/6] 编译 API...${NC}"
 cd "$PROJECT_DIR/packages/api"
 npm run build
 echo -e "${GREEN}✓ API 编译完成${NC}"
 echo ""
 
 # 编译 Worker
-echo -e "${YELLOW}[4/5] 编译 Worker...${NC}"
+echo -e "${YELLOW}[5/6] 编译 Worker...${NC}"
 cd "$PROJECT_DIR/packages/worker"
 npm run build
 echo -e "${GREEN}✓ Worker 编译完成${NC}"
 echo ""
 
 # 重启服务
-echo -e "${YELLOW}[5/5] 重启服务...${NC}"
+echo -e "${YELLOW}[6/6] 重启服务...${NC}"
 pm2 reload moreyudeals-api
 echo -e "${GREEN}✓ API 已重启${NC}"
 
