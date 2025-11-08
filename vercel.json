@@ -1,9 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd packages/web && yarn build",
-  "devCommand": "cd packages/web && yarn dev",
   "installCommand": "yarn install --ignore-engines",
-  "framework": "nextjs",
+  "framework": null,
   "outputDirectory": "packages/web/.next",
   "build": {
     "env": {
