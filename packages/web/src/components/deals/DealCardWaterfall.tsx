@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
 import { TranslatableText } from '@/components/TranslatableContent'
+import { useDealsStore } from '@/store/dealsStore'
 
 interface Deal {
   id: string
@@ -39,6 +40,7 @@ interface DealCardWaterfallProps {
 export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { setScrollPosition } = useDealsStore()
 
   // 处理数据
   const displayTitle = deal.translatedTitle || deal.title || '无标题'
@@ -70,8 +72,13 @@ export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
     }
   }
 
+  // 点击卡片时保存滚动位置
+  const handleCardClick = () => {
+    setScrollPosition(window.scrollY)
+  }
+
   return (
-    <Link href={`/deals/${deal.id}`} className="deal-card-waterfall bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group block">
+    <Link href={`/deals/${deal.id}`} onClick={handleCardClick} className="deal-card-waterfall bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group block">
       {/* 图片区域 */}
       <div className="relative w-full aspect-square bg-gray-100 overflow-hidden flex-shrink-0">
         <Image

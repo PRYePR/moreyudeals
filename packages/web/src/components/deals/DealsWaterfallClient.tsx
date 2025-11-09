@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import DealCardWaterfall from './DealCardWaterfall'
 import FloatingActionMenu from '../FloatingActionMenu'
 import { X } from 'lucide-react'
+import { useDealsStore } from '@/store/dealsStore'
 
 // 动态导入 react-masonry-css，禁用 SSR
 const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
@@ -36,11 +37,27 @@ export default function DealsWaterfallClient({
   const searchParams = useSearchParams()
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const [deals, setDeals] = useState(initialDeals)
-  const [totalCount, setTotalCount] = useState(initialTotalCount)
-  const [currentPage, setCurrentPage] = useState(initialPage)
+  // 使用 Zustand store
+  const {
+    deals: cachedDeals,
+    currentPage: cachedPage,
+    totalCount: cachedTotal,
+    scrollPosition: cachedScrollPosition,
+    setDeals,
+    appendDeals,
+    setCurrentPage: setCachedPage,
+    setTotalCount: setCachedTotal,
+    setScrollPosition
+  } = useDealsStore()
+
   const [isLoading, setIsLoading] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const hasRestoredScroll = useRef(false)
+
+  // 决定使用缓存还是初始数据
+  const deals = cachedDeals.length > 0 ? cachedDeals : initialDeals
+  const currentPage = cachedDeals.length > 0 ? cachedPage : initialPage
+  const totalCount = cachedDeals.length > 0 ? cachedTotal : initialTotalCount
 
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
@@ -53,14 +70,36 @@ export default function DealsWaterfallClient({
     return category?.translatedName || categoryId
   }
 
-  // 当 props 变化时更新状态（服务端重新渲染后）
+  // 初始化或更新缓存
   useEffect(() => {
-    setDeals(initialDeals)
-    setTotalCount(initialTotalCount)
-    setCurrentPage(initialPage)
-  }, [initialDeals, initialTotalCount, initialPage])
+    // 如果没有缓存，使用服务端数据初始化
+    if (cachedDeals.length === 0) {
+      setDeals(initialDeals)
+      setCachedPage(initialPage)
+      setCachedTotal(initialTotalCount)
+    }
+  }, [initialDeals, initialPage, initialTotalCount, cachedDeals.length, setDeals, setCachedPage, setCachedTotal])
 
-  // 监听滚动显示"返回顶部"按钮
+  // 恢复滚动位置（只恢复一次）
+  useEffect(() => {
+    if (cachedScrollPosition > 0 && !hasRestoredScroll.current && deals.length > 0) {
+      hasRestoredScroll.current = true
+
+      // 等待 Masonry 渲染完成后恢复
+      const timer = setTimeout(() => {
+        window.scrollTo({
+          top: cachedScrollPosition,
+          behavior: 'auto'  // 使用 auto 而不是 smooth，更精确
+        })
+        // 恢复后清除缓存的位置，避免重复触发
+        setScrollPosition(0)
+      }, 600)
+
+      return () => clearTimeout(timer)
+    }
+  }, [cachedScrollPosition, deals.length, setScrollPosition])
+
+  // 监听滚动显示"返回顶部"按钮（不再实时保存滚动位置）
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 500)
@@ -139,10 +178,11 @@ export default function DealsWaterfallClient({
       const data = await response.json()
 
       if (data.deals && data.deals.length > 0) {
-        setDeals(prev => [...prev, ...data.deals])
-        setCurrentPage(nextPage)
+        // 追加到 Zustand store
+        appendDeals(data.deals)
+        setCachedPage(nextPage)
         if (data.pagination?.total) {
-          setTotalCount(data.pagination.total)
+          setCachedTotal(data.pagination.total)
         }
       }
     } catch (error) {

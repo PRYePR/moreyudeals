@@ -94,15 +94,15 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3">
           <div className="flex items-center justify-between">
-            <Link
-              href="/"
+            <button
+              onClick={() => router.back()}
               className="flex items-center space-x-1.5 sm:space-x-2 text-gray-700 hover:text-orange-600 font-medium transition-colors min-h-[44px] -ml-2 pl-2 pr-3"
             >
               <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-sm sm:text-base">返回首页</span>
-            </Link>
+              <span className="text-sm sm:text-base">返回</span>
+            </button>
             <div className="min-h-[44px] flex items-center">
               <TranslationControl />
             </div>
