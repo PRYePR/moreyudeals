@@ -680,20 +680,32 @@ export class SparhamsterNormalizer extends BaseNormalizer<WordPressPost, Deal> {
   /**
    * 提取商品图片（只取 wp-content/uploads 直链）
    * 排除商家 logo（/images/shops/）
+   * 支持懒加载：优先级 src > data-lazy-src > data-src
    */
   private extractProductImage(html: string): string | null {
     if (!html) return null;
 
     const $ = cheerio.load(html);
 
-    // 查找 src 包含 wp-content/uploads 的图片，但排除商家 logo
+    // 查找包含 wp-content/uploads 的图片，但排除商家 logo
     const productImage = $('img').filter((_, el) => {
-      const src = $(el).attr('src') || '';
-      return src.includes('wp-content/uploads') && !src.includes('/images/shops/');
+      const $el = $(el);
+      const src = $el.attr('src') || '';
+      const lazySrc = $el.attr('data-lazy-src') || '';
+      const dataSrc = $el.attr('data-src') || '';
+
+      // 检查任意一个属性包含 wp-content/uploads 且不包含 /images/shops/
+      const hasSrc = src.includes('wp-content/uploads') && !src.includes('/images/shops/');
+      const hasLazySrc = lazySrc.includes('wp-content/uploads') && !lazySrc.includes('/images/shops/');
+      const hasDataSrc = dataSrc.includes('wp-content/uploads') && !dataSrc.includes('/images/shops/');
+
+      return hasSrc || hasLazySrc || hasDataSrc;
     });
 
     if (productImage.length > 0) {
-      return $(productImage[0]).attr('src') || null;
+      const $img = $(productImage[0]);
+      // 优先级：src > data-lazy-src > data-src
+      return $img.attr('src') || $img.attr('data-lazy-src') || $img.attr('data-src') || null;
     }
 
     return null;
