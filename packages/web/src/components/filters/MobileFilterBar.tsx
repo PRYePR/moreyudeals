@@ -143,7 +143,7 @@ export default function MobileFilterBar({
       const categoryMerchants = merchantByCategory[currentCategory]
       merchantsList = merchantsList.map(m => ({
         ...m,
-        available: m.available && (categoryMerchants[m.name] && categoryMerchants[m.name] > 0)
+        available: m.available && Boolean(categoryMerchants[m.name] && categoryMerchants[m.name] > 0)
       }))
     }
 
