@@ -6,7 +6,6 @@ import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
-import PullToRefreshWrapper from '@/components/PullToRefreshWrapper'
 import { apiClient } from '@/lib/api-client'
 
 const PAGE_SIZE = 20
@@ -400,13 +399,12 @@ export default async function HomePage({
 
   return (
     <TranslationWrapper>
-      <PullToRefreshWrapper>
-        <div className="min-h-screen bg-neutral-bg">
-          {/* Header */}
-          <SiteHeader merchants={merchants} categories={categories} />
+      <div className="min-h-screen bg-neutral-bg">
+        {/* Header */}
+        <SiteHeader merchants={merchants} categories={categories} />
 
-          {/* Main Content - 根据模式渲染不同布局 */}
-          {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
+        {/* Main Content - 根据模式渲染不同布局 */}
+        {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
 
         {/* Stats Section - 简化版 */}
       <section className="bg-white border-t border-gray-200 py-12">
@@ -451,8 +449,7 @@ export default async function HomePage({
           </div>
         </div>
       </footer>
-        </div>
-      </PullToRefreshWrapper>
+      </div>
     </TranslationWrapper>
   )
 }

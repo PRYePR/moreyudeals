@@ -22,7 +22,8 @@ import {
   Book,
   PawPrint,
   Briefcase,
-  Leaf
+  Leaf,
+  RefreshCw
 } from 'lucide-react'
 import { TranslationControl } from '@/components/TranslatableContent'
 import LayoutSwitcher from '@/components/LayoutSwitcher'
@@ -47,6 +48,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
   const [searchQuery, setSearchQuery] = useState('')
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [merchantsOpen, setMerchantsOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // 分类图标映射
   const categoryIcons: Record<string, any> = {
@@ -121,6 +123,18 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
     router.push(queryString ? `/?${queryString}` : '/')
     setMerchantsOpen(false)
     setMobileMenuOpen(false)
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      // 刷新页面数据
+      router.refresh()
+      // 延迟一下让动画更明显
+      await new Promise(resolve => setTimeout(resolve, 800))
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   return (
@@ -305,6 +319,14 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
           {/* 右区：功能按钮组 - 桌面端 */}
           <div className="hidden md:flex items-center gap-2">
             <LayoutSwitcher />
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              title="刷新"
+            >
+              <RefreshCw className={`w-5 h-5 text-gray-700 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
             <TranslationControl />
           </div>
 
@@ -346,8 +368,16 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
             </button>
           </form>
 
-          {/* 语言切换按钮 - 移动端 */}
-          <div className="flex justify-center">
+          {/* 刷新 + 语言切换按钮 - 移动端 */}
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              title="刷新"
+            >
+              <RefreshCw className={`w-5 h-5 text-gray-700 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
             <TranslationControl />
           </div>
         </div>

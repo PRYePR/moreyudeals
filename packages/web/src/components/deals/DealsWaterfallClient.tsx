@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DealCardWaterfall from './DealCardWaterfall'
-import { X, ArrowUp } from 'lucide-react'
+import FloatingActionMenu from '../FloatingActionMenu'
+import { X } from 'lucide-react'
 
 interface Category {
   id: string
@@ -147,10 +148,6 @@ export default function DealsWaterfallClient({
     }
   }
 
-  // 返回顶部
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
 
   return (
     <div className="space-y-6">
@@ -258,16 +255,8 @@ export default function DealsWaterfallClient({
         </div>
       )}
 
-      {/* 返回顶部按钮 */}
-      {showBackToTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 bg-brand-primary hover:bg-brand-hover text-white p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-110"
-          title="返回顶部"
-        >
-          <ArrowUp className="w-5 h-5" />
-        </button>
-      )}
+      {/* 浮动按钮菜单 */}
+      <FloatingActionMenu showBackToTop={showBackToTop} />
     </div>
   )
 }
