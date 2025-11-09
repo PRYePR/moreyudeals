@@ -151,59 +151,6 @@ export default function DealsListClient({
 
   return (
     <div className="space-y-6">
-      {/* 筛选条件显示栏 */}
-      {(currentMerchant || currentCategory || currentSearch) && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-gray-600 font-medium">当前筛选:</span>
-
-          {currentMerchant && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>商家: {currentMerchant}</span>
-              <button
-                onClick={() => removeFilter('merchant')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除商家筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {currentCategory && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>分类: {getCategoryName(currentCategory)}</span>
-              <button
-                onClick={() => removeFilter('category')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除分类筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {currentSearch && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>搜索: {currentSearch}</span>
-              <button
-                onClick={() => removeFilter('search')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除搜索筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={clearAllFilters}
-            className="ml-auto text-sm text-gray-600 hover:text-brand-primary underline transition-colors"
-          >
-            清除全部筛选
-          </button>
-        </div>
-      )}
-
       {/* Deals Grid */}
       <div className="space-y-4">
         {deals.map((deal: any) => (
@@ -222,13 +169,8 @@ export default function DealsListClient({
       {/* 加载进度和状态 */}
       {deals.length > 0 && (
         <div className="flex flex-col items-center gap-4 pt-8 border-t border-gray-200">
-          {/* 加载进度 */}
-          <div className="text-sm text-gray-600">
-            已加载 <span className="font-semibold text-brand-primary">{deals.length}</span> / {totalCount} 个优惠
-          </div>
-
           {/* 加载状态 */}
-          {hasMore && (
+          {hasMore ? (
             <div ref={loadMoreRef} className="w-full flex justify-center">
               {isLoading ? (
                 <div className="flex items-center gap-2 text-gray-500">
@@ -244,13 +186,13 @@ export default function DealsListClient({
                 </button>
               )}
             </div>
-          )}
-
-          {/* 已加载全部 */}
-          {!hasMore && totalCount > 0 && (
-            <div className="text-sm text-gray-500">
-              已显示全部 {totalCount} 个优惠 🎉
-            </div>
+          ) : (
+            /* 已加载全部 */
+            totalCount > 0 && (
+              <div className="text-sm text-gray-500">
+                已显示全部 {totalCount} 个优惠 🎉
+              </div>
+            )
           )}
         </div>
       )}

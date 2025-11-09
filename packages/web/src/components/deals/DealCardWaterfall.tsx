@@ -35,12 +35,13 @@ interface Deal {
 
 interface DealCardWaterfallProps {
   deal: Deal
+  currentDeals: any[] // 当前显示的商品列表
 }
 
-export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
+export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterfallProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { setScrollPosition } = useDealsStore()
+  const { saveStateForReturn } = useDealsStore()
 
   // 处理数据
   const displayTitle = deal.translatedTitle || deal.title || '无标题'
@@ -72,9 +73,9 @@ export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
     }
   }
 
-  // 点击卡片时保存滚动位置
+  // 点击卡片时保存状态（只用于返回恢复）
   const handleCardClick = () => {
-    setScrollPosition(window.scrollY)
+    saveStateForReturn(currentDeals, window.scrollY)
   }
 
   return (

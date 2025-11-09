@@ -37,40 +37,26 @@ export default function DealsWaterfallClient({
   const searchParams = useSearchParams()
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  // 使用 Zustand store
+  // Zustand store - 只用于"从详情页返回"
   const {
-    deals: cachedDeals,
-    currentPage: cachedPage,
-    totalCount: cachedTotal,
-    scrollPosition: cachedScrollPosition,
-    setDeals,
-    appendDeals,
-    setCurrentPage: setCachedPage,
-    setTotalCount: setCachedTotal,
-    setScrollPosition,
-    reset
+    returnFromDetail,
+    cachedDeals,
+    cachedScrollPosition,
+    clearReturnState
   } = useDealsStore()
 
+  // 决定使用哪个数据源：只有标记为"从详情页返回"时才用缓存
+  const shouldUseCache = returnFromDetail && cachedDeals && cachedDeals.length > 0
+  const [deals, setDeals] = useState(shouldUseCache ? cachedDeals : initialDeals)
+  const [totalCount, setTotalCount] = useState(initialTotalCount)
+  const [currentPage, setCurrentPage] = useState(shouldUseCache && cachedDeals ? Math.ceil(cachedDeals.length / pageSize) : initialPage)
   const [isLoading, setIsLoading] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const hasRestoredScroll = useRef(false)
 
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
   const currentCategory = searchParams.get('category')
   const currentSearch = searchParams.get('search')
-
-  // 记录上一次的筛选参数，用于判断筛选是否真正变化
-  const prevFiltersRef = useRef({
-    merchant: currentMerchant,
-    category: currentCategory,
-    search: currentSearch
-  })
-
-  // 决定使用缓存还是初始数据
-  const deals = cachedDeals.length > 0 ? cachedDeals : initialDeals
-  const currentPage = cachedDeals.length > 0 ? cachedPage : initialPage
-  const totalCount = cachedDeals.length > 0 ? cachedTotal : initialTotalCount
 
   // 获取分类的中文翻译
   const getCategoryName = (categoryId: string) => {
@@ -78,60 +64,40 @@ export default function DealsWaterfallClient({
     return category?.translatedName || categoryId
   }
 
-  // 当筛选参数变化时，清空缓存；首次加载时初始化；从详情页返回时保留缓存
+  // 恢复滚动位置（只在从详情页返回时执行一次）
   useEffect(() => {
-    const prev = prevFiltersRef.current
-    const filtersChanged =
-      prev.merchant !== currentMerchant ||
-      prev.category !== currentCategory ||
-      prev.search !== currentSearch
-
-    if (filtersChanged) {
-      // 情况1：筛选参数变化 → 清空缓存，使用新数据
-      reset()
-      setDeals(initialDeals)
-      setCachedPage(initialPage)
-      setCachedTotal(initialTotalCount)
-      prevFiltersRef.current = {
-        merchant: currentMerchant,
-        category: currentCategory,
-        search: currentSearch
-      }
-    } else if (cachedDeals.length === 0) {
-      // 情况2：首次加载或缓存为空 → 初始化
-      setDeals(initialDeals)
-      setCachedPage(initialPage)
-      setCachedTotal(initialTotalCount)
-    }
-    // 情况3：从详情页返回且筛选未变 → 不做任何事，保留缓存的多页数据
-  }, [currentMerchant, currentCategory, currentSearch, initialDeals, initialPage, initialTotalCount, cachedDeals.length, setDeals, setCachedPage, setCachedTotal, reset])
-
-  // 恢复滚动位置（只恢复一次）
-  useEffect(() => {
-    if (cachedScrollPosition > 0 && !hasRestoredScroll.current && deals.length > 0) {
-      hasRestoredScroll.current = true
-
-      // 等待 Masonry 渲染完成后恢复
+    if (returnFromDetail && cachedScrollPosition > 0) {
+      // 等待 Masonry 渲染完成
       const timer = setTimeout(() => {
         window.scrollTo({
           top: cachedScrollPosition,
-          behavior: 'auto'  // 使用 auto 而不是 smooth，更精确
+          behavior: 'auto'
         })
-        // 恢复后清除缓存的位置，避免重复触发
-        setScrollPosition(0)
-      }, 600)
+        // 立即清除标记和缓存
+        clearReturnState()
+      }, 300)
 
       return () => clearTimeout(timer)
     }
-  }, [cachedScrollPosition, deals.length, setScrollPosition])
+  }, [returnFromDetail, cachedScrollPosition, clearReturnState])
 
-  // 监听滚动显示"返回顶部"按钮（不再实时保存滚动位置）
+  // 当 props 变化时更新状态（搜索、筛选等操作触发的服务端重新渲染）
+  useEffect(() => {
+    // 如果不是从详情页返回，就使用新的 initialDeals
+    if (!returnFromDetail) {
+      setDeals(initialDeals)
+      setTotalCount(initialTotalCount)
+      setCurrentPage(initialPage)
+    }
+  }, [initialDeals, initialTotalCount, initialPage, returnFromDetail])
+
+  // 监听滚动显示"返回顶部"按钮
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 500)
     }
 
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -204,11 +170,10 @@ export default function DealsWaterfallClient({
       const data = await response.json()
 
       if (data.deals && data.deals.length > 0) {
-        // 追加到 Zustand store
-        appendDeals(data.deals)
-        setCachedPage(nextPage)
+        setDeals(prev => [...prev, ...data.deals])
+        setCurrentPage(nextPage)
         if (data.pagination?.total) {
-          setCachedTotal(data.pagination.total)
+          setTotalCount(data.pagination.total)
         }
       }
     } catch (error) {
@@ -218,62 +183,8 @@ export default function DealsWaterfallClient({
     }
   }
 
-
   return (
     <div className="space-y-6">
-      {/* 筛选条件显示栏 */}
-      {(currentMerchant || currentCategory || currentSearch) && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-gray-600 font-medium">当前筛选:</span>
-
-          {currentMerchant && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>商家: {currentMerchant}</span>
-              <button
-                onClick={() => removeFilter('merchant')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除商家筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {currentCategory && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>分类: {getCategoryName(currentCategory)}</span>
-              <button
-                onClick={() => removeFilter('category')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除分类筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {currentSearch && (
-            <div className="flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-3 py-1.5 rounded-full text-sm">
-              <span>搜索: {currentSearch}</span>
-              <button
-                onClick={() => removeFilter('search')}
-                className="hover:bg-brand-primary/20 rounded-full p-0.5 transition-colors"
-                title="移除搜索筛选"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={clearAllFilters}
-            className="ml-auto text-sm text-gray-600 hover:text-brand-primary underline transition-colors"
-          >
-            清除全部筛选
-          </button>
-        </div>
-      )}
-
       {/* Deals 瀑布流布局 - react-masonry-css */}
       <Masonry
         breakpointCols={{
@@ -289,7 +200,7 @@ export default function DealsWaterfallClient({
       >
         {deals.map((deal: any) => (
           <div key={deal.id} className="mb-3 md:mb-4">
-            <DealCardWaterfall deal={deal} />
+            <DealCardWaterfall deal={deal} currentDeals={deals} />
           </div>
         ))}
       </Masonry>
@@ -305,13 +216,8 @@ export default function DealsWaterfallClient({
       {/* 加载进度和状态 */}
       {deals.length > 0 && (
         <div className="flex flex-col items-center gap-4 pt-8 border-t border-gray-200">
-          {/* 加载进度 */}
-          <div className="text-sm text-gray-600">
-            已加载 <span className="font-semibold text-brand-primary">{deals.length}</span> / {totalCount} 个优惠
-          </div>
-
           {/* 加载状态 */}
-          {hasMore && (
+          {hasMore ? (
             <div ref={loadMoreRef} className="w-full flex justify-center">
               {isLoading ? (
                 <div className="flex items-center gap-2 text-gray-500">
@@ -320,6 +226,7 @@ export default function DealsWaterfallClient({
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={loadMore}
                   className="px-8 py-3 bg-brand-primary hover:bg-brand-hover text-white font-medium rounded-lg transition-colors"
                 >
@@ -327,13 +234,13 @@ export default function DealsWaterfallClient({
                 </button>
               )}
             </div>
-          )}
-
-          {/* 已加载全部 */}
-          {!hasMore && totalCount > 0 && (
-            <div className="text-sm text-gray-500">
-              已显示全部 {totalCount} 个优惠 🎉
-            </div>
+          ) : (
+            /* 已加载全部 */
+            totalCount > 0 && (
+              <div className="text-sm text-gray-500">
+                已显示全部 {totalCount} 个优惠 🎉
+              </div>
+            )
           )}
         </div>
       )}

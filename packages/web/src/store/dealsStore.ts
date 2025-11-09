@@ -1,40 +1,32 @@
 import { create } from 'zustand'
 
 interface DealsState {
-  deals: any[]
-  currentPage: number
-  totalCount: number
-  scrollPosition: number
-  setDeals: (deals: any[]) => void
-  appendDeals: (newDeals: any[]) => void
-  setCurrentPage: (page: number) => void
-  setTotalCount: (count: number) => void
-  setScrollPosition: (position: number) => void
-  reset: () => void
+  // 只在"点击商品->详情页->返回"这条路径上使用
+  returnFromDetail: boolean
+  cachedDeals: any[]
+  cachedScrollPosition: number
+
+  // 保存状态（点击商品卡片时调用）
+  saveStateForReturn: (deals: any[], scrollPosition: number) => void
+
+  // 清空状态（使用完毕后立即清空）
+  clearReturnState: () => void
 }
 
 export const useDealsStore = create<DealsState>((set) => ({
-  deals: [],
-  currentPage: 1,
-  totalCount: 0,
-  scrollPosition: 0,
+  returnFromDetail: false,
+  cachedDeals: [],
+  cachedScrollPosition: 0,
 
-  setDeals: (deals) => set({ deals }),
+  saveStateForReturn: (deals, scrollPosition) => set({
+    returnFromDetail: true,
+    cachedDeals: deals,
+    cachedScrollPosition: scrollPosition
+  }),
 
-  appendDeals: (newDeals) => set((state) => ({
-    deals: [...state.deals, ...newDeals]
-  })),
-
-  setCurrentPage: (page) => set({ currentPage: page }),
-
-  setTotalCount: (count) => set({ totalCount: count }),
-
-  setScrollPosition: (position) => set({ scrollPosition: position }),
-
-  reset: () => set({
-    deals: [],
-    currentPage: 1,
-    totalCount: 0,
-    scrollPosition: 0
+  clearReturnState: () => set({
+    returnFromDetail: false,
+    cachedDeals: [],
+    cachedScrollPosition: 0
   })
 }))

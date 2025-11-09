@@ -5,6 +5,9 @@ import RightSidebar from '@/components/layout/RightSidebar'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
+import MobileFilterBar from '@/components/filters/MobileFilterBar'
+import FilterActiveChips from '@/components/filters/FilterActiveChips'
+import SearchTermBanner from '@/components/filters/SearchTermBanner'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
 import { apiClient } from '@/lib/api-client'
 
@@ -379,18 +382,13 @@ export default async function HomePage({
 
     return (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Page Header - 类似 preisjaeger 的大标题 */}
-        <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            {pageTitle}
-          </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            {totalCount} 个优惠 · 奥地利优惠信息聚合 · {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}
-          </p>
-        </div>
+      {/* Search Term Banner - 搜索条件显示（仅桌面端，移动端在 Header 下方） */}
+      <div className="hidden lg:block">
+        <SearchTermBanner searchTerm={currentSearch || ''} />
+      </div>
 
-      {/* Category Tabs */}
-      <div className="mb-8">
+      {/* Category Tabs - 桌面端分类标签 */}
+      <div className="mb-8 hidden lg:block">
         <CategoryTabs
           categories={categories}
           currentCategory={currentCategory}
@@ -399,6 +397,14 @@ export default async function HomePage({
           availableCategories={searchFilters.availableCategories}
         />
       </div>
+
+      {/* Active Filters - 筛选条件显示（仅桌面端，不包括搜索） */}
+      <FilterActiveChips
+        currentCategory={currentCategory}
+        currentMerchant={currentMerchant}
+        currentSearch={currentSearch}
+        categories={categories}
+      />
 
         {/* Main Layout: 左侧筛选 + 右侧列表 */}
         <div className="flex gap-6">
@@ -452,36 +458,53 @@ export default async function HomePage({
         {/* Header */}
         <SiteHeader merchants={merchants} categories={categories} />
 
+        {/* Mobile Top Controls - 移动端顶部控制区（导航栏下方） */}
+        <div className="lg:hidden">
+          <SearchTermBanner searchTerm={currentSearch || ''} />
+          <MobileFilterBar
+            categories={categories}
+            merchants={merchants}
+            currentCategory={currentCategory}
+            currentMerchant={currentMerchant}
+            currentSortBy={currentSortBy}
+            currentSearch={currentSearch}
+            merchantByCategory={merchantByCategory}
+            categoryByMerchant={categoryByMerchant}
+            filteredMerchants={searchFilters.allMerchants}
+            availableCategories={searchFilters.availableCategories}
+          />
+        </div>
+
         {/* Main Content - 根据模式渲染不同布局 */}
         {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}
 
         {/* Stats Section - 简化版 */}
-      <section className="bg-white border-t border-gray-200 py-12">
+      <section className="bg-white border-t border-gray-200 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-4 gap-4 text-center">
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+              <div className="text-xl md:text-2xl font-bold text-brand-primary mb-1">
                 {totalCount}+
               </div>
-              <div className="text-sm md:text-base text-gray-600">实时优惠</div>
+              <div className="text-xs text-gray-600">实时优惠</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+              <div className="text-xl md:text-2xl font-bold text-brand-primary mb-1">
                 50+
               </div>
-              <div className="text-sm md:text-base text-gray-600">合作商家</div>
+              <div className="text-xs text-gray-600">合作商家</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+              <div className="text-xl md:text-2xl font-bold text-brand-primary mb-1">
                 每日
               </div>
-              <div className="text-sm md:text-base text-gray-600">自动更新</div>
+              <div className="text-xs text-gray-600">自动更新</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-brand-primary mb-2">
+              <div className="text-xl md:text-2xl font-bold text-brand-primary mb-1">
                 中文
               </div>
-              <div className="text-sm md:text-base text-gray-600">AI翻译</div>
+              <div className="text-xs text-gray-600">AI翻译</div>
             </div>
           </div>
         </div>

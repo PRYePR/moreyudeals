@@ -167,59 +167,85 @@ export default function FilterSidebar({
 
           {filterExpanded && (
             <div className="px-4 pb-4 space-y-2 max-h-64 overflow-y-auto">
-              {merchants.slice(0, 20).map((merchant) => {
-                const isActive = currentMerchant === merchant.name
-
-                // 判断该商家是否可用
-                let isDisabled = false
-
+              {(() => {
                 const currentSearch = searchParams.get('search')
 
-                // 步骤1：先根据分类判断（如果选择了分类）
-                if (currentCategory && currentCategory !== 'all' && merchantByCategory[currentCategory]) {
-                  const categoryMerchants = merchantByCategory[currentCategory]
-                  isDisabled = !categoryMerchants[merchant.name] || categoryMerchants[merchant.name] === 0
-                }
+                // 处理商家列表，添加 available 标记
+                const merchantsWithAvailability = merchants.map(merchant => {
+                  let isDisabled = false
 
-                // 步骤2：如果有搜索条件，进一步判断（商家必须同时满足分类和搜索）
-                if (currentSearch && filteredMerchants && filteredMerchants.length > 0) {
-                  const filteredMerchant = filteredMerchants.find(m => m.name === merchant.name)
-                  // 如果在搜索结果中找不到，或者标记为不可用，则禁用
-                  if (!filteredMerchant || !filteredMerchant.available) {
-                    isDisabled = true
+                  // 步骤1：根据分类判断
+                  if (currentCategory && currentCategory !== 'all' && merchantByCategory[currentCategory]) {
+                    const categoryMerchants = merchantByCategory[currentCategory]
+                    isDisabled = !categoryMerchants[merchant.name] || categoryMerchants[merchant.name] === 0
                   }
-                }
 
-                return (
-                  <label
-                    key={merchant.name}
-                    className={`flex items-center gap-3 group ${
-                      isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={() => handleMerchantToggle(merchant.name)}
-                      disabled={isDisabled}
-                      className={`w-4 h-4 border-gray-300 rounded focus:ring-brand-primary ${
-                        isDisabled
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-brand-primary'
-                      }`}
-                    />
-                    <span className={`text-sm ${
-                      isDisabled
-                        ? 'text-gray-400'
-                        : isActive
-                          ? 'text-brand-primary font-medium'
-                          : 'text-gray-700 group-hover:text-brand-primary'
-                    }`}>
-                      {merchant.name}
-                    </span>
-                  </label>
-                )
-              })}
+                  // 步骤2：如果有搜索条件，进一步判断
+                  if (currentSearch && filteredMerchants && filteredMerchants.length > 0) {
+                    const filteredMerchant = filteredMerchants.find(m => m.name === merchant.name)
+                    if (!filteredMerchant || !filteredMerchant.available) {
+                      isDisabled = true
+                    }
+                  }
+
+                  return { ...merchant, available: !isDisabled }
+                })
+
+                // 混合排序：可用的在前，禁用的在后，各自按数量排序
+                const availableMerchants = merchantsWithAvailability
+                  .filter(m => m.available)
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 20)
+
+                const unavailableMerchants = merchantsWithAvailability
+                  .filter(m => !m.available)
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 20)
+
+                const sortedMerchants = [...availableMerchants, ...unavailableMerchants].slice(0, 20)
+
+                return sortedMerchants.map((merchant, index) => {
+                  const isActive = currentMerchant === merchant.name
+                  const isDisabled = !merchant.available
+
+                  // 检查是否是第一个不可用商家（显示分隔线）
+                  const isFirstDisabled = isDisabled && (index === 0 || sortedMerchants[index - 1]?.available)
+
+                  return (
+                    <div key={merchant.name}>
+                      {isFirstDisabled && (
+                        <div className="my-2 border-t border-gray-200" />
+                      )}
+                      <label
+                        className={`flex items-center gap-3 group ${
+                          isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isActive}
+                          onChange={() => handleMerchantToggle(merchant.name)}
+                          disabled={isDisabled}
+                          className={`w-4 h-4 border-gray-300 rounded focus:ring-brand-primary ${
+                            isDisabled
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-brand-primary'
+                          }`}
+                        />
+                        <span className={`text-sm ${
+                          isDisabled
+                            ? 'text-gray-400'
+                            : isActive
+                              ? 'text-brand-primary font-medium'
+                              : 'text-gray-700 group-hover:text-brand-primary'
+                        }`}>
+                          {merchant.name}
+                        </span>
+                      </label>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
         </div>

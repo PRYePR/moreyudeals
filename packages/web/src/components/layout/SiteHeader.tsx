@@ -92,9 +92,15 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      const params = new URLSearchParams(searchParams.toString())
+      // 导航栏搜索：替换式筛选，只保留 layout 参数
+      const params = new URLSearchParams()
       params.set('search', searchQuery.trim())
-      params.delete('page') // 重置分页
+
+      // 保留 layout 参数
+      const layout = searchParams.get('layout')
+      if (layout) {
+        params.set('layout', layout)
+      }
 
       const queryString = params.toString()
       router.push(queryString ? `/?${queryString}` : '/')
@@ -104,9 +110,15 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
   }
 
   const handleCategoryClick = (categoryId: string) => {
-    const params = new URLSearchParams(searchParams.toString())
+    // 导航栏分类点击：替换式筛选，只保留 layout 参数
+    const params = new URLSearchParams()
     params.set('category', categoryId)
-    params.delete('page') // 重置分页
+
+    // 保留 layout 参数
+    const layout = searchParams.get('layout')
+    if (layout) {
+      params.set('layout', layout)
+    }
 
     const queryString = params.toString()
     router.push(queryString ? `/?${queryString}` : '/')
@@ -115,9 +127,15 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
   }
 
   const handleMerchantClick = (merchantName: string) => {
-    const params = new URLSearchParams(searchParams.toString())
+    // 导航栏商家点击：替换式筛选，只保留 layout 参数
+    const params = new URLSearchParams()
     params.set('merchant', merchantName)
-    params.delete('page') // 重置分页
+
+    // 保留 layout 参数
+    const layout = searchParams.get('layout')
+    if (layout) {
+      params.set('layout', layout)
+    }
 
     const queryString = params.toString()
     router.push(queryString ? `/?${queryString}` : '/')
@@ -137,6 +155,13 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
     }
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    // Logo 点击：强制刷新整个页面，清除所有状态
+    const layout = searchParams.get('layout')
+    window.location.href = layout ? `/?layout=${layout}` : '/'
+  }
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -145,9 +170,10 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
           {/* 左区：Logo + 导航 */}
           <div className="flex items-center gap-6">
             {/* Logo + 网站名 */}
-            <Link
+            <a
               href={searchParams.get('layout') ? `/?layout=${searchParams.get('layout')}` : '/'}
-              className="flex items-center gap-2 group"
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 group cursor-pointer"
             >
               {/* Logo 图片 */}
               <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -169,7 +195,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
                 {/* 移动端也显示副标题，但用更小的字号 */}
                 <div className="text-xs text-gray-500 -mt-1">奥地利优惠聚合</div>
               </div>
-            </Link>
+            </a>
 
             {/* 桌面端导航：分类和商家 */}
             <nav className="hidden lg:flex items-center gap-1">
