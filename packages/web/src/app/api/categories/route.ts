@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     // 暂时返回简化版本(后端API不支持完整的分类统计)
     const responseData = {
-      categories: apiResponse.categories.map(cat => ({
+      categories: apiResponse.categories.map((cat: any) => ({
         id: cat.name.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-'),
         name: cat.name,
         translatedName: cat.name, // 后端已经返回英文名
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         subcategories: []
       })),
       stats: {
-        totalDeals: apiResponse.categories.reduce((sum, cat) => sum + cat.count, 0),
+        totalDeals: apiResponse.categories.reduce((sum: number, cat: any) => sum + cat.count, 0),
         totalCategories: apiResponse.categories.length
       },
       filters: {
