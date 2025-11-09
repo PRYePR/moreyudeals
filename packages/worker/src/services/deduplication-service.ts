@@ -92,6 +92,14 @@ export class DeduplicationService {
       updateData.publishedAt = newDeal.publishedAt;
     }
 
+    // 如果新数据包含图片且原记录缺失，更新图片
+    if (newDeal?.imageUrl) {
+      updateData.imageUrl = newDeal.imageUrl;
+      if (newDeal.images && newDeal.images.length > 0) {
+        updateData.images = newDeal.images;
+      }
+    }
+
     // 如果新数据包含商家信息,更新到数据库
     if (newDeal?.merchant) {
       updateData.merchant = newDeal.merchant;
