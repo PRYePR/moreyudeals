@@ -18,7 +18,7 @@ export interface Deal {
   publishedAt: Date
   expiresAt?: Date
   language: 'de' | 'en'
-  translationProvider: 'deepl' | 'microsoft' | 'google'
+  translationProvider: 'deepl' | 'microsoft' | 'microsoft2' | 'google'
   isTranslated: boolean
   categories: string[]
   content: string

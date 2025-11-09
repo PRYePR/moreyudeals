@@ -21,7 +21,7 @@ interface Deal {
   publishedAt: Date | string
   expiresAt: Date | string
   language: 'de' | 'en'
-  translationProvider: 'deepl' | 'microsoft' | 'google'
+  translationProvider: 'deepl' | 'microsoft' | 'microsoft2' | 'google'
   isTranslated: boolean
   merchant?: string           // 兼容旧字段
   merchantName?: string       // 新字段（后端返回）

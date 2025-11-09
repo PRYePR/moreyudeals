@@ -7,7 +7,8 @@
 export type LanguageCode = 'de' | 'zh' | 'en';
 
 // 翻译Provider名称
-export type ProviderName = 'deepl' | 'microsoft' | 'google';
+// 注意：需要与 packages/translation/types.ts 保持同步
+export type ProviderName = 'deepl' | 'microsoft' | 'microsoft2' | 'google';
 
 // 翻译优先级
 export type TranslationPriority = 'high' | 'normal' | 'low';
