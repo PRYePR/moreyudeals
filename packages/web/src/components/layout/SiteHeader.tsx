@@ -132,11 +132,12 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
               <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-hover rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:scale-105 transition-transform">
                 M
               </div>
-              <div className="hidden sm:block">
+              {/* 移动端和桌面端都显示文字 */}
+              <div>
                 <div className="text-lg font-bold text-gray-900 group-hover:text-brand-primary transition-colors">
-                  Moreyudeals
+                  墨鱼折扣
                 </div>
-                <div className="text-xs text-gray-500 -mt-1">奥地利优惠聚合</div>
+                <div className="text-xs text-gray-500 -mt-1 hidden sm:block">奥地利优惠聚合</div>
               </div>
             </Link>
           </div>
