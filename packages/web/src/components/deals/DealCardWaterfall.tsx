@@ -85,7 +85,7 @@ export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
         {/* 折扣徽章 - 覆盖在图片右上角，加大尺寸 */}
         {discountPercent && discountPercent > 0 && (
           <div className="absolute top-2 right-2 z-10">
-            <span className="inline-flex items-center justify-center bg-red-500 text-white text-sm md:text-base font-bold px-3 py-1.5 rounded-md shadow-lg">
+            <span className="inline-flex items-center justify-center bg-action-primary text-white text-sm md:text-base font-bold px-3 py-1.5 rounded-md shadow-lg">
               -{discountPercent}%
             </span>
           </div>
@@ -102,19 +102,19 @@ export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
       </div>
 
       {/* 信息区域 */}
-      <div className="flex flex-col flex-1 p-3 gap-2">
+      <div className="flex flex-col flex-1 p-3">
         {/* 标题 - 支持中文/德语切换，限制2行 */}
         <TranslatableText
           originalText={deal.originalTitle || deal.title || '无标题'}
           translatedText={deal.translatedTitle || deal.title || '无标题'}
           as="h3"
-          className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors min-h-[2.5rem]"
+          className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-brand-primary transition-colors leading-tight mb-1"
         />
 
         {/* 价格区块 */}
         {currentPrice !== null && (
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-lg font-bold text-red-600">
+          <div className="flex items-baseline gap-2 flex-wrap mb-1.5">
+            <span className="text-xl font-bold text-action-primary">
               {formatCurrency(currentPrice, currency)}
             </span>
             {originalPrice && originalPrice > currentPrice && (
@@ -128,21 +128,21 @@ export default function DealCardWaterfall({ deal }: DealCardWaterfallProps) {
         {/* 商家信息 */}
         <button
           onClick={handleMerchantClick}
-          className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-brand-primary transition-colors mt-auto group/merchant w-fit"
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-primary transition-colors mt-auto group/merchant w-fit"
           title={`筛选 ${displayMerchant} 的优惠`}
         >
           {deal.merchantLogo ? (
             <Image
               src={deal.merchantLogo}
               alt={displayMerchant}
-              width={16}
-              height={16}
+              width={14}
+              height={14}
               className="object-contain rounded"
             />
           ) : (
-            <Store className="w-4 h-4 text-gray-400 group-hover/merchant:text-brand-primary transition-colors" />
+            <Store className="w-3.5 h-3.5 text-gray-400 group-hover/merchant:text-brand-primary transition-colors" />
           )}
-          <span className="font-medium">{displayMerchant}</span>
+          <span>{displayMerchant}</span>
         </button>
 
       </div>

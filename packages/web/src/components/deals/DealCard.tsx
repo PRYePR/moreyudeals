@@ -61,7 +61,7 @@ export default function DealCard({ deal }: DealCardProps) {
 
           {/* Merchant Logo - Top Left */}
           {deal.merchantLogo && (
-            <div className="absolute top-2 left-2 w-10 h-10 bg-white rounded-md p-1 shadow-md">
+            <div className="absolute top-2 left-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-md p-0.5 md:p-1 shadow-md">
               <Image
                 src={deal.merchantLogo}
                 alt={deal.canonicalMerchantName || deal.merchant || 'Merchant'}
@@ -101,11 +101,11 @@ export default function DealCard({ deal }: DealCardProps) {
         </div>
 
         {/* Content Section */}
-        <div className="p-4 flex flex-col flex-1">
+        <div className="p-2 md:p-2.5 flex flex-col flex-1">
           {/* Category Badge */}
           {deal.categories && deal.categories.length > 0 && (
-            <div className="mb-2">
-              <span className="inline-block bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full font-medium">
+            <div className="mb-0.5 md:mb-1">
+              <span className="inline-block bg-primary-100 text-primary-800 text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-medium">
                 {deal.categories[0]}
               </span>
             </div>
@@ -117,13 +117,13 @@ export default function DealCard({ deal }: DealCardProps) {
               originalText={deal.originalTitle || deal.title}
               translatedText={deal.translatedTitle || deal.title}
               as="h3"
-              className="font-bold text-lg text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors min-h-[3.5rem]"
+              className="font-bold text-sm md:text-base leading-[1.2] md:leading-tight text-gray-900 mb-px md:mb-0.5 line-clamp-2 group-hover:text-primary-600 transition-colors"
             />
           )}
 
           {/* Description - 显示翻译后的描述 */}
           {deal.description && (
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+            <p className="text-xs md:text-sm leading-[1.2] md:leading-tight text-gray-600 mb-px md:mb-0.5 line-clamp-2">
               {deal.description}
             </p>
           )}
@@ -131,12 +131,12 @@ export default function DealCard({ deal }: DealCardProps) {
           {/* Price Section */}
           <div className="mt-auto">
             {deal.price !== null && (
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-2xl font-bold text-green-600">
+              <div className="flex items-baseline gap-1.5 md:gap-2 mb-0.5 md:mb-1">
+                <span className="text-2xl md:text-3xl font-bold text-red-600">
                   {formatPrice(deal.price, deal.currency)}
                 </span>
                 {deal.originalPrice && deal.originalPrice > deal.price && (
-                  <span className="text-gray-400 line-through text-sm">
+                  <span className="text-gray-400 line-through text-[10px] md:text-xs">
                     {formatPrice(deal.originalPrice, deal.currency)}
                   </span>
                 )}
@@ -144,14 +144,14 @@ export default function DealCard({ deal }: DealCardProps) {
             )}
 
             {/* Bottom Info */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between text-[8px] md:text-[10px] text-gray-400">
+              <div className="flex items-center gap-0.5">
                 {(deal.canonicalMerchantName || deal.merchant) && (
                   <>
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-2 h-2 md:w-2.5 md:h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
-                    <span className="truncate max-w-[100px]">{deal.canonicalMerchantName || deal.merchant}</span>
+                    <span className="truncate max-w-[70px] md:max-w-[100px]">{deal.canonicalMerchantName || deal.merchant}</span>
                   </>
                 )}
               </div>
