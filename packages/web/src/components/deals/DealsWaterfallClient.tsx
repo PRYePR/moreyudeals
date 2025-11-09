@@ -18,12 +18,23 @@ interface Category {
   count: number
 }
 
+interface Merchant {
+  name: string
+  count: number
+  available?: boolean
+}
+
 interface DealsListClientProps {
   initialDeals: any[]
   totalCount: number
   initialPage?: number
   pageSize?: number
   categories?: Category[]
+  merchants?: Merchant[]
+  merchantByCategory?: Record<string, Record<string, number>>
+  categoryByMerchant?: Record<string, Record<string, number>>
+  filteredMerchants?: Merchant[]
+  availableCategories?: Array<{ id: string; count: number }>
 }
 
 export default function DealsWaterfallClient({
@@ -31,7 +42,12 @@ export default function DealsWaterfallClient({
   totalCount: initialTotalCount,
   initialPage = 1,
   pageSize = 20,
-  categories = []
+  categories = [],
+  merchants = [],
+  merchantByCategory,
+  categoryByMerchant,
+  filteredMerchants,
+  availableCategories
 }: DealsListClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -246,7 +262,17 @@ export default function DealsWaterfallClient({
       )}
 
       {/* 浮动按钮菜单 */}
-      <FloatingActionMenu showBackToTop={showBackToTop} />
+      <FloatingActionMenu
+        showBackToTop={showBackToTop}
+        categories={categories}
+        merchants={merchants}
+        currentCategory={currentCategory}
+        currentMerchant={currentMerchant}
+        merchantByCategory={merchantByCategory}
+        categoryByMerchant={categoryByMerchant}
+        filteredMerchants={filteredMerchants}
+        availableCategories={availableCategories}
+      />
     </div>
   )
 }
