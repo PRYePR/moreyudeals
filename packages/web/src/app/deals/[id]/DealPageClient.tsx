@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -7,9 +8,9 @@ import {
   TranslationProvider,
   TranslationControl,
   TranslatableText,
-  TranslatableHtmlContent,
-  FloatingLanguageSwitch
+  TranslatableHtmlContent
 } from '@/components/TranslatableContent'
+import FloatingActionMenu from '@/components/FloatingActionMenu'
 
 interface DealPageClientProps {
   deal: any
@@ -18,6 +19,17 @@ interface DealPageClientProps {
 
 export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   const router = useRouter()
+  const [showBackToTop, setShowBackToTop] = useState(false)
+
+  // 监听滚动显示"返回顶部"按钮
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 500)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // 使用服务端计算的时间状态
   const timeStatus = deal.timeStatus || {
@@ -275,7 +287,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
           )}
         </div>
       </main>
-      <FloatingLanguageSwitch />
+      <FloatingActionMenu showBackToTop={showBackToTop} />
     </TranslationProvider>
   )
 }
