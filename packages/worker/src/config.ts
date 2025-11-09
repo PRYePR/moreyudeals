@@ -42,6 +42,11 @@ export interface WorkerConfig {
       region: string;
       endpoint: string;
     };
+    microsoft2?: {
+      apiKey: string;
+      region: string;
+      endpoint: string;
+    };
     redis?: {
       url: string;
     };
