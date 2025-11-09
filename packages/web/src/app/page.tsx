@@ -4,7 +4,6 @@ import SiteHeader from '@/components/layout/SiteHeader'
 import RightSidebar from '@/components/layout/RightSidebar'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
-import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import FilterActiveChips from '@/components/filters/FilterActiveChips'
 import SearchTermBanner from '@/components/filters/SearchTermBanner'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
@@ -461,12 +460,6 @@ export default async function HomePage({
             )}
           </div>
         </div>
-
-        {/* 移动端筛选按钮 */}
-        <MobileFilterButton
-          merchants={merchants}
-          currentMerchant={currentMerchant}
-        />
       </section>
     )
   }
@@ -476,6 +469,13 @@ export default async function HomePage({
       <div className="min-h-screen bg-neutral-bg">
         {/* Header */}
         <SiteHeader merchants={merchants} categories={categories} />
+
+        {/* Mobile SearchTermBanner - 仅在筛选模式下显示（移动端） */}
+        {hasFilters && (
+          <div className="lg:hidden">
+            <SearchTermBanner searchTerm={currentSearch || ''} />
+          </div>
+        )}
 
         {/* Main Content - 根据模式渲染不同布局 */}
         {hasFilters ? renderFilteredLayout() : renderDiscoveryLayout()}

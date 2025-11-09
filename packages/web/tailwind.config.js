@@ -9,18 +9,18 @@ module.exports = {
     extend: {
       colors: {
         // Moreyu v3.1 配色方案
-        // 主色系 - 海洋蓝
+        // 主色系 - 珊瑚橙
         brand: {
-          primary: '#1E4E8C',   // 主色：Logo、导航、标题、主按钮
-          hover: '#173B6C',     // hover态、页脚、选中态
-          light: '#E8F1FB',     // 浅蓝：背景衬色、高亮区
-          DEFAULT: '#1E4E8C',
-        },
-        // 功能色 - 珊瑚橙（CTA）
-        action: {
-          primary: '#FF6B3D',   // CTA按钮、优惠价签
-          hover: '#E45E2F',     // hover态
+          primary: '#FF6B3D',   // 主色：Logo、导航、标题、主按钮
+          hover: '#E45E2F',     // hover态、页脚、选中态
+          light: '#FFF4F0',     // 浅橙：背景衬色、高亮区
           DEFAULT: '#FF6B3D',
+        },
+        // 功能色 - 海洋蓝（次要）
+        action: {
+          primary: '#1E4E8C',   // 次要按钮
+          hover: '#173B6C',     // hover态
+          DEFAULT: '#1E4E8C',
         },
         // 辅助色
         support: {
@@ -41,12 +41,12 @@ module.exports = {
         },
         // 兼容旧配置
         primary: {
-          50: '#E8F1FB',
-          100: '#E8F1FB',
-          500: '#1E4E8C',
-          600: '#1E4E8C',
-          700: '#173B6C',
-          900: '#173B6C',
+          50: '#FFF4F0',
+          100: '#FFF4F0',
+          500: '#FF6B3D',
+          600: '#FF6B3D',
+          700: '#E45E2F',
+          900: '#E45E2F',
         },
       },
       fontFamily: {
