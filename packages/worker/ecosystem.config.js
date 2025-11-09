@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'moreyudeals-worker',
     script: 'dist/index.js',
-    // cwd 不设置，使用当前目录（执行 pm2 start 的目录）
+    cwd: __dirname, // 明确设置工作目录为 worker 包目录，确保能加载 .env 文件
 
     // Fork 模式 - Worker 单实例运行
     instances: 1,
