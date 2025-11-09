@@ -47,22 +47,30 @@ export default function DealsWaterfallClient({
     appendDeals,
     setCurrentPage: setCachedPage,
     setTotalCount: setCachedTotal,
-    setScrollPosition
+    setScrollPosition,
+    reset
   } = useDealsStore()
 
   const [isLoading, setIsLoading] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const hasRestoredScroll = useRef(false)
 
-  // 决定使用缓存还是初始数据
-  const deals = cachedDeals.length > 0 ? cachedDeals : initialDeals
-  const currentPage = cachedDeals.length > 0 ? cachedPage : initialPage
-  const totalCount = cachedDeals.length > 0 ? cachedTotal : initialTotalCount
-
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
   const currentCategory = searchParams.get('category')
   const currentSearch = searchParams.get('search')
+
+  // 记录上一次的筛选参数，用于判断筛选是否真正变化
+  const prevFiltersRef = useRef({
+    merchant: currentMerchant,
+    category: currentCategory,
+    search: currentSearch
+  })
+
+  // 决定使用缓存还是初始数据
+  const deals = cachedDeals.length > 0 ? cachedDeals : initialDeals
+  const currentPage = cachedDeals.length > 0 ? cachedPage : initialPage
+  const totalCount = cachedDeals.length > 0 ? cachedTotal : initialTotalCount
 
   // 获取分类的中文翻译
   const getCategoryName = (categoryId: string) => {
@@ -70,15 +78,33 @@ export default function DealsWaterfallClient({
     return category?.translatedName || categoryId
   }
 
-  // 初始化或更新缓存
+  // 当筛选参数变化时，清空缓存；首次加载时初始化；从详情页返回时保留缓存
   useEffect(() => {
-    // 如果没有缓存，使用服务端数据初始化
-    if (cachedDeals.length === 0) {
+    const prev = prevFiltersRef.current
+    const filtersChanged =
+      prev.merchant !== currentMerchant ||
+      prev.category !== currentCategory ||
+      prev.search !== currentSearch
+
+    if (filtersChanged) {
+      // 情况1：筛选参数变化 → 清空缓存，使用新数据
+      reset()
+      setDeals(initialDeals)
+      setCachedPage(initialPage)
+      setCachedTotal(initialTotalCount)
+      prevFiltersRef.current = {
+        merchant: currentMerchant,
+        category: currentCategory,
+        search: currentSearch
+      }
+    } else if (cachedDeals.length === 0) {
+      // 情况2：首次加载或缓存为空 → 初始化
       setDeals(initialDeals)
       setCachedPage(initialPage)
       setCachedTotal(initialTotalCount)
     }
-  }, [initialDeals, initialPage, initialTotalCount, cachedDeals.length, setDeals, setCachedPage, setCachedTotal])
+    // 情况3：从详情页返回且筛选未变 → 不做任何事，保留缓存的多页数据
+  }, [currentMerchant, currentCategory, currentSearch, initialDeals, initialPage, initialTotalCount, cachedDeals.length, setDeals, setCachedPage, setCachedTotal, reset])
 
   // 恢复滚动位置（只恢复一次）
   useEffect(() => {
