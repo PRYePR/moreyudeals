@@ -19,6 +19,7 @@ interface MicrosoftConfig {
   region?: string; // 可选，如果使用全球端点可以不提供
   endpoint?: string;
   timeout?: number;
+  name?: string; // 可选，自定义 Provider 名称
 }
 
 interface MicrosoftTranslateResponse {
@@ -33,13 +34,14 @@ interface MicrosoftTranslateResponse {
 }
 
 export class MicrosoftProvider implements TranslationProvider {
-  public readonly name = 'microsoft' as const;
+  public readonly name: 'microsoft' | 'microsoft2';
   private client: AxiosInstance;
   private config: MicrosoftConfig;
   private dailyUsage = 0;
   private lastResetDate = new Date().toDateString();
 
   constructor(config: MicrosoftConfig) {
+    this.name = (config.name as 'microsoft' | 'microsoft2') || 'microsoft';
     this.config = {
       endpoint: 'https://api.cognitive.microsofttranslator.com',
       timeout: 10000,
@@ -117,7 +119,7 @@ export class MicrosoftProvider implements TranslationProvider {
 
       return {
         translatedText: translation.text,
-        provider: 'microsoft',
+        provider: this.name,
         confidence: result.detectedLanguage?.score || 0.9,
         detectedLanguage: result.detectedLanguage
           ? this.mapMicrosoftLanguage(result.detectedLanguage.language)

@@ -31,6 +31,11 @@ interface TranslationConfig {
     region?: string;
     endpoint?: string;
   };
+  microsoft2?: {
+    apiKey: string;
+    region?: string;
+    endpoint?: string;
+  };
   redis?: {
     url: string;
   };
@@ -58,9 +63,21 @@ export function createTranslationManager(config: TranslationConfig): CoreTransla
     const microsoftProvider = new MicrosoftProvider({
       apiKey: config.microsoft.apiKey,
       region: config.microsoft.region,
-      endpoint: config.microsoft.endpoint
+      endpoint: config.microsoft.endpoint,
+      name: 'microsoft'
     });
     manager.addProvider(microsoftProvider);
+  }
+
+  // 添加Microsoft Provider #2
+  if (config.microsoft2?.apiKey) {
+    const microsoftProvider2 = new MicrosoftProvider({
+      apiKey: config.microsoft2.apiKey,
+      region: config.microsoft2.region,
+      endpoint: config.microsoft2.endpoint,
+      name: 'microsoft2'
+    });
+    manager.addProvider(microsoftProvider2);
   }
 
   return manager;

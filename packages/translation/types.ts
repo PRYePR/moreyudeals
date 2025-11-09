@@ -7,7 +7,7 @@
 export type LanguageCode = 'de' | 'zh' | 'en';
 
 // 翻译Provider名称
-export type ProviderName = 'deepl' | 'microsoft' | 'google';
+export type ProviderName = 'deepl' | 'microsoft' | 'microsoft2' | 'google';
 
 // 翻译优先级
 export type TranslationPriority = 'high' | 'normal' | 'low';

@@ -30,7 +30,7 @@ export class CoreTranslationManager implements TranslationManager {
     // 默认配置
     this.config = {
       primary: 'deepl',
-      fallback: ['microsoft', 'google'],
+      fallback: ['microsoft', 'microsoft2', 'google'],
       maxRetries: 3,
       cacheEnabled: true,
       cacheTTL: 3600 * 24, // 24小时

@@ -103,6 +103,15 @@ export function loadConfig(): WorkerConfig {
               'https://api.cognitive.microsofttranslator.com',
           }
         : undefined,
+      microsoft2: process.env.MICROSOFT_TRANSLATOR_KEY_2
+        ? {
+            apiKey: process.env.MICROSOFT_TRANSLATOR_KEY_2,
+            region: process.env.MICROSOFT_TRANSLATOR_REGION_2 || 'global',
+            endpoint:
+              process.env.MICROSOFT_TRANSLATOR_ENDPOINT_2 ||
+              'https://api.cognitive.microsofttranslator.com',
+          }
+        : undefined,
       redis: process.env.REDIS_URL
         ? {
             url: process.env.REDIS_URL,
