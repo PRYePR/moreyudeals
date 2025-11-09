@@ -2,9 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import DealCardWaterfall from './DealCardWaterfall'
 import FloatingActionMenu from '../FloatingActionMenu'
 import { X } from 'lucide-react'
+
+// 动态导入 react-masonry-css，禁用 SSR
+const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
 
 interface Category {
   id: string
@@ -204,12 +208,25 @@ export default function DealsWaterfallClient({
         </div>
       )}
 
-      {/* Deals 瀑布流网格 - CSS Grid 布局 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4">
+      {/* Deals 瀑布流布局 - react-masonry-css */}
+      <Masonry
+        breakpointCols={{
+          default: 4,
+          1536: 4,  // 2xl
+          1280: 3,  // xl
+          1024: 3,  // lg
+          768: 3,   // md
+          640: 2,   // sm
+        }}
+        className="flex -ml-3 md:-ml-4 w-auto"
+        columnClassName="pl-3 md:pl-4 bg-clip-padding"
+      >
         {deals.map((deal: any) => (
-          <DealCardWaterfall key={deal.id} deal={deal} />
+          <div key={deal.id} className="mb-3 md:mb-4">
+            <DealCardWaterfall deal={deal} />
+          </div>
         ))}
-      </div>
+      </Masonry>
 
       {/* Empty State */}
       {deals.length === 0 && (
