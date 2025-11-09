@@ -33,6 +33,7 @@ interface CategoryTabsCollapsibleProps {
   currentCategory?: string | null
   currentMerchant?: string | null
   categoryByMerchant?: Record<string, Record<string, number>>
+  availableCategories?: Array<{ id: string; count: number }> // 搜索时可用的分类列表
 }
 
 // 分类图标映射
@@ -65,7 +66,8 @@ export default function CategoryTabsCollapsible({
   categories,
   currentCategory,
   currentMerchant,
-  categoryByMerchant = {}
+  categoryByMerchant = {},
+  availableCategories = []
 }: CategoryTabsCollapsibleProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const router = useRouter()
@@ -86,9 +88,10 @@ export default function CategoryTabsCollapsible({
     router.push(queryString ? `/?${queryString}` : '/')
   }
 
-  // 根据是否选中商家，筛选要显示的分类
+  // 根据商家和搜索条件，筛选要显示的分类
   let filteredCategories: Category[]
 
+  // 步骤1：先根据商家筛选（如果选中了商家）
   if (currentMerchant && categoryByMerchant[currentMerchant]) {
     // 如果选中了商家，只显示该商家有商品的分类
     const merchantCategories = categoryByMerchant[currentMerchant]
@@ -96,8 +99,14 @@ export default function CategoryTabsCollapsible({
       merchantCategories[cat.id] && merchantCategories[cat.id] > 0
     )
   } else {
-    // 如果没有选中商家，显示所有有商品的分类
+    // 没有选中商家，显示所有分类
     filteredCategories = categories
+  }
+
+  // 步骤2：如果有搜索条件，进一步过滤（只显示有搜索结果的分类）
+  if (availableCategories && availableCategories.length > 0) {
+    const availableIds = new Set(availableCategories.map(c => c.id))
+    filteredCategories = filteredCategories.filter(cat => availableIds.has(cat.id))
   }
 
   // 添加"全部"分类，计数为当前筛选条件下的总数

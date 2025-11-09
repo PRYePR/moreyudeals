@@ -12,15 +12,29 @@ export async function GET(request: NextRequest) {
     const includeSubcategories = searchParams.get('subcategories') === 'true'
     const sortByParam = searchParams.get('sortBy') || 'count'
     const sortOrderParam = searchParams.get('sortOrder') || 'desc'
+    const search = searchParams.get('search')
+    const merchant = searchParams.get('merchant')
+    const category = searchParams.get('category')
 
     const sortBy = ALLOWED_SORT_FIELDS.has(sortByParam) ? sortByParam : 'count'
     const sortOrder = sortOrderParam === 'asc' ? 'asc' : 'desc'
 
-    // 从后端 API 获取分类列表
-    const apiResponse = await apiClient.getCategories()
+    // 构建后端 API 查询参数
+    const queryParams = new URLSearchParams()
+    if (search) queryParams.set('search', search)
+    if (merchant) queryParams.set('merchant', merchant)
+    if (category) queryParams.set('category', category)
+
+    // 从后端 API 获取分类列表 - 使用 apiClient（包含认证信息）
+    const queryString = queryParams.toString()
+    const endpoint = `/api/categories${queryString ? `?${queryString}` : ''}`
+
+    // 使用apiClient的私有fetch方法需要类型断言
+    const apiClientAny = apiClient as any
+    const apiResponse = await apiClientAny.fetch(endpoint)
 
     // 暂时返回简化版本(后端API不支持完整的分类统计)
-    const response = {
+    const responseData = {
       categories: apiResponse.categories.map(cat => ({
         id: cat.name.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-'),
         name: cat.name,
@@ -45,7 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 排序
-    let processedCategories = [...response.categories]
+    let processedCategories = [...responseData.categories]
 
     // 排序
     processedCategories.sort((a, b) => {
@@ -80,9 +94,9 @@ export async function GET(request: NextRequest) {
     })
 
     // 更新response中的categories为排序后的数据
-    response.categories = processedCategories
+    responseData.categories = processedCategories
 
-    return NextResponse.json(response)
+    return NextResponse.json(responseData)
 
   } catch (error) {
     logger.error('Error fetching categories', error as Error)

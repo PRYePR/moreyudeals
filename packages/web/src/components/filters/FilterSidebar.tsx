@@ -10,6 +10,7 @@ interface FilterSidebarProps {
   currentSort?: string | null
   currentCategory?: string | null
   merchantByCategory?: Record<string, Record<string, number>>
+  filteredMerchants?: Array<{ name: string; count: number; available: boolean }> // 搜索时的商家可用性
 }
 
 const SORT_OPTIONS = [
@@ -25,7 +26,8 @@ export default function FilterSidebar({
   currentMerchant,
   currentSort,
   currentCategory,
-  merchantByCategory = {}
+  merchantByCategory = {},
+  filteredMerchants = []
 }: FilterSidebarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -168,11 +170,24 @@ export default function FilterSidebar({
               {merchants.slice(0, 20).map((merchant) => {
                 const isActive = currentMerchant === merchant.name
 
-                // 判断该商家是否在当前选中的分类下有商品
+                // 判断该商家是否可用
                 let isDisabled = false
+
+                const currentSearch = searchParams.get('search')
+
+                // 步骤1：先根据分类判断（如果选择了分类）
                 if (currentCategory && currentCategory !== 'all' && merchantByCategory[currentCategory]) {
                   const categoryMerchants = merchantByCategory[currentCategory]
                   isDisabled = !categoryMerchants[merchant.name] || categoryMerchants[merchant.name] === 0
+                }
+
+                // 步骤2：如果有搜索条件，进一步判断（商家必须同时满足分类和搜索）
+                if (currentSearch && filteredMerchants && filteredMerchants.length > 0) {
+                  const filteredMerchant = filteredMerchants.find(m => m.name === merchant.name)
+                  // 如果在搜索结果中找不到，或者标记为不可用，则禁用
+                  if (!filteredMerchant || !filteredMerchant.available) {
+                    isDisabled = true
+                  }
                 }
 
                 return (

@@ -231,6 +231,50 @@ async function getCategoriesAndMerchants() {
   }
 }
 
+// 获取搜索筛选数据（用于联动）
+async function getSearchFilters(searchParams: { [key: string]: string | string[] | undefined }) {
+  try {
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'
+      : 'http://localhost:3000'
+
+    // 只在有搜索条件时才调用 API
+    // 分类和商家的联动由 merchantByCategory 和 categoryByMerchant 处理
+    if (!searchParams.search || typeof searchParams.search !== 'string') {
+      return { availableCategories: [], allMerchants: [] }
+    }
+
+    // 传递搜索条件和当前选择的商家/分类
+    // 用于实现双向联动：
+    // - 如果选择了商家 → 返回该商家在搜索条件下有商品的分类
+    // - 如果选择了分类 → 返回该分类在搜索条件下有商品的商家
+    const params = new URLSearchParams()
+    params.set('search', searchParams.search)
+    if (searchParams.merchant && typeof searchParams.merchant === 'string') {
+      params.set('merchant', searchParams.merchant)
+    }
+    if (searchParams.category && typeof searchParams.category === 'string') {
+      params.set('category', searchParams.category)
+    }
+
+    const queryString = params.toString()
+
+    const response = await fetch(`${baseUrl}/api/search-filters?${queryString}`, {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    })
+
+    if (!response.ok) {
+      return { availableCategories: [], allMerchants: [] }
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching search filters:', error)
+    return { availableCategories: [], allMerchants: [] }
+  }
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -244,6 +288,9 @@ export default async function HomePage({
   const currentCategory = typeof params.category === 'string' ? params.category : null
   const currentMerchant = typeof params.merchant === 'string' ? params.merchant : null
   const currentSearch = typeof params.search === 'string' ? params.search : null
+
+  // 获取搜索筛选数据（用于联动）
+  const searchFilters = await getSearchFilters(params)
   const currentSortBy = typeof params.sortBy === 'string' ? params.sortBy : null
   const currentSortOrder = typeof params.sortOrder === 'string' ? params.sortOrder : null
 
@@ -349,6 +396,7 @@ export default async function HomePage({
           currentCategory={currentCategory}
           currentMerchant={currentMerchant}
           categoryByMerchant={categoryByMerchant}
+          availableCategories={searchFilters.availableCategories}
         />
       </div>
 
@@ -362,6 +410,7 @@ export default async function HomePage({
                 currentMerchant={currentMerchant}
                 currentCategory={currentCategory}
                 merchantByCategory={merchantByCategory}
+                filteredMerchants={searchFilters.allMerchants}
               />
             </div>
           </aside>

@@ -234,18 +234,48 @@ app.get('/api/deals/:id', async (req, res) => {
 // Get merchants list
 app.get('/api/merchants', async (req, res) => {
   try {
+    const { search, category, merchant } = req.query;
+
+    // 构建 WHERE 条件
+    const conditions = ['translation_status = $1'];
+    const params: any[] = ['completed'];
+    let paramIndex = 2;
+
+    // 搜索条件：搜索标题和描述
+    if (search) {
+      conditions.push(`(title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // 分类筛选
+    if (category) {
+      conditions.push(`categories @> $${paramIndex}::jsonb`);
+      params.push(JSON.stringify([category]));
+      paramIndex++;
+    }
+
+    // 商家筛选
+    if (merchant) {
+      conditions.push(`canonical_merchant_name = $${paramIndex}`);
+      params.push(merchant);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
     const query = `
       SELECT
         COALESCE(canonical_merchant_name, 'Unknown') as merchant,
         COUNT(*) as deal_count,
         MAX(created_at) as last_deal_at
       FROM deals
-      WHERE translation_status = 'completed'
+      WHERE ${whereClause}
       GROUP BY canonical_merchant_name
       ORDER BY deal_count DESC
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
     res.json({ data: result.rows });
   } catch (error) {
     console.error('Error fetching merchants:', error);
@@ -256,6 +286,36 @@ app.get('/api/merchants', async (req, res) => {
 // Get categories list
 app.get('/api/categories', async (req, res) => {
   try {
+    const { search, category, merchant } = req.query;
+
+    // 构建 WHERE 条件
+    const conditions = ['category IS NOT NULL', 'translation_status = $1'];
+    const params: any[] = ['completed'];
+    let paramIndex = 2;
+
+    // 搜索条件：搜索标题和描述
+    if (search) {
+      conditions.push(`(title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // 分类筛选
+    if (category) {
+      conditions.push(`categories @> $${paramIndex}::jsonb`);
+      params.push(JSON.stringify([category]));
+      paramIndex++;
+    }
+
+    // 商家筛选
+    if (merchant) {
+      conditions.push(`canonical_merchant_name = $${paramIndex}`);
+      params.push(merchant);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
     const query = `
       SELECT
         category,
@@ -263,13 +323,12 @@ app.get('/api/categories', async (req, res) => {
         MAX(created_at) as last_deal_at
       FROM deals,
            jsonb_array_elements_text(categories) as category
-      WHERE category IS NOT NULL
-        AND translation_status = 'completed'
+      WHERE ${whereClause}
       GROUP BY category
       ORDER BY deal_count DESC
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     // Transform to match frontend expectation: {categories: [{name, count}]}
     const categories = result.rows.map(row => ({
