@@ -11,6 +11,7 @@ interface PullToRefreshProps {
 export default function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
   const touchStartY = useRef(0)
   const isPulling = useRef(false)
 
@@ -52,6 +53,11 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
 
       try {
         await onRefresh()
+        // 刷新成功，显示提示
+        setShowSuccessToast(true)
+        setTimeout(() => {
+          setShowSuccessToast(false)
+        }, 1500)
       } finally {
         setIsRefreshing(false)
         setPullDistance(0)
@@ -71,6 +77,18 @@ export default function PullToRefresh({ onRefresh, children }: PullToRefreshProp
       onTouchEnd={handleTouchEnd}
       className="relative"
     >
+      {/* 刷新成功提示 Toast */}
+      {showSuccessToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">刷新成功</span>
+          </div>
+        </div>
+      )}
+
       {/* 下拉刷新指示器 */}
       {pullDistance > 0 && (
         <div

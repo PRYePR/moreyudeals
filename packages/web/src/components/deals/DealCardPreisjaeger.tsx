@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { MessageCircle, Share2, Bookmark, ExternalLink, MapPin, Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
 import { TranslatableText } from '@/components/TranslatableContent'
@@ -38,6 +38,7 @@ interface DealCardPreisjaegerProps {
 
 export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isFavorited, setIsFavorited] = useState(false)
 
   // 处理数据
@@ -81,7 +82,9 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
     e.stopPropagation()
     const merchantName = deal.merchantName || deal.merchant
     if (merchantName) {
-      router.push(`/?merchant=${encodeURIComponent(merchantName)}`)
+      const layout = searchParams.get('layout')
+      const url = `/?merchant=${encodeURIComponent(merchantName)}${layout ? `&layout=${layout}` : ''}`
+      router.push(url)
     }
   }
 
@@ -124,14 +127,14 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
       <div className="deal-card-body flex flex-row p-3 lg:p-4">
         {/* 左侧：移动端图片+按钮组合，桌面端仅图片 */}
         <div className="flex flex-col gap-2 lg:contents">
-          {/* 商品图片（移动端固定宽度正方形，桌面端固定宽度） */}
-          <Link href={`/deals/${deal.id}`} className="deal-image-container relative w-28 h-28 lg:w-44 lg:h-44 flex-shrink-0 group">
+          {/* 商品图片（移动端固定宽度正方形，桌面端固定宽度，限制最大高度） */}
+          <Link href={`/deals/${deal.id}`} className="deal-image-container relative w-28 h-28 lg:w-44 lg:h-auto lg:max-h-[400px] flex-shrink-0 group">
             <div className="relative w-full h-full bg-gray-100 overflow-hidden rounded-md lg:rounded-lg">
               <Image
                 src={displayImage}
                 alt={displayTitle}
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                className="object-cover lg:object-contain group-hover:scale-105 transition-transform duration-300"
                 sizes="(max-width: 1024px) 112px, 256px"
               />
               {/* 折扣徽章 */}

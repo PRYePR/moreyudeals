@@ -25,6 +25,8 @@ import {
   Leaf
 } from 'lucide-react'
 import { TranslationControl } from '@/components/TranslatableContent'
+import LayoutSwitcher from '@/components/LayoutSwitcher'
+import Image from 'next/image'
 
 interface Category {
   id: string
@@ -126,24 +128,37 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* 主导航栏 */}
         <div className="flex items-center justify-between h-16">
-          {/* Logo + 网站名 */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-hover rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:scale-105 transition-transform">
-                M
+          {/* 左区：Logo + 导航 */}
+          <div className="flex items-center gap-6">
+            {/* Logo + 网站名 */}
+            <Link
+              href={searchParams.get('layout') ? `/?layout=${searchParams.get('layout')}` : '/'}
+              className="flex items-center gap-2 group"
+            >
+              {/* Logo 图片 */}
+              <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Image
+                  src="/logo.png"
+                  alt="墨鱼折扣"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                  unoptimized
+                />
               </div>
-              {/* 移动端和桌面端都显示文字 */}
+              {/* 网站名 */}
               <div>
                 <div className="text-lg font-bold text-gray-900 group-hover:text-brand-primary transition-colors">
                   墨鱼折扣
                 </div>
-                <div className="text-xs text-gray-500 -mt-1 hidden sm:block">奥地利优惠聚合</div>
+                {/* 移动端也显示副标题，但用更小的字号 */}
+                <div className="text-xs text-gray-500 -mt-1">奥地利优惠聚合</div>
               </div>
             </Link>
-          </div>
 
-          {/* 桌面端导航 */}
-          <nav className="hidden lg:flex items-center gap-2">
+            {/* 桌面端导航：分类和商家 */}
+            <nav className="hidden lg:flex items-center gap-1">
             {/* 分类下拉 */}
             <div
               className="relative"
@@ -263,10 +278,11 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
                 </div>
               )}
             </div>
-          </nav>
+            </nav>
+          </div>
 
-          {/* 搜索框 */}
-          <div className="hidden md:block flex-1 max-w-md mx-6">
+          {/* 中区：搜索框 */}
+          <div className="hidden md:block flex-1 max-w-xl mx-4">
             <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
@@ -286,24 +302,28 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
             </form>
           </div>
 
-          {/* 语言切换按钮 - 桌面端 */}
-          <div className="hidden md:block">
+          {/* 右区：功能按钮组 - 桌面端 */}
+          <div className="hidden md:flex items-center gap-2">
+            <LayoutSwitcher />
             <TranslationControl />
           </div>
 
-          {/* 移动端菜单按钮 */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="菜单"
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700" />
-            ) : (
-              <Menu className="w-6 h-6 text-gray-700" />
-            )}
-          </button>
+          {/* 移动端：布局切换 + 菜单按钮 */}
+          <div className="md:hidden flex items-center gap-2">
+            <LayoutSwitcher />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="菜单"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* 移动端搜索框和语言切换 */}

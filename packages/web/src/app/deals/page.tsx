@@ -1,9 +1,11 @@
 import DealsListClient from '@/components/deals/DealsListClient'
+import DealsWaterfallClient from '@/components/deals/DealsWaterfallClient'
 import SiteHeader from '@/components/layout/SiteHeader'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
+import PullToRefreshWrapper from '@/components/PullToRefreshWrapper'
 import { apiClient } from '@/lib/api-client'
 import Link from 'next/link'
 
@@ -248,6 +250,9 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
   const currentMerchant = typeof params.merchant === 'string' ? params.merchant : null
   const currentSearch = typeof params.search === 'string' ? params.search : null
 
+  // 获取布局模式参数（默认瀑布流）
+  const layout = typeof params.layout === 'string' ? params.layout : 'waterfall'
+
   // 获取当前分类信息
   const categoryInfo = categories.find(cat => cat.id === currentCategory?.toLowerCase())
 
@@ -271,12 +276,13 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
 
   return (
     <TranslationWrapper>
-      <div className="min-h-screen bg-neutral-bg">
-        {/* Header */}
-        <SiteHeader merchants={merchants} categories={categories} />
+      <PullToRefreshWrapper>
+        <div className="min-h-screen bg-neutral-bg">
+          {/* Header */}
+          <SiteHeader merchants={merchants} categories={categories} />
 
-        {/* Main Content */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          {/* Main Content */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           {/* Page Header */}
           <div className="mb-6">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
@@ -311,15 +317,25 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               </div>
             </aside>
 
-            {/* 右侧：优惠列表 */}
+            {/* 右侧：优惠列表 - 根据 layout 参数切换 */}
             <div className="flex-1 min-w-0">
-              <DealsListClient
-                initialDeals={deals}
-                totalCount={totalCount}
-                initialPage={1}
-                pageSize={PAGE_SIZE}
-                categories={categories}
-              />
+              {layout === 'list' ? (
+                <DealsListClient
+                  initialDeals={deals}
+                  totalCount={totalCount}
+                  initialPage={1}
+                  pageSize={PAGE_SIZE}
+                  categories={categories}
+                />
+              ) : (
+                <DealsWaterfallClient
+                  initialDeals={deals}
+                  totalCount={totalCount}
+                  initialPage={1}
+                  pageSize={PAGE_SIZE}
+                  categories={categories}
+                />
+              )}
             </div>
           </div>
 
@@ -351,7 +367,8 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
             </div>
           </div>
         </footer>
-      </div>
+        </div>
+      </PullToRefreshWrapper>
     </TranslationWrapper>
   )
 }

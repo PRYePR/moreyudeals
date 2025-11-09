@@ -1,4 +1,5 @@
 import DealsListClient from '@/components/deals/DealsListClient'
+import DealsWaterfallClient from '@/components/deals/DealsWaterfallClient'
 import SiteHeader from '@/components/layout/SiteHeader'
 import RightSidebar from '@/components/layout/RightSidebar'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
@@ -247,6 +248,9 @@ export default async function HomePage({
   const currentSortBy = typeof params.sortBy === 'string' ? params.sortBy : null
   const currentSortOrder = typeof params.sortOrder === 'string' ? params.sortOrder : null
 
+  // 获取布局模式参数（默认瀑布流）
+  const layout = typeof params.layout === 'string' ? params.layout : 'waterfall'
+
   // 判断是否处于筛选模式
   // 注意：只有非默认排序才算作筛选
   const hasNonDefaultSort = (currentSortBy && currentSortBy !== 'publishedAt') ||
@@ -280,15 +284,25 @@ export default async function HomePage({
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       {/* Main Layout: 左侧列表 + 右侧边栏 */}
       <div className="flex gap-6">
-        {/* 左侧：优惠列表 */}
+        {/* 左侧：优惠列表 - 根据 layout 参数切换 */}
         <div className="flex-1 min-w-0">
-          <DealsListClient
-            initialDeals={deals}
-            totalCount={totalCount}
-            initialPage={1}
-            pageSize={PAGE_SIZE}
-            categories={categories}
-          />
+          {layout === 'list' ? (
+            <DealsListClient
+              initialDeals={deals}
+              totalCount={totalCount}
+              initialPage={1}
+              pageSize={PAGE_SIZE}
+              categories={categories}
+            />
+          ) : (
+            <DealsWaterfallClient
+              initialDeals={deals}
+              totalCount={totalCount}
+              initialPage={1}
+              pageSize={PAGE_SIZE}
+              categories={categories}
+            />
+          )}
         </div>
 
         {/* 右侧：侧边栏（桌面端显示） */}
@@ -353,15 +367,25 @@ export default async function HomePage({
             </div>
           </aside>
 
-          {/* 右侧：优惠列表 */}
+          {/* 右侧：优惠列表 - 根据 layout 参数切换 */}
           <div className="flex-1 min-w-0">
-            <DealsListClient
-              initialDeals={deals}
-              totalCount={totalCount}
-              initialPage={1}
-              pageSize={PAGE_SIZE}
-              categories={categories}
-            />
+            {layout === 'list' ? (
+              <DealsListClient
+                initialDeals={deals}
+                totalCount={totalCount}
+                initialPage={1}
+                pageSize={PAGE_SIZE}
+                categories={categories}
+              />
+            ) : (
+              <DealsWaterfallClient
+                initialDeals={deals}
+                totalCount={totalCount}
+                initialPage={1}
+                pageSize={PAGE_SIZE}
+                categories={categories}
+              />
+            )}
           </div>
         </div>
 

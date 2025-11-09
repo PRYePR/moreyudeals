@@ -6,6 +6,14 @@ export const metadata: Metadata = {
   title: 'Moreyu Deals | 墨鱼折扣 - 奥地利优惠信息聚合',
   description: '奥地利优惠信息聚合平台，自动收集并翻译奥地利商家优惠信息。Automatically collect and translate Austrian deals and discounts.',
   keywords: '奥地利折扣, 奥地利优惠, Austrian deals, Gutscheine, Rabatte, 翻译, 优惠券',
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    shortcut: '/favicon-32x32.png',
+    apple: '/logo.png',
+  },
   openGraph: {
     title: 'Moreyu Deals | 墨鱼折扣 - 奥地利优惠信息聚合',
     description: '奥地利优惠信息聚合平台，自动收集并翻译奥地利商家优惠信息',

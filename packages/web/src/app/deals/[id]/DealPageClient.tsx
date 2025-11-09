@@ -58,6 +58,24 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
     return typeof price === 'string' ? parseFloat(price) : price
   }
 
+  // 计算折扣百分比（前端计算，以防后端未提供）
+  const calculateDiscountPercentage = (): number | null => {
+    if (deal.discountPercentage && deal.discountPercentage > 0) {
+      return deal.discountPercentage
+    }
+
+    const original = getNumericPrice(deal.originalPrice)
+    const current = getNumericPrice(deal.price)
+
+    if (original > 0 && current > 0 && original > current) {
+      return Math.round(((original - current) / original) * 100)
+    }
+
+    return null
+  }
+
+  const discountPercent = calculateDiscountPercentage()
+
   return (
     <TranslationProvider>
       {/* 顶部导航栏 - 移动端优化 */}
@@ -114,9 +132,9 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                   />
 
                   {/* 折扣徽章 */}
-                  {deal.discountPercentage && deal.discountPercentage > 0 && (
-                    <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1.5 rounded-md font-bold text-lg shadow-lg">
-                      -{deal.discountPercentage}%
+                  {discountPercent && discountPercent > 0 && (
+                    <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-md font-bold text-lg shadow-lg z-10">
+                      -{discountPercent}%
                     </div>
                   )}
                 </div>
@@ -135,36 +153,42 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                   />
                 </div>
 
-                {/* 价格区域 - 移动端优化 */}
+                {/* 价格区域 - 单行显示（价格+原价+折扣+节省） */}
                 <div className="mb-4 sm:mb-6">
-                  <div className="flex items-baseline flex-wrap gap-x-2 sm:gap-x-3 gap-y-1 mb-1.5 sm:mb-2">
+                  <div className="flex items-baseline flex-wrap gap-x-2 sm:gap-x-3 gap-y-1">
+                    {/* 当前价格 */}
                     {deal.price && (
-                      <div className="text-3xl sm:text-4xl font-bold text-gray-900">
+                      <div className="text-3xl sm:text-4xl font-bold text-red-600">
                         {formatPrice(deal.price)}
                       </div>
                     )}
+
+                    {/* 原价 */}
                     {deal.originalPrice && getNumericPrice(deal.originalPrice) > getNumericPrice(deal.price) && (
                       <div className="text-lg sm:text-xl text-gray-500 line-through">
                         {formatPrice(deal.originalPrice)}
                       </div>
                     )}
+
+                    {/* 折扣百分比 + 节省金额 */}
+                    {deal.originalPrice && deal.price && getNumericPrice(deal.originalPrice) > getNumericPrice(deal.price) && (
+                      <div className="text-base sm:text-lg text-green-600 font-bold">
+                        {discountPercent && `-${discountPercent}%`} 省{formatPrice(getNumericPrice(deal.originalPrice) - getNumericPrice(deal.price))}
+                      </div>
+                    )}
                   </div>
-                  {deal.originalPrice && deal.price && getNumericPrice(deal.originalPrice) > getNumericPrice(deal.price) && (
-                    <div className="text-sm sm:text-base text-green-600 font-medium">
-                      节省 {formatPrice(getNumericPrice(deal.originalPrice) - getNumericPrice(deal.price))}
-                    </div>
-                  )}
                 </div>
 
-                {/* 商家信息 - 移动端优化 - 可点击筛选 */}
+                {/* 商家信息 - 单行紧凑显示 */}
                 {deal.merchantName && (
                   <button
                     onClick={handleMerchantClick}
-                    className="mb-4 sm:mb-6 flex items-center space-x-2.5 sm:space-x-3 p-3 sm:p-4 bg-gray-50 hover:bg-orange-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all w-full text-left group cursor-pointer"
+                    className="mb-4 sm:mb-6 flex items-center gap-2 p-2 sm:p-2.5 bg-gray-50 hover:bg-orange-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all w-full text-left group cursor-pointer"
                     title={`查看 ${deal.merchantName} 的所有优惠`}
                   >
+                    <span className="text-xs sm:text-sm text-gray-600">商家:</span>
                     {deal.merchantLogo && (
-                      <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                      <div className="relative w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
                         <Image
                           src={deal.merchantLogo}
                           alt={deal.merchantName}
@@ -173,15 +197,12 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                         />
                       </div>
                     )}
-                    <div className="flex-1">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">商家</div>
-                      <div className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-orange-600 transition-colors flex items-center gap-2">
-                        {deal.merchantName}
-                        <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </div>
+                    <div className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                      {deal.merchantName}
                     </div>
+                    <svg className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
                   </button>
                 )}
 

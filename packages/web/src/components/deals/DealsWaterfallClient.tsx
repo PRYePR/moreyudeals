@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import DealCardPreisjaeger from './DealCardPreisjaeger'
+import DealCardWaterfall from './DealCardWaterfall'
 import { X, ArrowUp } from 'lucide-react'
 
 interface Category {
@@ -20,7 +20,7 @@ interface DealsListClientProps {
   categories?: Category[]
 }
 
-export default function DealsListClient({
+export default function DealsWaterfallClient({
   initialDeals,
   totalCount: initialTotalCount,
   initialPage = 1,
@@ -207,10 +207,10 @@ export default function DealsListClient({
         </div>
       )}
 
-      {/* Deals Grid */}
-      <div className="space-y-4">
+      {/* Deals 瀑布流网格 - CSS Grid 布局 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4">
         {deals.map((deal: any) => (
-          <DealCardPreisjaeger key={deal.id} deal={deal} />
+          <DealCardWaterfall key={deal.id} deal={deal} />
         ))}
       </div>
 
