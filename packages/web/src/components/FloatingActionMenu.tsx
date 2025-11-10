@@ -54,14 +54,11 @@ export default function FloatingActionMenu({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setIsRefreshing(true)
-    try {
-      router.refresh()
-      await new Promise(resolve => setTimeout(resolve, 800))
-    } finally {
-      setIsRefreshing(false)
-    }
+    // 清空所有缓存并硬刷新页面，与浏览器原生刷新效果一致
+    sessionStorage.clear()
+    window.location.reload()
   }
 
   // 关闭筛选面板
@@ -270,48 +267,48 @@ export default function FloatingActionMenu({
         </div>
       )}
 
-      {/* 弹出式子菜单 - 绝对定位在主按钮上方 (缩小尺寸) */}
+      {/* 弹出式子菜单 - 绝对定位在主按钮上方 */}
       {isMenuOpen && (
-        <div className="fixed bottom-[110px] right-4 z-50 flex flex-col-reverse gap-2 items-end animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="fixed bottom-[136px] right-4 z-50 flex flex-col-reverse gap-3 items-end animate-in fade-in slide-in-from-bottom-2 duration-200">
           {/* 筛选按钮 (仅移动端) */}
           <button
             onClick={() => {
               setIsFilterOpen(true)
               setIsMenuOpen(false)
             }}
-            className="lg:hidden bg-brand-primary hover:bg-brand-hover text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center"
+            className="lg:hidden bg-brand-primary hover:bg-brand-hover text-white w-12 h-12 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center"
             title="筛选"
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-5 h-5" />
           </button>
 
           {/* 刷新按钮 */}
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="bg-brand-primary hover:bg-brand-hover text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 flex items-center justify-center"
+            className="bg-brand-primary hover:bg-brand-hover text-white w-12 h-12 rounded-full shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 flex items-center justify-center"
             title="刷新"
           >
-            <RefreshCw className={`w-4 h-4 transition-colors ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 transition-colors ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
           {/* 翻译按钮 */}
           <button
             onClick={toggleTranslation}
-            className="bg-brand-primary hover:bg-brand-hover w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center active:scale-95"
+            className="bg-brand-primary hover:bg-brand-hover w-12 h-12 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center active:scale-95"
             title={showOriginal ? '切换到中文' : '切换到德语'}
           >
-            <span className="text-white font-bold text-xs">
+            <span className="text-white font-bold text-sm">
               {showOriginal ? 'DE' : '中'}
             </span>
           </button>
         </div>
       )}
 
-      {/* 主按钮（展开/收起菜单）- 固定位置，始终显示 (缩小尺寸) */}
+      {/* 主按钮（展开/收起菜单）- 固定位置，始终显示 */}
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className={`fixed bottom-[64px] right-4 z-50 w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center ${
+        className={`fixed bottom-[76px] right-4 z-50 w-12 h-12 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center ${
           isMenuOpen
             ? 'bg-brand-primary hover:bg-brand-hover text-white'
             : 'bg-brand-primary hover:bg-brand-hover text-white'
@@ -319,20 +316,20 @@ export default function FloatingActionMenu({
         title={isMenuOpen ? '收起菜单' : '展开菜单'}
       >
         {isMenuOpen ? (
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         ) : (
-          <MoreVertical className="w-4 h-4" />
+          <MoreVertical className="w-5 h-5" />
         )}
       </button>
 
-      {/* 返回顶部按钮（滚动后才显示）- 固定在底部 (缩小尺寸) */}
+      {/* 返回顶部按钮（滚动后才显示）- 固定在底部 */}
       {showBackToTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-4 right-4 z-50 bg-brand-primary hover:bg-brand-hover text-white w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2"
+          className="fixed bottom-[16px] right-4 z-50 bg-brand-primary hover:bg-brand-hover text-white w-12 h-12 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2"
           title="返回顶部"
         >
-          <ArrowUp className="w-4 h-4" />
+          <ArrowUp className="w-5 h-5" />
         </button>
       )}
     </>
