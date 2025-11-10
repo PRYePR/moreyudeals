@@ -7,7 +7,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
 import { TranslatableText } from '@/components/TranslatableContent'
-import { useDealsStore } from '@/store/dealsStore'
+
+const RETURN_FLAG = 'fromListPage'
+const SCROLL_KEY = 'scrollY'
 
 interface Deal {
   id: string
@@ -41,7 +43,6 @@ interface DealCardWaterfallProps {
 export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterfallProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { saveStateForReturn } = useDealsStore()
 
   // 处理数据
   const displayTitle = deal.translatedTitle || deal.title || '无标题'
@@ -73,9 +74,11 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
     }
   }
 
-  // 点击卡片时保存状态（只用于返回恢复）
+  // 点击卡片时保存滚动位置
   const handleCardClick = () => {
-    saveStateForReturn(currentDeals, window.scrollY)
+    if (typeof window === 'undefined') return
+    sessionStorage.setItem(RETURN_FLAG, 'true')
+    sessionStorage.setItem(SCROLL_KEY, Math.max(window.scrollY, 0).toString())
   }
 
   return (

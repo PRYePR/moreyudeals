@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import DealCardWaterfall from './DealCardWaterfall'
 import FloatingActionMenu from '../FloatingActionMenu'
-import { X } from 'lucide-react'
-import { useDealsStore } from '@/store/dealsStore'
+
+const CACHE_TTL = 20 * 60 * 1000
+const RETURN_FLAG = 'fromListPage'
+const SCROLL_KEY = 'scrollY'
 
 // 动态导入 react-masonry-css，禁用 SSR
 const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
@@ -51,28 +53,73 @@ export default function DealsWaterfallClient({
 }: DealsListClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  // Zustand store - 只用于"从详情页返回"
-  const {
-    returnFromDetail,
-    cachedDeals,
-    cachedScrollPosition,
-    clearReturnState
-  } = useDealsStore()
-
-  // 决定使用哪个数据源：只有标记为"从详情页返回"时才用缓存
-  const shouldUseCache = returnFromDetail && cachedDeals && cachedDeals.length > 0
-  const [deals, setDeals] = useState(shouldUseCache ? cachedDeals : initialDeals)
+  // 状态
+  const [deals, setDeals] = useState(initialDeals)
   const [totalCount, setTotalCount] = useState(initialTotalCount)
-  const [currentPage, setCurrentPage] = useState(shouldUseCache && cachedDeals ? Math.ceil(cachedDeals.length / pageSize) : initialPage)
+  const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const hasRestoredState = useRef(false)
 
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
   const currentCategory = searchParams.get('category')
   const currentSearch = searchParams.get('search')
+
+  // 计算缓存 key（基于筛选参数）
+  const cacheKey = useMemo(() => {
+    const merchantKey = currentMerchant || ''
+    const categoryKey = currentCategory || ''
+    const searchKey = currentSearch || ''
+    return `deals_cache_${merchantKey}_${categoryKey}_${searchKey}`
+  }, [currentMerchant, currentCategory, currentSearch])
+
+  const saveStateToCache = useCallback((nextDeals: any[], nextPage: number, nextTotal: number) => {
+    if (typeof window === 'undefined') return
+    const payload = {
+      deals: nextDeals,
+      currentPage: nextPage,
+      totalCount: nextTotal,
+      timestamp: Date.now()
+    }
+    sessionStorage.setItem(cacheKey, JSON.stringify(payload))
+  }, [cacheKey])
+
+  const restoreStateFromCache = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    if (!sessionStorage.getItem(RETURN_FLAG)) return null
+
+    const cached = sessionStorage.getItem(cacheKey)
+    if (!cached) return null
+
+    try {
+      const parsed = JSON.parse(cached) as {
+        deals?: any[]
+        currentPage?: number
+        totalCount?: number
+        timestamp?: number
+      }
+
+      if (!parsed.deals || !Array.isArray(parsed.deals)) {
+        return null
+      }
+
+      if (parsed.timestamp && Date.now() - parsed.timestamp > CACHE_TTL) {
+        sessionStorage.removeItem(cacheKey)
+        return null
+      }
+
+      return {
+        deals: parsed.deals,
+        currentPage: parsed.currentPage ?? Math.ceil(parsed.deals.length / pageSize),
+        totalCount: parsed.totalCount ?? initialTotalCount
+      }
+    } catch {
+      sessionStorage.removeItem(cacheKey)
+      return null
+    }
+  }, [cacheKey, initialTotalCount, pageSize])
 
   // 获取分类的中文翻译
   const getCategoryName = (categoryId: string) => {
@@ -80,32 +127,62 @@ export default function DealsWaterfallClient({
     return category?.translatedName || categoryId
   }
 
-  // 恢复滚动位置（只在从详情页返回时执行一次）
+  // 当筛选条件或初始数据变化时，允许重新执行恢复逻辑
   useEffect(() => {
-    if (returnFromDetail && cachedScrollPosition > 0) {
-      // 等待 Masonry 渲染完成
-      const timer = setTimeout(() => {
-        window.scrollTo({
-          top: cachedScrollPosition,
-          behavior: 'auto'
-        })
-        // 立即清除标记和缓存
-        clearReturnState()
-      }, 300)
+    hasRestoredState.current = false
+  }, [cacheKey, initialDeals, initialPage, initialTotalCount])
 
-      return () => clearTimeout(timer)
-    }
-  }, [returnFromDetail, cachedScrollPosition, clearReturnState])
-
-  // 当 props 变化时更新状态（搜索、筛选等操作触发的服务端重新渲染）
+  // 初始化或筛选变化时，从缓存恢复或使用服务端数据
   useEffect(() => {
-    // 如果不是从详情页返回，就使用新的 initialDeals
-    if (!returnFromDetail) {
-      setDeals(initialDeals)
-      setTotalCount(initialTotalCount)
-      setCurrentPage(initialPage)
+    if (typeof window === 'undefined' || hasRestoredState.current) return
+
+    const restored = restoreStateFromCache()
+    if (restored) {
+      setDeals(restored.deals)
+      setCurrentPage(restored.currentPage)
+      setTotalCount(restored.totalCount)
+      hasRestoredState.current = true
+      return
     }
-  }, [initialDeals, initialTotalCount, initialPage, returnFromDetail])
+
+    setDeals(initialDeals)
+    setTotalCount(initialTotalCount)
+    setCurrentPage(initialPage)
+    saveStateToCache(initialDeals, initialPage, initialTotalCount)
+    hasRestoredState.current = true
+  }, [initialDeals, initialPage, initialTotalCount, restoreStateFromCache, saveStateToCache])
+
+  // 恢复滚动位置（在数据渲染后执行）
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const savedScrollY = sessionStorage.getItem(SCROLL_KEY)
+    if (!savedScrollY) return
+
+    const fromListPage = sessionStorage.getItem(RETURN_FLAG)
+    if (!fromListPage) return
+
+    // 临时禁用 scroll-smooth
+    const html = document.documentElement
+    const hadScrollSmooth = html.classList.contains('scroll-smooth')
+    const originalBehavior = html.style.scrollBehavior
+
+    if (hadScrollSmooth) {
+      html.classList.remove('scroll-smooth')
+    }
+    html.style.scrollBehavior = 'auto'
+
+    window.scrollTo({ top: parseInt(savedScrollY, 10), behavior: 'auto' })
+
+    // 清除标记（下次点击卡片时会重新设置）
+    sessionStorage.removeItem(SCROLL_KEY)
+
+    // 恢复原本的滚动设置
+    requestAnimationFrame(() => {
+      html.style.scrollBehavior = originalBehavior
+      if (hadScrollSmooth) html.classList.add('scroll-smooth')
+    })
+  }, [deals]) // 依赖 deals，确保数据渲染后才执行
 
   // 监听滚动显示"返回顶部"按钮
   useEffect(() => {
@@ -116,33 +193,6 @@ export default function DealsWaterfallClient({
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  // 无限滚动：监听滚动到底部
-  useEffect(() => {
-    if (!hasMore || isLoading) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0]
-        if (first.isIntersecting) {
-          loadMore()
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    const currentRef = loadMoreRef.current
-    if (currentRef) {
-      observer.observe(currentRef)
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deals.length, totalCount, isLoading])
 
   const hasMore = deals.length < totalCount
 
@@ -186,11 +236,13 @@ export default function DealsWaterfallClient({
       const data = await response.json()
 
       if (data.deals && data.deals.length > 0) {
-        setDeals(prev => [...prev, ...data.deals])
+        const updatedDeals = [...deals, ...data.deals]
+        const nextTotal = data.pagination?.total ?? totalCount
+
+        setDeals(updatedDeals)
         setCurrentPage(nextPage)
-        if (data.pagination?.total) {
-          setTotalCount(data.pagination.total)
-        }
+        setTotalCount(nextTotal)
+        saveStateToCache(updatedDeals, nextPage, nextTotal)
       }
     } catch (error) {
       console.error('加载更多失败:', error)
@@ -234,7 +286,7 @@ export default function DealsWaterfallClient({
         <div className="flex flex-col items-center gap-4 pt-8 border-t border-gray-200">
           {/* 加载状态 */}
           {hasMore ? (
-            <div ref={loadMoreRef} className="w-full flex justify-center">
+            <div className="w-full flex justify-center">
               {isLoading ? (
                 <div className="flex items-center gap-2 text-gray-500">
                   <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
