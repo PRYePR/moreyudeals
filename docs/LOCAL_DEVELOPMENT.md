@@ -13,13 +13,12 @@
 - macOS / Linux / Windows (WSL2)
 - Node.js 18+ LTS
 - PostgreSQL 14+
-- Redis 6+
+- pnpm (推荐) 或 yarn
 - Git
 
 ### 开发工具推荐
 - VS Code + 相关插件
 - Postman (API测试)
-- Redis Desktop Manager (Redis管理)
 - pgAdmin (PostgreSQL管理)
 
 ## 项目结构
@@ -28,13 +27,12 @@
 moreyudeals/
 ├── docs/                    # 项目文档
 ├── packages/
-│   ├── cms/                 # Strapi CMS后端
+│   ├── api/                 # Express API服务器
 │   ├── worker/              # RSS抓取翻译Worker
 │   ├── web/                 # Next.js前端
-│   └── translation/         # 翻译系统核心库
+│   ├── translation/         # 翻译系统核心库
+│   └── shared-html/         # HTML解析工具
 ├── scripts/                 # 开发脚本
-├── docker/                  # Docker配置（可选）
-├── .env.example            # 环境变量模板
 ├── package.json            # Monorepo配置
 └── README.md
 ```
@@ -46,106 +44,131 @@ moreyudeals/
 # 检查Node.js版本
 node --version  # 应该 >= 18
 
-# 检查npm或yarn
-npm --version
-yarn --version
+# 检查pnpm
+pnpm --version
 
 # 检查PostgreSQL
 psql --version  # 应该 >= 14
-
-# 检查Redis
-redis-server --version  # 应该 >= 6
 ```
 
 ### Step 2: 数据库准备
 ```bash
-# 启动PostgreSQL和Redis
+# 启动PostgreSQL
 brew services start postgresql  # macOS
-brew services start redis       # macOS
-
-# 或者使用系统服务
+# 或
 sudo systemctl start postgresql  # Linux
-sudo systemctl start redis      # Linux
 
 # 创建开发数据库
 createdb moreyudeals_dev
-createdb moreyudeals_test
 ```
 
 ### Step 3: 项目初始化
 ```bash
 # 克隆项目
-git clone https://github.com/PRYePR/moreyudeals.git
-cd moreyudeals
+git clone <你的仓库地址>
+cd Moreyudeals
 
-# 安装依赖（使用yarn workspace）
+# 安装依赖（推荐使用pnpm）
+pnpm install
+
+# 或使用yarn
 yarn install
-
-# 或者单独安装各包
-cd packages/cms && npm install
-cd ../worker && npm install
-cd ../web && npm install
-cd ../translation && npm install
 ```
 
 ### Step 4: 环境变量配置
-```bash
-# 复制环境变量模板
-cp .env.example .env.local
 
-# 编辑环境变量
-nano .env.local
-```
+创建各包的 `.env` 文件：
 
-### Step 5: 启动开发服务
-```bash
-# 启动所有服务（推荐）
-yarn dev
+**packages/api/.env:**
+```env
+# 数据库配置
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=moreyudeals_dev
+DB_USER=你的用户名
+DB_PASSWORD=
 
-# 或者分别启动
-yarn dev:cms      # Strapi CMS (http://localhost:1337)
-yarn dev:web      # Next.js前端 (http://localhost:3000)
-yarn dev:worker   # Worker服务
-```
+# API配置
+PORT=3001
+API_KEY=dev_api_key
 
-## 环境变量配置
-
-### .env.local 示例
-```bash
-# === 数据库配置 ===
-DATABASE_URL="postgresql://username:password@localhost:5432/moreyudeals_dev"
-REDIS_URL="redis://localhost:6379"
-
-# === Strapi配置 ===
-STRAPI_HOST=localhost
-STRAPI_PORT=1337
-STRAPI_API_TOKEN=your-dev-token
-
-# === 翻译API配置（本地开发） ===
-# DeepL (使用免费版测试)
-DEEPL_API_KEY=your-deepl-free-key
-DEEPL_ENDPOINT=https://api-free.deepl.com/v2/translate
-
-# Microsoft Translator (免费额度)
-MS_TRANSLATOR_KEY=your-ms-key
-MS_TRANSLATOR_REGION=eastus
-
-# Google Translate (免费额度)
-GOOGLE_TRANSLATE_KEY=your-google-key
-
-# === 翻译配置 ===
-TRANSLATION_PRIMARY=deepl
-TRANSLATION_FALLBACK=microsoft
-TRANSLATION_CACHE_ENABLED=true
-
-# === RSS配置 ===
-RSS_SOURCE_URL=https://www.sparhamster.at/feed/
-RSS_FETCH_INTERVAL=900  # 15分钟
-
-# === 开发模式配置 ===
+# 环境
 NODE_ENV=development
 LOG_LEVEL=debug
-MOCK_TRANSLATION=false  # 是否模拟翻译（开发时可设为true）
+```
+
+**packages/worker/.env:**
+```env
+# 数据库配置
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=moreyudeals_dev
+DB_USER=你的用户名
+DB_PASSWORD=
+
+# 抓取配置
+FETCH_INTERVAL=30  # 分钟
+FETCH_RANDOM_DELAY_MIN=0
+FETCH_RANDOM_DELAY_MAX=5
+
+# Sparhamster API 配置
+SPARHAMSTER_API_URL=https://www.sparhamster.at/wp-json/wp/v2/posts
+SPARHAMSTER_API_LIMIT=40
+SPARHAMSTER_BASE_URL=https://www.sparhamster.at
+SPARHAMSTER_TOKEN=your_token
+SPARHAMSTER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+# 翻译配置
+TRANSLATION_ENABLED=true
+TRANSLATION_PROVIDERS=deepl,microsoft
+TRANSLATION_BATCH_SIZE=10
+TRANSLATION_TARGET_LANGUAGES=zh,en
+
+# DeepL API 配置
+DEEPL_API_KEY=your_deepl_key
+DEEPL_ENDPOINT=https://api-free.deepl.com/v2
+
+# Microsoft Translator 配置
+MICROSOFT_TRANSLATOR_KEY=your_microsoft_key
+MICROSOFT_TRANSLATOR_REGION=your_region
+MICROSOFT_TRANSLATOR_ENDPOINT=https://api.cognitive.microsofttranslator.com
+
+# 日志
+LOG_LEVEL=debug
+NODE_ENV=development
+```
+
+**packages/web/.env.local:**
+```env
+# API配置
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_KEY=dev_api_key
+
+# 环境
+NODE_ENV=development
+```
+
+### Step 5: 初始化数据库
+```bash
+# 运行数据库迁移
+# 创建表结构
+psql -d moreyudeals_dev -f packages/api/migrations/001_create_deals_table.sql
+```
+
+### Step 6: 启动开发服务
+```bash
+# 启动所有服务（推荐）
+npm run dev
+
+# 这会同时启动：
+# - API服务器 (http://localhost:3001)
+# - Web前端 (http://localhost:3000)
+# - Worker服务
+
+# 或者分别启动
+npm run dev:api      # API服务器
+npm run dev:web      # Next.js前端
+npm run dev:worker   # Worker服务
 ```
 
 ## 开发工作流
@@ -153,71 +176,92 @@ MOCK_TRANSLATION=false  # 是否模拟翻译（开发时可设为true）
 ### 日常开发命令
 ```bash
 # 启动开发环境
-yarn dev
+npm run dev
 
 # 运行测试
-yarn test
-yarn test:watch     # 监听模式
+npm test
 
 # 代码检查
-yarn lint
-yarn lint:fix       # 自动修复
-
-# 数据库操作
-yarn db:migrate     # 运行数据库迁移
-yarn db:seed        # 填充测试数据
-yarn db:reset       # 重置数据库
+npm run lint
+npm run lint:fix       # 自动修复
 
 # 构建项目
-yarn build
-yarn build:cms
-yarn build:web
+npm run build
+npm run build:api
+npm run build:web
+npm run build:worker
 ```
 
-### 翻译系统测试
+### API 测试
 ```bash
-# 测试单个翻译Provider
-yarn test:translation:deepl
-yarn test:translation:microsoft
+# 测试健康检查
+curl http://localhost:3001/api/health
 
-# 测试翻译路由
-yarn test:translation:router
+# 获取deals列表
+curl http://localhost:3001/api/deals?page=1&limit=10
 
-# 测试RSS抓取
-yarn test:rss:fetch
+# 按商家筛选
+curl http://localhost:3001/api/deals?merchant=Amazon
+
+# 按分类筛选
+curl http://localhost:3001/api/deals?category=electronics
+```
+
+### Worker 测试
+```bash
+# 手动触发抓取
+cd packages/worker
+npm run fetch
+
+# 查看日志
+tail -f ../../logs/worker-out.log
 ```
 
 ## 调试技巧
 
-### 1. Strapi CMS调试
+### 1. API服务器调试
 ```bash
-# 访问Admin面板
-http://localhost:1337/admin
+# 启用详细日志
+LOG_LEVEL=debug npm run dev:api
 
-# API调试
-http://localhost:1337/api/articles
-http://localhost:1337/api/sources
+# 使用VS Code调试
+# 在 .vscode/launch.json 配置：
+{
+  "type": "node",
+  "request": "launch",
+  "name": "Debug API",
+  "program": "${workspaceFolder}/packages/api/src/index.ts",
+  "runtimeArgs": ["-r", "ts-node/register"],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
 ```
 
 ### 2. 翻译系统调试
 ```bash
 # 启用详细日志
-LOG_LEVEL=debug yarn dev:worker
+LOG_LEVEL=debug npm run dev:worker
 
-# 测试翻译API
-curl -X POST http://localhost:3001/api/translate \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hallo Welt", "from": "de", "to": "zh"}'
+# 单独测试翻译功能
+cd packages/translation
+npm run test
 ```
 
-### 3. Redis调试
+### 3. 数据库调试
 ```bash
-# 连接Redis CLI
-redis-cli
+# 连接数据库
+psql -d moreyudeals_dev
 
-# 查看缓存
-KEYS translation:*
-GET translation:hash123
+# 查看表
+\dt
+
+# 查看deals
+SELECT * FROM deals LIMIT 10;
+
+# 查看数据统计
+SELECT COUNT(*) FROM deals;
+SELECT merchant, COUNT(*) FROM deals GROUP BY merchant;
 ```
 
 ## 常见问题解决
@@ -234,39 +278,33 @@ lsof -i :5432
 brew services restart postgresql
 ```
 
-### Redis连接问题
-```bash
-# 检查Redis状态
-redis-cli ping  # 应该返回PONG
-
-# 检查Redis配置
-redis-cli CONFIG GET "*"
-```
-
 ### 端口冲突
 ```bash
 # 检查端口占用
-lsof -i :1337  # Strapi
 lsof -i :3000  # Next.js
-lsof -i :3001  # Worker API
+lsof -i :3001  # API
 
 # 终止占用进程
 kill -9 <PID>
 ```
 
-## 数据管理
-
-### 测试数据
+### 翻译API问题
 ```bash
-# 导入测试RSS数据
-yarn seed:rss
+# 测试DeepL连接
+curl -X POST https://api-free.deepl.com/v2/translate \
+  -d "auth_key=YOUR_KEY" \
+  -d "text=Hello" \
+  -d "target_lang=DE"
 
-# 导入测试翻译数据
-yarn seed:translations
-
-# 清空数据
-yarn db:clean
+# 测试Microsoft Translator连接
+curl -X POST "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=de" \
+  -H "Ocp-Apim-Subscription-Key: YOUR_KEY" \
+  -H "Ocp-Apim-Subscription-Region: YOUR_REGION" \
+  -H "Content-Type: application/json" \
+  -d '[{"Text":"Hello"}]'
 ```
+
+## 数据管理
 
 ### 数据备份
 ```bash
@@ -274,7 +312,13 @@ yarn db:clean
 pg_dump moreyudeals_dev > backup/dev_$(date +%Y%m%d).sql
 
 # 导入数据
-psql moreyudeals_dev < backup/dev_20250928.sql
+psql moreyudeals_dev < backup/dev_20250120.sql
+```
+
+### 清空数据
+```bash
+# 清空deals表
+psql -d moreyudeals_dev -c "TRUNCATE TABLE deals CASCADE;"
 ```
 
 ## 下一步：部署到生产环境
@@ -287,9 +331,9 @@ psql moreyudeals_dev < backup/dev_20250928.sql
 
 **开发状态追踪**
 - [ ] 本地环境搭建完成
-- [ ] Strapi CMS运行正常
+- [ ] API服务器运行正常
+- [ ] Worker服务运行正常
 - [ ] 翻译系统测试通过
 - [ ] RSS抓取功能正常
 - [ ] 前端页面显示正确
-- [ ] 集成测试通过
 - [ ] 准备部署到生产环境

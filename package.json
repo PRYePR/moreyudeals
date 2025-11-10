@@ -7,13 +7,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"yarn dev:cms\" \"yarn dev:web\" \"yarn dev:worker\"",
-    "dev:cms": "yarn workspace @moreyudeals/cms develop",
+    "dev": "concurrently \"yarn dev:api\" \"yarn dev:web\" \"yarn dev:worker\"",
+    "dev:api": "yarn workspace @moreyudeals/api dev",
     "dev:web": "yarn workspace @moreyudeals/web dev",
     "dev:worker": "yarn workspace @moreyudeals/worker dev",
-    "build": "yarn workspace @moreyudeals/cms build && yarn workspace @moreyudeals/web build",
+    "build": "yarn workspace @moreyudeals/web build",
     "build:web": "yarn workspace @moreyudeals/web build",
-    "start": "yarn workspace @moreyudeals/cms start",
+    "build:api": "yarn workspace @moreyudeals/api build",
+    "build:worker": "yarn workspace @moreyudeals/worker build",
     "test": "yarn workspaces run test",
     "lint": "yarn workspaces run lint",
     "lint:fix": "yarn workspaces run lint:fix"
