@@ -10,8 +10,8 @@
 
 ```bash
 # 服务器上执行
-git clone <你的仓库地址> /www/wwwroot/Moreyudeals
-cd /www/wwwroot/Moreyudeals
+git clone <你的仓库地址> /var/www/Moreyudeals
+cd /var/www/Moreyudeals
 sudo bash scripts/init-database-server.sh
 bash scripts/deploy-server.sh
 ```
@@ -75,7 +75,7 @@ sudo apt-get install git
 #### 1. 克隆代码
 
 ```bash
-cd /www/wwwroot  # 或你的项目目录
+cd /var/www  # 项目目录
 git clone <你的仓库地址> Moreyudeals
 cd Moreyudeals
 ```
@@ -295,7 +295,7 @@ NEXT_PUBLIC_API_KEY=your_production_api_key
 当你在本地开发完成并推送到Git仓库后，在服务器上执行：
 
 ```bash
-cd /www/wwwroot/Moreyudeals
+cd /var/www/Moreyudeals
 
 # 快速更新脚本
 bash scripts/update-server.sh
