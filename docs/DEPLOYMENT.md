@@ -115,15 +115,18 @@ DB_PASSWORD=your_db_password
 
 # Sparhamster API 配置
 SPARHAMSTER_API_URL=https://www.sparhamster.at/wp-json/wp/v2/posts
-SPARHAMSTER_API_LIMIT=40
+SPARHAMSTER_API_LIMIT=10
 SPARHAMSTER_BASE_URL=https://www.sparhamster.at
 SPARHAMSTER_TOKEN=your_token_here
-SPARHAMSTER_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+SPARHAMSTER_USER_AGENT=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+
+# 重要提示: Sparhamster API 在使用 _embed=true 参数时会返回 500 错误
+# fetcher 代码中已移除该参数，无需额外配置
 
 # 抓取配置
-FETCH_INTERVAL=30  # 分钟
+FETCH_INTERVAL=60  # 分钟，增加间隔降低被封风险
 FETCH_RANDOM_DELAY_MIN=0
-FETCH_RANDOM_DELAY_MAX=5
+FETCH_RANDOM_DELAY_MAX=20  # 增加随机延迟，模拟人类行为
 
 # 翻译配置
 TRANSLATION_ENABLED=true
@@ -310,22 +313,18 @@ bash scripts/update-server.sh
 
 ```bash
 # 1. 拉取代码
-git pull origin main  # 或你的分支名
+git pull origin main
 
 # 2. 安装依赖
-pnpm install
+npm ci  # 使用 ci 以确保依赖版本一致
 
-# 3. 构建API服务器
-cd packages/api
-pnpm run build
+# 3. 构建Worker（如果有 API 服务器也需要构建）
+cd packages/worker
+npm run build
 
-# 4. 构建Worker
-cd ../worker
-pnpm run build
-
-# 5. 重启服务
-pm2 restart moreyudeals-api
+# 4. 重启服务
 pm2 restart moreyudeals-worker
+pm2 save
 ```
 
 ---

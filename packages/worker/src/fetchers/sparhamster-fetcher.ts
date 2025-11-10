@@ -35,6 +35,8 @@ export class SparhamsterFetcher {
   private readonly deduplicator: DeduplicationService;
   private readonly homepageFetcher: HomepageFetcher;
   private readonly affiliateLinkService: AffiliateLinkService;
+  private consecutiveFailures: number = 0; // 连续失败计数
+  private lastFailureTime?: Date; // 上次失败时间
 
   constructor(private readonly database: DatabaseManager) {
     this.normalizer = new SparhamsterNormalizer();
@@ -59,18 +61,35 @@ export class SparhamsterFetcher {
       errors: [],
     };
 
+    // 检查是否需要退避（backoff）
+    if (this.shouldBackoff()) {
+      const backoffMinutes = this.getBackoffMinutes();
+      const message = `⏸️  由于连续失败 ${this.consecutiveFailures} 次，暂停抓取 ${backoffMinutes} 分钟`;
+      console.warn(message);
+      result.errors.push(message);
+      return result;
+    }
+
     // 商家规范化统计
     const merchantStats = createNormalizationStats();
 
     try {
       // Step 1: 从 REST API 获取结构化数据
-      const url = `${API_URL}?per_page=${API_PER_PAGE}&_embed=true&orderby=date&order=desc`;
+      // 注意: 移除了 _embed=true 参数，因为 Sparhamster API 在处理 embed 时会返回 500 错误
+      const url = `${API_URL}?per_page=${API_PER_PAGE}&orderby=date&order=desc`;
 
       const response = await axios.get<WordPressPost[]>(url, {
         headers: {
           'User-Agent':
             process.env.SPARHAMSTER_USER_AGENT ||
-            'Mozilla/5.0 (compatible; MoreYuDeals/1.0)',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Referer': 'https://www.sparhamster.at/',
+          'Origin': 'https://www.sparhamster.at',
+          'Connection': 'keep-alive',
+          'Cache-Control': 'no-cache',
         },
         timeout: 15000,
       });
@@ -80,7 +99,16 @@ export class SparhamsterFetcher {
 
       console.log(`📥 Sparhamster API 返回 ${posts.length} 条记录`);
 
-      // Step 2: 从首页 HTML 抓取真实商家链接和 logo
+      // 成功抓取，重置失败计数
+      this.consecutiveFailures = 0;
+      this.lastFailureTime = undefined;
+
+      // Step 2: 延迟 3-10 秒后再抓取首页（模拟人类浏览行为）
+      const delay = Math.floor(Math.random() * 7000) + 3000;
+      console.log(`⏳ 延迟 ${(delay / 1000).toFixed(1)} 秒后抓取首页...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Step 3: 从首页 HTML 抓取真实商家链接和 logo
       let homepageArticles: HomepageArticle[] = [];
       try {
         homepageArticles = await this.homepageFetcher.fetchArticles(posts.length);
@@ -150,9 +178,50 @@ export class SparhamsterFetcher {
       const message = `抓取 Sparhamster API 失败: ${(error as Error).message}`;
       console.error(`❌ ${message}`);
       result.errors.push(message);
+
+      // 记录失败
+      this.consecutiveFailures++;
+      this.lastFailureTime = new Date();
+      console.warn(`⚠️  连续失败次数: ${this.consecutiveFailures}`);
     }
 
     return result;
+  }
+
+  /**
+   * 检查是否需要退避（backoff）
+   */
+  private shouldBackoff(): boolean {
+    if (this.consecutiveFailures < 3) {
+      return false;
+    }
+
+    if (!this.lastFailureTime) {
+      return false;
+    }
+
+    const backoffMinutes = this.getBackoffMinutes();
+    const backoffMs = backoffMinutes * 60 * 1000;
+    const timeSinceLastFailure = Date.now() - this.lastFailureTime.getTime();
+
+    return timeSinceLastFailure < backoffMs;
+  }
+
+  /**
+   * 获取退避时间（分钟）
+   * 指数退避：3次失败=120分钟，4次=240分钟，5次+=480分钟
+   */
+  private getBackoffMinutes(): number {
+    if (this.consecutiveFailures <= 2) {
+      return 0;
+    }
+
+    const backoffMinutes = Math.min(
+      Math.pow(2, this.consecutiveFailures - 2) * 60, // 指数增长
+      480 // 最多8小时
+    );
+
+    return backoffMinutes;
   }
 
   /**
