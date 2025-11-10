@@ -164,8 +164,8 @@ export default function FloatingActionMenu({
       {isFilterOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-white overflow-y-auto" ref={filterRef}>
           {/* 头部 */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">筛选</h2>
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900">筛选</h2>
             <button
               onClick={closeFilter}
               className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
@@ -174,16 +174,16 @@ export default function FloatingActionMenu({
             </button>
           </div>
 
-          <div className="p-4 space-y-6">
+          <div className="p-3 space-y-4">
             {/* 分类筛选 */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">分类</h3>
-              <div className="space-y-1.5">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">分类</h3>
+              <div className="space-y-1">
                 <button
                   onClick={() => updateParams('category', 'all')}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
                     !currentCategory || currentCategory === 'all'
-                      ? 'bg-orange-500/10 text-orange-500 font-medium'
+                      ? 'bg-brand-primary/10 text-brand-primary font-medium'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
@@ -193,9 +193,9 @@ export default function FloatingActionMenu({
                   <button
                     key={category.id}
                     onClick={() => updateParams('category', category.id)}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
                       currentCategory === category.id
-                        ? 'bg-orange-500/10 text-orange-500 font-medium'
+                        ? 'bg-brand-primary/10 text-brand-primary font-medium'
                         : 'hover:bg-gray-100 text-gray-700'
                     }`}
                   >
@@ -207,10 +207,10 @@ export default function FloatingActionMenu({
 
             {/* 商家筛选 */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">商家</h3>
+              <h3 className="text-xs font-semibold text-gray-900 mb-2">商家</h3>
 
               {/* 搜索框 */}
-              <div className="mb-3">
+              <div className="mb-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                   <input
@@ -218,17 +218,17 @@ export default function FloatingActionMenu({
                     placeholder="搜索商家..."
                     value={merchantSearchTerm}
                     onChange={(e) => setMerchantSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5 max-h-96 overflow-y-auto">
+              <div className="space-y-1 max-h-96 overflow-y-auto">
                 <button
                   onClick={() => updateParams('merchant', null)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
                     !currentMerchant
-                      ? 'bg-orange-500/10 text-orange-500 font-medium'
+                      ? 'bg-brand-primary/10 text-brand-primary font-medium'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
@@ -241,14 +241,14 @@ export default function FloatingActionMenu({
                   return (
                     <div key={merchant.name}>
                       {isFirstDisabled && (
-                        <div className="my-2 border-t border-gray-200" />
+                        <div className="my-1.5 border-t border-gray-200" />
                       )}
                       <button
                         onClick={() => !isDisabled && updateParams('merchant', merchant.name)}
                         disabled={isDisabled}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors ${
                           currentMerchant === merchant.name
-                            ? 'bg-orange-500/10 text-orange-500 font-medium'
+                            ? 'bg-brand-primary/10 text-brand-primary font-medium'
                             : isDisabled
                             ? 'text-gray-400 cursor-not-allowed'
                             : 'hover:bg-gray-100 text-gray-700'
@@ -260,7 +260,7 @@ export default function FloatingActionMenu({
                   )
                 })}
                 {processedMerchants.length === 0 && (
-                  <div className="px-3 py-4 text-center text-sm text-gray-500">
+                  <div className="px-2.5 py-3 text-center text-sm text-gray-500">
                     未找到匹配的商家
                   </div>
                 )}
@@ -279,7 +279,7 @@ export default function FloatingActionMenu({
               setIsFilterOpen(true)
               setIsMenuOpen(false)
             }}
-            className="lg:hidden bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center"
+            className="lg:hidden bg-brand-primary hover:bg-brand-hover text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center"
             title="筛选"
           >
             <Filter className="w-4 h-4" />
@@ -289,7 +289,7 @@ export default function FloatingActionMenu({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="bg-orange-500 hover:bg-orange-600 text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 flex items-center justify-center"
+            className="bg-brand-primary hover:bg-brand-hover text-white w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 disabled:opacity-50 flex items-center justify-center"
             title="刷新"
           >
             <RefreshCw className={`w-4 h-4 transition-colors ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -298,7 +298,7 @@ export default function FloatingActionMenu({
           {/* 翻译按钮 */}
           <button
             onClick={toggleTranslation}
-            className="bg-orange-500 hover:bg-orange-600 w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center active:scale-95"
+            className="bg-brand-primary hover:bg-brand-hover w-9 h-9 rounded-full shadow-md transition-all duration-200 hover:scale-110 flex items-center justify-center active:scale-95"
             title={showOriginal ? '切换到中文' : '切换到德语'}
           >
             <span className="text-white font-bold text-xs">
@@ -313,8 +313,8 @@ export default function FloatingActionMenu({
         onClick={() => setIsMenuOpen(!isMenuOpen)}
         className={`fixed bottom-[64px] right-4 z-50 w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center ${
           isMenuOpen
-            ? 'bg-orange-500 hover:bg-orange-600 text-white'
-            : 'bg-orange-500 hover:bg-orange-600 text-white'
+            ? 'bg-brand-primary hover:bg-brand-hover text-white'
+            : 'bg-brand-primary hover:bg-brand-hover text-white'
         }`}
         title={isMenuOpen ? '收起菜单' : '展开菜单'}
       >
@@ -329,7 +329,7 @@ export default function FloatingActionMenu({
       {showBackToTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-4 right-4 z-50 bg-orange-500 hover:bg-orange-600 text-white w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2"
+          className="fixed bottom-4 right-4 z-50 bg-brand-primary hover:bg-brand-hover text-white w-10 h-10 rounded-full shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2"
           title="返回顶部"
         >
           <ArrowUp className="w-4 h-4" />

@@ -110,9 +110,9 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
               className="object-contain rounded"
             />
           ) : (
-            <Store className="w-6 h-6 text-gray-400 group-hover:text-brand-primary transition-colors" />
+            <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
           )}
-          <span className="text-sm font-bold text-gray-800 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
+          <span className="text-sm font-bold text-gray-900 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
         </button>
 
         {/* 相对时间标签 */}
@@ -190,9 +190,9 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
                   className="object-contain rounded"
                 />
               ) : (
-                <Store className="w-6 h-6 text-gray-400 group-hover:text-brand-primary transition-colors" />
+                <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
               )}
-              <span className="text-base font-semibold text-brand-primary group-hover:text-brand-hover transition-colors">{displayMerchant}</span>
+              <span className="text-base font-semibold text-gray-900 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
             </button>
 
             {/* 相对时间标签 */}
@@ -223,7 +223,7 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
                 </span>
                 {originalPrice && originalPrice > currentPrice && (
                   <>
-                    <span className="text-xs lg:text-sm text-gray-400 line-through">
+                    <span className="text-xs lg:text-sm text-gray-500 line-through">
                       {formatCurrency(originalPrice, currency)}
                     </span>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-support-green text-white text-xs font-bold">

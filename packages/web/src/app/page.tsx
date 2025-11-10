@@ -4,6 +4,7 @@ import SiteHeader from '@/components/layout/SiteHeader'
 import RightSidebar from '@/components/layout/RightSidebar'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
+import MobileFilterBar from '@/components/filters/MobileFilterBar'
 import FilterActiveChips from '@/components/filters/FilterActiveChips'
 import SearchTermBanner from '@/components/filters/SearchTermBanner'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
@@ -470,10 +471,22 @@ export default async function HomePage({
         {/* Header */}
         <SiteHeader merchants={merchants} categories={categories} />
 
-        {/* Mobile SearchTermBanner - 仅在筛选模式下显示（移动端） */}
+        {/* Mobile Top Controls - 仅在筛选模式下显示（移动端） */}
         {hasFilters && (
           <div className="lg:hidden">
             <SearchTermBanner searchTerm={currentSearch || ''} />
+            <MobileFilterBar
+              categories={categories}
+              merchants={merchants}
+              currentCategory={currentCategory}
+              currentMerchant={currentMerchant}
+              currentSortBy={currentSortBy}
+              currentSearch={currentSearch}
+              merchantByCategory={merchantByCategory}
+              categoryByMerchant={categoryByMerchant}
+              filteredMerchants={searchFilters.allMerchants}
+              availableCategories={searchFilters.availableCategories}
+            />
           </div>
         )}
 

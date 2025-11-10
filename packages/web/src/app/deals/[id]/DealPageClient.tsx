@@ -145,7 +145,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
 
                   {/* 折扣徽章 */}
                   {discountPercent && discountPercent > 0 && (
-                    <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-md font-bold text-lg shadow-lg z-10">
+                    <div className="absolute top-4 right-4 bg-action-primary text-white px-3 py-1.5 rounded-md font-bold text-lg shadow-lg z-10">
                       -{discountPercent}%
                     </div>
                   )}
@@ -170,7 +170,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                   <div className="flex items-baseline flex-wrap gap-x-2 sm:gap-x-3 gap-y-1">
                     {/* 当前价格 */}
                     {deal.price && (
-                      <div className="text-3xl sm:text-4xl font-bold text-red-600">
+                      <div className="text-3xl sm:text-4xl font-bold text-action-primary">
                         {formatPrice(deal.price)}
                       </div>
                     )}
@@ -225,7 +225,7 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                       href={purchaseUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-center py-3.5 sm:py-4 px-5 sm:px-6 rounded-lg font-bold text-base sm:text-lg transition-colors shadow-md hover:shadow-lg min-h-[48px] flex items-center justify-center"
+                      className="block w-full bg-brand-primary hover:bg-brand-hover active:bg-brand-hover text-white text-center py-3.5 sm:py-4 px-5 sm:px-6 rounded-lg font-bold text-base sm:text-lg transition-colors shadow-md hover:shadow-lg min-h-[48px] flex items-center justify-center"
                     >
                       前往商家查看优惠
                     </a>

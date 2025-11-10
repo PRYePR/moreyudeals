@@ -126,7 +126,7 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
               {formatCurrency(currentPrice, currency)}
             </span>
             {originalPrice && originalPrice > currentPrice && (
-              <span className="text-xs text-gray-400 line-through">
+              <span className="text-xs text-gray-500 line-through">
                 {formatCurrency(originalPrice, currency)}
               </span>
             )}
@@ -136,7 +136,7 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
         {/* 商家信息 */}
         <button
           onClick={handleMerchantClick}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-primary transition-colors mt-auto group/merchant w-fit"
+          className="flex items-center gap-1 text-xs text-gray-900 hover:text-brand-primary transition-colors mt-auto group/merchant w-fit"
           title={`筛选 ${displayMerchant} 的优惠`}
         >
           {deal.merchantLogo ? (
@@ -148,7 +148,7 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
               className="object-contain rounded"
             />
           ) : (
-            <Store className="w-3.5 h-3.5 text-gray-400 group-hover/merchant:text-brand-primary transition-colors" />
+            <Store className="w-3.5 h-3.5 text-gray-900 group-hover/merchant:text-brand-primary transition-colors" />
           )}
           <span>{displayMerchant}</span>
         </button>

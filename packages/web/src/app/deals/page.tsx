@@ -3,7 +3,6 @@ import DealsWaterfallClient from '@/components/deals/DealsWaterfallClient'
 import SiteHeader from '@/components/layout/SiteHeader'
 import CategoryTabs from '@/components/filters/CategoryTabsCollapsible'
 import FilterSidebar from '@/components/filters/FilterSidebar'
-import MobileFilterButton from '@/components/filters/MobileFilterButton'
 import TranslationWrapper from '@/components/layout/TranslationWrapper'
 import PullToRefreshWrapper from '@/components/PullToRefreshWrapper'
 import { apiClient } from '@/lib/api-client'
@@ -338,12 +337,6 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               )}
             </div>
           </div>
-
-          {/* 移动端筛选按钮 */}
-          <MobileFilterButton
-            merchants={merchants}
-            currentMerchant={currentMerchant}
-          />
 
           {/* Back to Home */}
           <div className="mt-8 text-center">
