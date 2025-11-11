@@ -45,19 +45,19 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
 
     // 计算剩余时间
     const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
 
     // 小于1小时
     if (diffHours < 1) {
       return '小于1小时'
     }
 
-    // 小于1天：显示小时
-    if (diffDays < 1) {
+    // 小于24小时：显示小时
+    if (diffHours < 24) {
       return `${diffHours} 小时`
     }
 
-    // 显示天数
+    // 24小时以上：显示天数（向下取整）
     return `${diffDays} 天`
   }
 

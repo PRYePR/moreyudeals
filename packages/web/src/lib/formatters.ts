@@ -16,12 +16,20 @@ export function formatRelativeTime(publishAt: string | Date, expireAt?: string |
 
     if (expDate > now) {
       // 未过期：显示剩余时间
-      const daysRemaining = Math.ceil(msUntilExpire / (1000 * 60 * 60 * 24))
+      const hoursRemaining = Math.floor(msUntilExpire / (1000 * 60 * 60))
 
-      if (daysRemaining < 1) {
-        const hoursRemaining = Math.ceil(msUntilExpire / (1000 * 60 * 60))
+      // 小于1小时
+      if (hoursRemaining < 1) {
+        return '小于1小时'
+      }
+
+      // 小于24小时：显示小时
+      if (hoursRemaining < 24) {
         return `还剩 ${hoursRemaining} 小时`
       }
+
+      // 24小时以上：显示天数
+      const daysRemaining = Math.floor(msUntilExpire / (1000 * 60 * 60 * 24))
       return `还剩 ${daysRemaining} 天`
     } else {
       // 已过期：显示过期时长

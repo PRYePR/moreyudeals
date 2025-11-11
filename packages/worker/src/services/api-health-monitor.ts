@@ -21,7 +21,7 @@ export type HealthStatus = 'healthy' | 'degraded';
 /**
  * 失败记录
  */
-interface FailureRecord {
+export interface FailureRecord {
   timestamp: Date;
   error: string;
 }

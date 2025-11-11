@@ -92,6 +92,11 @@ export class DeduplicationService {
       updateData.publishedAt = newDeal.publishedAt;
     }
 
+    // 始终更新 expires_at (重新计算过期时间，因为是从抓取时间开始计算)
+    if (newDeal?.expiresAt !== undefined) {
+      updateData.expiresAt = newDeal.expiresAt;
+    }
+
     // 如果新数据包含图片且原记录缺失，更新图片
     if (newDeal?.imageUrl) {
       updateData.imageUrl = newDeal.imageUrl;

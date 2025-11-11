@@ -69,15 +69,20 @@ function buildTimeStatus(deal: any) {
       daysRemaining = 0
     } else {
       // 未过期
-      const daysLeft = Math.ceil(msUntilExpire / (1000 * 60 * 60 * 24))
-      if (daysLeft < 1) {
-        const hoursLeft = Math.ceil(msUntilExpire / (1000 * 60 * 60))
+      const hoursLeft = Math.floor(msUntilExpire / (1000 * 60 * 60))
+
+      if (hoursLeft < 1) {
+        badgeLabel = '小于1小时'
+        daysRemaining = 0
+      } else if (hoursLeft < 24) {
         badgeLabel = `还剩 ${hoursLeft} 小时`
+        daysRemaining = 0
       } else {
+        const daysLeft = Math.floor(msUntilExpire / (1000 * 60 * 60 * 24))
         badgeLabel = `还剩 ${daysLeft} 天`
+        daysRemaining = daysLeft
       }
       badgeTone = 'active'
-      daysRemaining = daysLeft
     }
   } else {
     // 没有过期时间，显示发布时间
