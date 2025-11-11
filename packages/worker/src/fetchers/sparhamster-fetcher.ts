@@ -1,7 +1,15 @@
 /**
- * Sparhamster Fetcher
- * 从 Sparhamster API 抓取优惠信息
- * 集成 Normalizer 和 Deduplication 服务
+ * Sparhamster Fetcher (v2.0 - 完全重写)
+ *
+ * 新架构：
+ * 1. API优先：快速检测更新，获取文章内容
+ * 2. HTML补充：提取准确的价格、商家、标题等
+ * 3. 智能降级：API失败自动切换纯HTML模式
+ * 4. 数据合并：HTML覆盖API（HTML更准确）
+ *
+ * 数据优先级：
+ * - API提供：content_html, publishedAt, modifiedAt
+ * - HTML覆盖：title, price, merchant, logo, 等其他所有字段
  */
 
 import axios from 'axios';
@@ -10,49 +18,57 @@ import { SparhamsterNormalizer } from '../normalizers/sparhamster-normalizer';
 import { DeduplicationService } from '../services/deduplication-service';
 import { HomepageFetcher, HomepageArticle } from '../services/homepage-fetcher';
 import { AffiliateLinkService } from '../services/affiliate-link-service';
+import { ApiHealthMonitor } from '../services/api-health-monitor';
 import { FetchResult } from '../types/fetcher.types';
 import { WordPressPost } from '../types/wordpress.types';
 import { Deal } from '../types/deal.types';
-import {
-  createNormalizationStats,
-  recordUnmatchedMerchant,
-  getUnmatchedReport
-} from '../config/merchant-mapping';
 
 // API 配置
-const API_URL =
-  process.env.SPARHAMSTER_API_URL ||
-  'https://www.sparhamster.at/wp-json/wp/v2/posts';
-
-const API_PER_PAGE = Number(process.env.SPARHAMSTER_API_LIMIT || '40');
+const API_URL = process.env.SPARHAMSTER_API_URL || 'https://www.sparhamster.at/wp-json/wp/v2/posts';
+const API_PER_PAGE = Number(process.env.SPARHAMSTER_API_LIMIT || '20');
 
 /**
- * Sparhamster API Fetcher
- * 负责从 Sparhamster API 抓取数据并入库
+ * API 返回的基础数据
+ */
+interface ApiData {
+  postId: string;
+  contentHtml: string;
+  publishedAt: Date;
+  modifiedAt: Date;
+  link: string;
+}
+
+/**
+ * Sparhamster Fetcher
  */
 export class SparhamsterFetcher {
   private readonly normalizer: SparhamsterNormalizer;
   private readonly deduplicator: DeduplicationService;
   private readonly homepageFetcher: HomepageFetcher;
   private readonly affiliateLinkService: AffiliateLinkService;
-  private consecutiveFailures: number = 0; // 连续失败计数
-  private lastFailureTime?: Date; // 上次失败时间
+  private readonly healthMonitor: ApiHealthMonitor;
 
   constructor(private readonly database: DatabaseManager) {
     this.normalizer = new SparhamsterNormalizer();
     this.deduplicator = new DeduplicationService(database);
     this.homepageFetcher = new HomepageFetcher();
     this.affiliateLinkService = new AffiliateLinkService();
+    this.healthMonitor = new ApiHealthMonitor();
   }
 
   /**
-   * 抓取最新优惠
-   * 新架构:
-   * 1. 从 REST API 获取结构化数据
-   * 2. 从首页 HTML 获取真实的商家链接和 logo
-   * 3. 匹配并补充数据
+   * 主抓取方法
+   *
+   * 流程：
+   * 1. 检查 API 健康状态
+   * 2. 如果健康：使用 API+HTML 混合模式
+   * 3. 如果降级：使用纯 HTML 模式
    */
   async fetchLatest(): Promise<FetchResult> {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀 开始新一轮抓取');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
     const result: FetchResult = {
       fetched: 0,
       inserted: 0,
@@ -61,320 +77,309 @@ export class SparhamsterFetcher {
       errors: [],
     };
 
-    // 检查是否需要退避（backoff）
-    if (this.shouldBackoff()) {
-      const backoffMinutes = this.getBackoffMinutes();
-      const message = `⏸️  由于连续失败 ${this.consecutiveFailures} 次，暂停抓取 ${backoffMinutes} 分钟`;
-      console.warn(message);
-      result.errors.push(message);
+    // 1. 检查 API 健康状态
+    const health = this.healthMonitor.checkHealth();
+
+    if (health === 'degraded') {
+      console.log('⚠️  处于降级模式，使用纯 HTML 抓取');
+      return await this.fetchFromHtmlOnly(result);
+    }
+
+    // 2. 尝试 API+HTML 混合模式
+    try {
+      return await this.fetchFromApiWithHtml(result);
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      console.error(`❌ API 抓取失败: ${errorMsg}`);
+      this.healthMonitor.recordFailure(errorMsg);
+      result.errors.push(errorMsg);
+
+      // 检查是否需要切换降级模式
+      const newHealth = this.healthMonitor.checkHealth();
+      if (newHealth === 'degraded') {
+        console.log('⚠️  已切换到降级模式，使用纯 HTML 抓取');
+        return await this.fetchFromHtmlOnly(result);
+      }
+
+      return result;
+    }
+  }
+
+  /**
+   * API + HTML 混合模式（正常模式）
+   *
+   * 流程：
+   * 1. 抓取 API 获取文章内容
+   * 2. 判断新文章数量
+   * 3. 抓取 HTML 获取准确数据
+   * 4. 合并数据（HTML 覆盖 API）
+   * 5. 处理联盟链接
+   * 6. 去重和入库
+   */
+  private async fetchFromApiWithHtml(result: FetchResult): Promise<FetchResult> {
+    console.log('📡 模式: API + HTML 混合');
+
+    // Step 1: 抓取 API
+    const apiData = await this.fetchApi();
+    result.fetched = apiData.length;
+
+    if (apiData.length === 0) {
+      console.log('✓ API 返回 0 条记录，跳过');
       return result;
     }
 
-    // 商家规范化统计
-    const merchantStats = createNormalizationStats();
+    console.log(`📥 API 返回 ${apiData.length} 条记录`);
 
-    try {
-      // Step 1: 从 REST API 获取结构化数据
-      // 注意: 移除了 _embed=true 参数，因为 Sparhamster API 在处理 embed 时会返回 500 错误
-      const url = `${API_URL}?per_page=${API_PER_PAGE}&orderby=date&order=desc`;
+    // Step 2: 检查新文章数量
+    const existingPostIds = await this.getExistingPostIds();
+    const newApiData = apiData.filter(a => !existingPostIds.has(a.postId));
 
-      const response = await axios.get<WordPressPost[]>(url, {
-        headers: {
-          'User-Agent':
-            process.env.SPARHAMSTER_USER_AGENT ||
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Referer': 'https://www.sparhamster.at/',
-          'Origin': 'https://www.sparhamster.at',
-          'Connection': 'keep-alive',
-          'Cache-Control': 'no-cache',
-        },
-        timeout: 15000,
-      });
-
-      const posts = response.data || [];
-      result.fetched = posts.length;
-
-      console.log(`📥 Sparhamster API 返回 ${posts.length} 条记录`);
-
-      // 成功抓取，重置失败计数
-      this.consecutiveFailures = 0;
-      this.lastFailureTime = undefined;
-
-      // Step 2: 延迟 3-10 秒后再抓取首页（模拟人类浏览行为）
-      const delay = Math.floor(Math.random() * 7000) + 3000;
-      console.log(`⏳ 延迟 ${(delay / 1000).toFixed(1)} 秒后抓取首页...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-
-      // Step 3: 从首页 HTML 抓取真实商家链接和 logo
-      let homepageArticles: HomepageArticle[] = [];
-      try {
-        homepageArticles = await this.homepageFetcher.fetchArticles(posts.length);
-        console.log(`🔗 从首页提取到 ${homepageArticles.length} 篇文章的商家链接`);
-      } catch (error) {
-        console.warn(`⚠️  抓取首页失败,将使用 fallbackLink: ${(error as Error).message}`);
-      }
-
-      // Step 3: 建立 postId -> HomepageArticle 映射
-      const articleMap = new Map<string, HomepageArticle>();
-      for (const article of homepageArticles) {
-        if (article.postId) {
-          articleMap.set(article.postId, article);
-        }
-        // 也支持通过 slug 匹配
-        if (article.slug) {
-          articleMap.set(article.slug, article);
-        }
-      }
-
-      // Step 4: 处理每篇文章
-      let enrichedCount = 0;
-      for (let i = 0; i < posts.length; i++) {
-        const post = posts[i];
-
-        try {
-          const action = await this.processPost(post, articleMap, merchantStats);
-
-          if (action.result === 'inserted') {
-            result.inserted++;
-          } else if (action.result === 'updated') {
-            result.updated++;
-          } else if (action.result === 'duplicate') {
-            result.duplicates++;
-          }
-
-          if (action.enriched) {
-            enrichedCount++;
-          }
-        } catch (error) {
-          const message = `处理帖子 ${post.id} 失败: ${(error as Error).message}`;
-          console.error(`❌ ${message}`);
-          result.errors.push(message);
-        }
-      }
-
-      // 统计信息
-      const enrichmentRate = posts.length > 0
-        ? ((enrichedCount / posts.length) * 100).toFixed(1)
-        : '0.0';
-
-      console.log(`\n📊 商家信息补充统计:`);
-      console.log(`   - 成功补充: ${enrichedCount}/${posts.length} (${enrichmentRate}%)`);
-      console.log(`   - 使用 fallback: ${posts.length - enrichedCount}/${posts.length}`);
-
-      // 打印商家规范化统计
-      console.log(`\n🏪 商家规范化统计:`);
-      console.log(`   - 总处理数: ${merchantStats.totalProcessed}`);
-      console.log(`   - 已匹配规范名称: ${merchantStats.matched}`);
-      console.log(`   - 未匹配规范名称: ${merchantStats.unmatched}`);
-
-      if (merchantStats.unmatched > 0) {
-        console.log(getUnmatchedReport(merchantStats));
-      }
-
-    } catch (error) {
-      const message = `抓取 Sparhamster API 失败: ${(error as Error).message}`;
-      console.error(`❌ ${message}`);
-      result.errors.push(message);
-
-      // 记录失败
-      this.consecutiveFailures++;
-      this.lastFailureTime = new Date();
-      console.warn(`⚠️  连续失败次数: ${this.consecutiveFailures}`);
+    if (newApiData.length === 0) {
+      console.log('✓ 无新文章，跳过 HTML 抓取');
+      this.healthMonitor.recordSuccess();
+      return result;
     }
+
+    console.log(`📊 新文章数量: ${newApiData.length}/${apiData.length}`);
+
+    // Step 3: 延迟后抓取 HTML
+    const delay = this.getRandomDelay(3000, 10000);
+    console.log(`⏳ 延迟 ${(delay / 1000).toFixed(1)} 秒后抓取 HTML...`);
+    await this.sleep(delay);
+
+    const htmlArticles = await this.homepageFetcher.fetchArticles(
+      apiData.length,
+      existingPostIds
+    );
+
+    console.log(`🔗 从 HTML 提取 ${htmlArticles.length} 篇文章`);
+
+    // Step 4: 合并数据（建立映射）
+    const htmlMap = new Map<string, HomepageArticle>();
+    for (const article of htmlArticles) {
+      htmlMap.set(article.postId, article);
+    }
+
+    // 建立 API Map
+    const apiMap = new Map<string, ApiData>();
+    for (const apiItem of apiData) {
+      apiMap.set(apiItem.postId, apiItem);
+    }
+
+    // Step 5: 处理所有文章（HTML 为主，API 为辅）
+    for (const htmlData of htmlArticles) {
+      try {
+        const apiItem = apiMap.get(htmlData.postId);
+        let deal: Deal;
+
+        if (apiItem) {
+          // 混合模式：API + HTML
+          deal = await this.normalizer.normalizeWithHtml(apiItem, htmlData);
+        } else {
+          // 纯 HTML 模式：只有 HTML 数据
+          console.log(`📝 Post ${htmlData.postId} 无 API 数据，使用纯 HTML 模式`);
+          deal = await this.normalizer.normalizeFromHtmlOnly(htmlData);
+        }
+
+        // 处理联盟链接（保留原有逻辑）
+        if (deal.merchantLink) {
+          const affiliateResult = await this.affiliateLinkService.processAffiliateLink(
+            deal.merchant,
+            deal.canonicalMerchantName,
+            deal.merchantLink
+          );
+
+          if (affiliateResult.enabled && affiliateResult.affiliateLink) {
+            deal.affiliateLink = affiliateResult.affiliateLink;
+            deal.affiliateEnabled = true;
+            deal.affiliateNetwork = affiliateResult.network;
+            console.log(`✅ 联盟链接 (${affiliateResult.network}): ${deal.merchant}`);
+          }
+        }
+
+        // 去重检查
+        const dupResult = await this.deduplicator.checkDuplicate(deal);
+
+        if (dupResult.isDuplicate && dupResult.existingDeal) {
+          // 更新现有记录
+          await this.deduplicator.handleDuplicate(dupResult.existingDeal.id, deal);
+          result.duplicates++;
+          console.log(`🔁 重复: ${deal.titleDe || deal.originalTitle} (${dupResult.duplicateType})`);
+        } else {
+          // 插入新记录
+          await this.database.createDeal(deal);
+          result.inserted++;
+          console.log(`✅ 新增: ${deal.titleDe || deal.originalTitle}`);
+        }
+      } catch (error) {
+        const errorMsg = `处理 Post ${htmlData.postId} 失败: ${(error as Error).message}`;
+        console.error(`❌ ${errorMsg}`);
+        result.errors.push(errorMsg);
+      }
+    }
+
+    // 记录 API 成功
+    this.healthMonitor.recordSuccess();
+
+    console.log('\n📊 抓取统计:');
+    console.log(`   - 抓取: ${result.fetched}`);
+    console.log(`   - 新增: ${result.inserted}`);
+    console.log(`   - 重复: ${result.duplicates}`);
+    console.log(`   - 错误: ${result.errors.length}`);
 
     return result;
   }
 
   /**
-   * 检查是否需要退避（backoff）
+   * 纯 HTML 模式（降级模式）
+   *
+   * 流程：
+   * 1. 逐页抓取 HTML（最多3页）
+   * 2. 新文章 > 5 继续，≤ 5 停止
+   * 3. 缺少 content_html 标记为 'missing'
+   * 4. 其他处理同混合模式
    */
-  private shouldBackoff(): boolean {
-    if (this.consecutiveFailures < 3) {
-      return false;
-    }
+  private async fetchFromHtmlOnly(result: FetchResult): Promise<FetchResult> {
+    console.log('🌐 模式: 纯 HTML 抓取（降级）');
 
-    if (!this.lastFailureTime) {
-      return false;
-    }
+    // 获取已存在的 post ID
+    const existingPostIds = await this.getExistingPostIds();
 
-    const backoffMinutes = this.getBackoffMinutes();
-    const backoffMs = backoffMinutes * 60 * 1000;
-    const timeSinceLastFailure = Date.now() - this.lastFailureTime.getTime();
-
-    return timeSinceLastFailure < backoffMs;
-  }
-
-  /**
-   * 获取退避时间（分钟）
-   * 指数退避：3次失败=120分钟，4次=240分钟，5次+=480分钟
-   */
-  private getBackoffMinutes(): number {
-    if (this.consecutiveFailures <= 2) {
-      return 0;
-    }
-
-    const backoffMinutes = Math.min(
-      Math.pow(2, this.consecutiveFailures - 2) * 60, // 指数增长
-      480 // 最多8小时
+    // 抓取 HTML（会自动判断抓几页）
+    const htmlArticles = await this.homepageFetcher.fetchArticles(
+      20, // 预期数量（用于决定页数）
+      existingPostIds
     );
 
-    return backoffMinutes;
-  }
+    result.fetched = htmlArticles.length;
 
-  /**
-   * 处理单个帖子
-   * @param post REST API 返回的文章数据
-   * @param articleMap 首页 HTML 提取的文章信息映射
-   * @param merchantStats 商家规范化统计对象
-   * @returns 处理结果和是否成功补充商家信息
-   */
-  private async processPost(
-    post: WordPressPost,
-    articleMap: Map<string, HomepageArticle>,
-    merchantStats: any
-  ): Promise<{ result: 'inserted' | 'updated' | 'duplicate'; enriched: boolean }> {
-    // 1. 标准化数据（从 REST API 提取结构化字段）
-    const deal = await this.normalizer.normalize(post);
-
-    // 1.5 记录商家规范化统计
-    if (deal.merchant) {
-      merchantStats.totalProcessed++;
-      // 检查是否匹配到规范名称（通过比较 canonicalMerchantName 和 merchant）
-      if (deal.canonicalMerchantName && deal.canonicalMerchantName !== deal.merchant) {
-        merchantStats.matched++;
-      } else if (!deal.canonicalMerchantName || deal.canonicalMerchantName === deal.merchant) {
-        merchantStats.unmatched++;
-        recordUnmatchedMerchant(merchantStats, deal.merchant);
-      }
+    if (htmlArticles.length === 0) {
+      console.log('✓ HTML 返回 0 条记录');
+      return result;
     }
 
-    // 1.5 从 content.rendered 提取过期时间
-    const expiryDate = this.extractExpiryDate(post.content?.rendered || '');
-    if (expiryDate) {
-      deal.expiresAt = expiryDate;
-    }
+    console.log(`🔗 从 HTML 提取 ${htmlArticles.length} 篇文章`);
 
-    // 2. 从首页数据补充 merchantLink 和 merchantLogo
-    const postId = post.id.toString();
-    const slug = this.extractSlug(post.link);
-
-    let enriched = false;
-    const homepageArticle = articleMap.get(postId) || (slug ? articleMap.get(slug) : undefined);
-
-    if (homepageArticle) {
-      // 成功匹配到首页数据,保存 forward 链接
-      if (homepageArticle.merchantLink) {
-        deal.merchantLink = homepageArticle.merchantLink;
-        enriched = true;
-        console.log(`✅ 已补充商家链接: ${deal.merchantLink}`);
-
-        // 处理联盟链接（如果商家支持联盟计划）
-        const affiliateResult = await this.affiliateLinkService.processAffiliateLink(
-          deal.merchant,
-          deal.canonicalMerchantName,
-          deal.merchantLink
-        );
-
-        if (affiliateResult.enabled && affiliateResult.affiliateLink) {
-          deal.affiliateLink = affiliateResult.affiliateLink;
-          deal.affiliateEnabled = true;
-          deal.affiliateNetwork = affiliateResult.network;
-          console.log(`✅ 已处理联盟链接 (${affiliateResult.network}): ${affiliateResult.affiliateLink}`);
-        } else {
-          deal.affiliateEnabled = false;
-        }
-      }
-
-      // 如果首页也有 logo,优先使用首页的（更可靠）
-      if (homepageArticle.merchantLogo) {
-        deal.merchantLogo = homepageArticle.merchantLogo;
-      }
-    }
-
-    // 3. 检查重复
-    const dupResult = await this.deduplicator.checkDuplicate(deal);
-
-    if (dupResult.isDuplicate && dupResult.existingDeal) {
-      // 4a. 处理重复(传入新deal数据以更新商家信息)
-      await this.deduplicator.handleDuplicate(dupResult.existingDeal.id, deal);
-      console.log(
-        `🔁 检测到重复: ${deal.title} (类型: ${dupResult.duplicateType}${enriched ? ', 已补充链接' : ''})`
-      );
-      return { result: 'duplicate', enriched };
-    }
-
-    // 4b. 插入新记录
-    await this.database.createDeal(deal);
-    const linkStatus = enriched ? '✓ 真实链接' : '⚠ fallback';
-    console.log(
-      `✅ 新增 Deal: ${deal.title} (${deal.sourceSite}:${deal.sourcePostId}) [${linkStatus}]`
-    );
-    return { result: 'inserted', enriched };
-  }
-
-  /**
-   * 从 URL 提取 slug
-   */
-  private extractSlug(url: string): string | undefined {
-    const match = url.match(/\/([^\/]+)\/?$/);
-    return match ? match[1] : undefined;
-  }
-
-  /**
-   * 从 content.rendered 提取过期时间
-   * 支持多种德语日期格式:
-   * - dd.MM.yyyy (如: 31.10.2025)
-   * - d.M.yyyy (如: 1.5.2025)
-   */
-  private extractExpiryDate(content: string): Date | undefined {
-    if (!content) return undefined;
-
-    // 德语日期格式: dd.MM.yyyy 或 d.M.yyyy
-    // 匹配模式: 数字.数字.数字
-    const germanDatePattern = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
-    const matches = [...content.matchAll(germanDatePattern)];
-
-    if (matches.length === 0) return undefined;
-
-    // 尝试解析所有日期，找出有效的未来日期
-    const now = new Date();
-    const validDates: Date[] = [];
-
-    for (const match of matches) {
-      const [_, day, month, year] = match;
-      const dayNum = parseInt(day, 10);
-      const monthNum = parseInt(month, 10);
-      const yearNum = parseInt(year, 10);
-
-      // 基本验证
-      if (dayNum < 1 || dayNum > 31) continue;
-      if (monthNum < 1 || monthNum > 12) continue;
-      if (yearNum < 2025 || yearNum > 2030) continue;
-
+    // 处理每篇文章
+    for (const htmlData of htmlArticles) {
       try {
-        // JavaScript Date 月份是 0-11，所以要减1
-        const date = new Date(yearNum, monthNum - 1, dayNum, 23, 59, 59);
+        // 检查是否已存在
+        if (existingPostIds.has(htmlData.postId)) {
+          result.duplicates++;
+          continue;
+        }
 
-        // 只保留未来的日期
-        if (date > now) {
-          validDates.push(date);
+        // 使用纯 HTML 数据创建 Deal（没有 API 内容）
+        const deal = await this.normalizer.normalizeFromHtmlOnly(htmlData);
+
+        // 处理联盟链接
+        if (deal.merchantLink) {
+          const affiliateResult = await this.affiliateLinkService.processAffiliateLink(
+            deal.merchant,
+            deal.canonicalMerchantName,
+            deal.merchantLink
+          );
+
+          if (affiliateResult.enabled && affiliateResult.affiliateLink) {
+            deal.affiliateLink = affiliateResult.affiliateLink;
+            deal.affiliateEnabled = true;
+            deal.affiliateNetwork = affiliateResult.network;
+          }
+        }
+
+        // 去重检查
+        const dupResult = await this.deduplicator.checkDuplicate(deal);
+
+        if (dupResult.isDuplicate && dupResult.existingDeal) {
+          await this.deduplicator.handleDuplicate(dupResult.existingDeal.id, deal);
+          result.duplicates++;
+          console.log(`🔁 重复: ${deal.titleDe || deal.originalTitle}`);
+        } else {
+          await this.database.createDeal(deal);
+          result.inserted++;
+          console.log(`✅ 新增: ${deal.titleDe || deal.originalTitle} (⚠️  缺少详细内容)`);
         }
       } catch (error) {
-        // 忽略无效日期
-        continue;
+        const errorMsg = `处理 Post ${htmlData.postId} 失败: ${(error as Error).message}`;
+        console.error(`❌ ${errorMsg}`);
+        result.errors.push(errorMsg);
       }
     }
 
-    // 如果有多个日期，返回最近的一个（最可能是过期日期）
-    if (validDates.length > 0) {
-      validDates.sort((a, b) => a.getTime() - b.getTime());
-      return validDates[0];
-    }
+    console.log('\n📊 抓取统计 (降级模式):');
+    console.log(`   - 抓取: ${result.fetched}`);
+    console.log(`   - 新增: ${result.inserted}`);
+    console.log(`   - 重复: ${result.duplicates}`);
+    console.log(`   - 错误: ${result.errors.length}`);
+    console.log(`   ⚠️  注意: ${result.inserted} 条记录缺少详细内容`);
 
-    return undefined;
+    return result;
   }
 
+  /**
+   * 抓取 API 数据
+   */
+  private async fetchApi(): Promise<ApiData[]> {
+    const url = `${API_URL}?per_page=${API_PER_PAGE}&orderby=date&order=desc`;
+
+    console.log(`📡 抓取 API: ${url}`);
+
+    const response = await axios.get<WordPressPost[]>(url, {
+      headers: {
+        'User-Agent': process.env.SPARHAMSTER_USER_AGENT ||
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.sparhamster.at/',
+        'Origin': 'https://www.sparhamster.at',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+      },
+      timeout: 15000,
+    });
+
+    const posts = response.data || [];
+
+    // 转换为 ApiData
+    return posts.map(post => ({
+      postId: post.id.toString(),
+      contentHtml: post.content?.rendered || '',
+      publishedAt: new Date(post.date),
+      modifiedAt: new Date(post.modified),
+      link: post.link,
+    }));
+  }
+
+  /**
+   * 获取数据库中已存在的 post ID
+   */
+  private async getExistingPostIds(): Promise<Set<string>> {
+    const existingDeals = await this.database.query(
+      `SELECT source_post_id FROM deals WHERE source_site = 'sparhamster' LIMIT 1000`
+    ) as { source_post_id: string }[];
+
+    return new Set(existingDeals.map(d => d.source_post_id));
+  }
+
+  /**
+   * 获取随机延迟（毫秒）
+   */
+  private getRandomDelay(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  /**
+   * 休眠
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 获取健康监控器状态（用于调试/监控）
+   */
+  getHealthStatus() {
+    return this.healthMonitor.getStatus();
+  }
 }
