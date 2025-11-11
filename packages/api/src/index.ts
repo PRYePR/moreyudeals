@@ -175,7 +175,7 @@ app.get('/api/deals', async (req, res) => {
         translation_status, title_de, content_html,
         merchant_link, affiliate_link, fallback_link,
         merchant_logo, canonical_merchant_name, original_price, discount,
-        published_at
+        published_at, expires_at
       FROM deals
       ${whereClause}
       ORDER BY ${sortField} ${sortOrder}
@@ -212,7 +212,7 @@ app.get('/api/deals/:id', async (req, res) => {
         translation_status, title_de, content_html,
         merchant_link, affiliate_link, fallback_link,
         merchant_logo, canonical_merchant_name, original_price, discount,
-        published_at
+        published_at, expires_at
       FROM deals
       WHERE id = $1
         AND translation_status = 'completed'

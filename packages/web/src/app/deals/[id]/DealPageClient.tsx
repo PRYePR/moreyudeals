@@ -31,6 +31,36 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // 格式化过期时间显示
+  const formatExpiryTime = (expiresAt: string | null) => {
+    if (!expiresAt) return null
+    const now = new Date()
+    const expiration = new Date(expiresAt)
+    const diffTime = expiration.getTime() - now.getTime()
+
+    // 已过期
+    if (diffTime <= 0) {
+      return '已过期'
+    }
+
+    // 计算剩余时间
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    // 小于1小时
+    if (diffHours < 1) {
+      return '小于1小时'
+    }
+
+    // 小于1天：显示小时
+    if (diffDays < 1) {
+      return `${diffHours} 小时`
+    }
+
+    // 显示天数
+    return `${diffDays} 天`
+  }
+
   // 使用服务端计算的时间状态
   const timeStatus = deal.timeStatus || {
     publishedAbsolute: '时间信息暂缺',
@@ -43,6 +73,11 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
   }
 
   const isExpired = timeStatus.isExpired
+
+  // 优先显示过期倒计时
+  const expiryDisplay = formatExpiryTime(deal.expiresAt)
+  const displayTimeLabel = expiryDisplay ? '剩余' : '发布'
+  const displayTimeValue = expiryDisplay || timeStatus.publishedRelative || timeStatus.publishedAbsolute
   // 优先使用trackingUrl(包含联盟码拼接和点击追踪)
   const purchaseUrl = deal.trackingUrl || deal.affiliateUrl || deal.dealUrl || deal.originalUrl || ''
   const hasPurchaseLink = typeof purchaseUrl === 'string' && (purchaseUrl.startsWith('http') || purchaseUrl.startsWith('/'))
@@ -238,21 +273,11 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
 
                 {/* 时间信息 - 移动端优化 */}
                 <div className="mt-auto pt-3 sm:pt-4 border-t border-gray-200">
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
-                    <div className="flex items-center space-x-1.5 sm:space-x-2">
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>发布: {timeStatus.publishedRelative || timeStatus.publishedAbsolute}</span>
-                    </div>
-                    {timeStatus.expiresAbsolute && (
-                      <div className="flex items-center space-x-1.5 sm:space-x-2">
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>过期: {timeStatus.expiresAbsolute}</span>
-                      </div>
-                    )}
+                  <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm text-gray-600">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{displayTimeLabel}: {displayTimeValue}</span>
                   </div>
                 </div>
               </div>

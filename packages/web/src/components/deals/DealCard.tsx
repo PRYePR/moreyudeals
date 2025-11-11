@@ -31,12 +31,47 @@ export default function DealCard({ deal }: DealCardProps) {
     return diffDays > 0 ? diffDays : 0
   }
 
+  // 格式化过期时间显示
+  const formatExpiryTime = (expiresAt: Date | null) => {
+    if (!expiresAt) return null
+    const now = new Date()
+    const expiration = new Date(expiresAt)
+    const diffTime = expiration.getTime() - now.getTime()
+
+    // 已过期
+    if (diffTime <= 0) {
+      return '已过期'
+    }
+
+    // 计算剩余时间
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    // 小于1小时：显示"小于1小时"
+    if (diffHours < 1) {
+      return '小于1小时'
+    }
+
+    // 小于1天：显示小时
+    if (diffDays < 1) {
+      return `还剩 ${diffHours} 小时`
+    }
+
+    // 显示天数
+    return `还剩 ${diffDays} 天`
+  }
+
   const isExpired = deal.expiresAt ? new Date(deal.expiresAt) < new Date() : false
   const daysRemaining = getDaysRemaining(deal.expiresAt)
-  const timeAgo = deal.publishedAt ? formatDistance(new Date(deal.publishedAt), new Date(), {
+
+  // 优先显示过期时间,如果没有才显示发布时间
+  const expiryDisplay = formatExpiryTime(deal.expiresAt)
+  const publishedTimeAgo = deal.publishedAt ? formatDistance(new Date(deal.publishedAt), new Date(), {
     addSuffix: true,
     locale: zhCN,
   }) : '未知时间'
+
+  const displayTime = expiryDisplay || publishedTimeAgo
 
   return (
     <Link href={`/deals/${deal.id}`}>
@@ -155,7 +190,7 @@ export default function DealCard({ deal }: DealCardProps) {
                   </>
                 )}
               </div>
-              <span>{timeAgo}</span>
+              <span>{displayTime}</span>
             </div>
           </div>
         </div>

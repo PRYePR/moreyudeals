@@ -15,6 +15,7 @@ import { BaseNormalizer } from './base-normalizer';
 import { Deal } from '../types/deal.types';
 import { HomepageArticle } from '../services/homepage-fetcher';
 import { normalizeMerchant } from '../utils/merchant-normalizer';
+import { parseGermanRelativeTime } from '../utils/date-parser';
 
 /**
  * API 数据（来自 fetcher）
@@ -155,7 +156,7 @@ export class SparhamsterNormalizer extends BaseNormalizer<any, Deal> {
 
       // 时间信息
       publishedAt,
-      expiresAt: undefined, // 可以从 expiresIn 计算
+      expiresAt: parseGermanRelativeTime(expiresIn), // 从 expiresIn 计算到期时间
 
       // 翻译状态
       language: 'de',
@@ -224,6 +225,7 @@ export class SparhamsterNormalizer extends BaseNormalizer<any, Deal> {
 
     // 10. 时间信息
     const publishedAt = htmlData.publishedAt || new Date();
+    const expiresIn = htmlData.expiresIn; // 活动剩余时间文本
 
     // 11. 计算 content_hash
     const contentHash = this.calculateContentHash({
@@ -288,7 +290,7 @@ export class SparhamsterNormalizer extends BaseNormalizer<any, Deal> {
 
       // 时间信息
       publishedAt,
-      expiresAt: undefined,
+      expiresAt: parseGermanRelativeTime(expiresIn), // 从 expiresIn 计算到期时间
 
       // 翻译状态
       language: 'de',
