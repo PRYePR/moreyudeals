@@ -130,20 +130,24 @@ FETCH_RANDOM_DELAY_MAX=20  # 增加随机延迟，模拟人类行为
 
 # 翻译配置
 TRANSLATION_ENABLED=true
-TRANSLATION_PROVIDERS=deepl,microsoft
+# TRANSLATION_PROVIDERS 控制翻译提供商的优先级顺序
+# 格式: provider1,provider2,provider3
+# 可用值: microsoft, microsoft2, deepl
+# 推荐: microsoft,microsoft2,deepl (优先用Microsoft双Key，避免DeepL配额限制)
+TRANSLATION_PROVIDERS=microsoft,microsoft2,deepl
 TRANSLATION_BATCH_SIZE=10
 TRANSLATION_TARGET_LANGUAGES=zh,en
 
-# DeepL API 配置
+# DeepL API 配置（可选，如果不配置则不使用DeepL）
 DEEPL_API_KEY=your_deepl_key
 DEEPL_ENDPOINT=https://api-free.deepl.com/v2
 
-# Microsoft Translator 配置 (第一个Key)
+# Microsoft Translator 配置 (主Key)
 MICROSOFT_TRANSLATOR_KEY=your_microsoft_key_1
 MICROSOFT_TRANSLATOR_REGION=your_region_1
 MICROSOFT_TRANSLATOR_ENDPOINT=https://api.cognitive.microsofttranslator.com
 
-# Microsoft Translator 配置 (第二个Key - 备用)
+# Microsoft Translator 配置 (备用Key)
 MICROSOFT_TRANSLATOR_KEY2=your_microsoft_key_2
 MICROSOFT_TRANSLATOR_REGION2=your_region_2
 
@@ -484,6 +488,99 @@ pm2 status
 4. **定期备份**：每天自动备份数据库
 5. **监控日志**：定期检查错误日志
 6. **API密钥轮换**：定期更换API密钥
+
+---
+
+## 翻译系统故障排查
+
+### 翻译失败问题
+
+**症状**: 新抓取的deals没有标题(title为空)，无法在前端显示
+
+**原因**: 翻译服务失败，`translation_status = 'failed'`
+
+**排查步骤**:
+
+#### 1. 查看翻译状态分布
+
+```bash
+# 连接数据库查看翻译状态
+PGPASSWORD=your_password psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals -c "SELECT translation_status, COUNT(*) as count FROM deals GROUP BY translation_status ORDER BY count DESC;"
+```
+
+#### 2. 查看失败记录
+
+```bash
+# 查看最近的失败记录
+PGPASSWORD=your_password psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals -c "SELECT id, title_de, created_at FROM deals WHERE translation_status = 'failed' ORDER BY created_at DESC LIMIT 10;"
+```
+
+#### 3. 检查 Worker 日志
+
+```bash
+# 查看翻译错误日志
+pm2 logs moreyudeals-worker --err --lines 50
+```
+
+常见错误:
+- **DeepL 429 错误**: 配额用完 → 修改 `TRANSLATION_PROVIDERS` 优先使用 Microsoft
+- **Microsoft 401 错误**: API Key 无效 → 检查 `.env` 中的 Key 和 Region
+- **Microsoft 403 错误**: API Key 过期或无权限 → 更换 Key
+
+### 重置失败记录以重新翻译
+
+当你修复了翻译配置后（例如更换了 provider 优先级），需要将失败的记录重置为 `pending` 状态:
+
+```bash
+# 将所有失败的记录改为 pending
+PGPASSWORD=your_password psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals -c "UPDATE deals SET translation_status = 'pending' WHERE translation_status = 'failed';"
+
+# 查看受影响的行数
+# 输出: UPDATE 10 (表示更新了10条记录)
+
+# 验证修改
+PGPASSWORD=your_password psql -h 43.157.40.96 -p 5432 -U moreyudeals -d moreyudeals -c "SELECT translation_status, COUNT(*) FROM deals GROUP BY translation_status;"
+```
+
+重置后，翻译 Worker 会在下一个周期（默认5分钟）自动处理这些 `pending` 记录。
+
+#### 实时监控翻译进度
+
+```bash
+# 实时查看 Worker 日志
+pm2 logs moreyudeals-worker -f
+
+# 应该看到类似输出:
+# 🔧 翻译 Provider 优先级: microsoft > microsoft2 > deepl
+# 📝 发现 10 个待翻译的优惠
+# 🔄 使用 microsoft 翻译: Gratis Versand bei...
+# ✅ 翻译完成 (1234ms): microsoft
+```
+
+### 修改翻译提供商优先级
+
+编辑 `/var/www/Moreyudeals/packages/worker/.env`:
+
+```bash
+# 修改这一行（推荐配置）
+TRANSLATION_PROVIDERS=microsoft,microsoft2,deepl
+
+# 或者只用 Microsoft（完全禁用 DeepL）
+TRANSLATION_PROVIDERS=microsoft,microsoft2
+```
+
+修改后重启 Worker:
+
+```bash
+cd /var/www/Moreyudeals
+pm2 restart moreyudeals-worker
+pm2 logs moreyudeals-worker -f
+```
+
+启动日志中会显示:
+```
+🔧 翻译 Provider 优先级: microsoft > microsoft2 > deepl
+```
 
 ---
 

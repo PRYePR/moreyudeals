@@ -33,6 +33,7 @@ export interface WorkerConfig {
     interval: number; // 翻译间隔（分钟）
     batchSize: number;
     targetLanguages: string[];
+    providers?: string[]; // 翻译提供商优先级列表 (如: ['microsoft', 'deepl'])
     deepl?: {
       apiKey: string;
       endpoint: string;
@@ -92,6 +93,9 @@ export function loadConfig(): WorkerConfig {
       interval: parseInt(process.env.TRANSLATION_INTERVAL || '5'), // 默认 5 分钟
       batchSize: parseInt(process.env.TRANSLATION_BATCH_SIZE || '10'),
       targetLanguages: (process.env.TRANSLATION_TARGET_LANGUAGES || 'zh,en').split(','),
+      providers: process.env.TRANSLATION_PROVIDERS
+        ? process.env.TRANSLATION_PROVIDERS.split(',').map(p => p.trim())
+        : undefined,
       deepl: process.env.DEEPL_API_KEY
         ? {
             apiKey: process.env.DEEPL_API_KEY,

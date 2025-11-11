@@ -22,6 +22,7 @@ import { MicrosoftProvider } from './providers/microsoft';
 import { TranslationRouteConfig } from './types';
 
 interface TranslationConfig {
+  providers?: string[]; // Provider优先级列表 (如: ['microsoft', 'deepl'])
   deepl?: {
     apiKey: string;
     endpoint?: string;
@@ -43,41 +44,51 @@ interface TranslationConfig {
 }
 
 export function createTranslationManager(config: TranslationConfig): CoreTranslationManager {
-  // 创建翻译管理器
+  // 确定 Provider 优先级
+  // 如果配置了 providers 数组，使用它；否则默认使用 microsoft, microsoft2, deepl
+  const providerOrder = config.providers || ['microsoft', 'microsoft2', 'deepl'];
+  const primary = providerOrder[0] || 'microsoft';
+  const fallback = providerOrder.slice(1);
+
+  // 创建翻译管理器，传入路由配置
+  const routingConfig = {
+    ...config.routing,
+    primary: primary as any,
+    fallback: fallback as any,
+  };
+
   const manager = new CoreTranslationManager(
-    config.routing,
+    routingConfig,
     config.redis?.url
   );
 
-  // 添加DeepL Provider
-  if (config.deepl?.apiKey) {
-    const deeplProvider = new DeepLProvider({
-      apiKey: config.deepl.apiKey,
-      endpoint: config.deepl.endpoint
-    });
-    manager.addProvider(deeplProvider);
-  }
+  console.log(`🔧 翻译 Provider 优先级: ${providerOrder.join(' > ')}`);
 
-  // 添加Microsoft Provider
-  if (config.microsoft?.apiKey) {
-    const microsoftProvider = new MicrosoftProvider({
-      apiKey: config.microsoft.apiKey,
-      region: config.microsoft.region,
-      endpoint: config.microsoft.endpoint,
-      name: 'microsoft'
-    });
-    manager.addProvider(microsoftProvider);
-  }
-
-  // 添加Microsoft Provider #2
-  if (config.microsoft2?.apiKey) {
-    const microsoftProvider2 = new MicrosoftProvider({
-      apiKey: config.microsoft2.apiKey,
-      region: config.microsoft2.region,
-      endpoint: config.microsoft2.endpoint,
-      name: 'microsoft2'
-    });
-    manager.addProvider(microsoftProvider2);
+  // 按照 providerOrder 的顺序添加 Provider
+  for (const providerName of providerOrder) {
+    if (providerName === 'deepl' && config.deepl?.apiKey) {
+      const deeplProvider = new DeepLProvider({
+        apiKey: config.deepl.apiKey,
+        endpoint: config.deepl.endpoint
+      });
+      manager.addProvider(deeplProvider);
+    } else if (providerName === 'microsoft' && config.microsoft?.apiKey) {
+      const microsoftProvider = new MicrosoftProvider({
+        apiKey: config.microsoft.apiKey,
+        region: config.microsoft.region,
+        endpoint: config.microsoft.endpoint,
+        name: 'microsoft'
+      });
+      manager.addProvider(microsoftProvider);
+    } else if (providerName === 'microsoft2' && config.microsoft2?.apiKey) {
+      const microsoftProvider2 = new MicrosoftProvider({
+        apiKey: config.microsoft2.apiKey,
+        region: config.microsoft2.region,
+        endpoint: config.microsoft2.endpoint,
+        name: 'microsoft2'
+      });
+      manager.addProvider(microsoftProvider2);
+    }
   }
 
   return manager;
