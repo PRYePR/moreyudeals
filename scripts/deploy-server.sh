@@ -31,11 +31,12 @@ command -v psql >/dev/null 2>&1 || { echo -e "${RED}✗ 未找到 PostgreSQL 客
 echo -e "${GREEN}✓ 系统环境检查通过${NC}"
 echo ""
 
-# 检查 .env.production 文件
+# 检查 .env 文件（服务器使用 .env，不是 .env.production）
 echo -e "${YELLOW}[2/8] 检查配置文件...${NC}"
-if [ ! -f "packages/worker/.env.production" ]; then
-    echo -e "${RED}✗ 未找到 .env.production 文件${NC}"
-    echo "请先创建配置文件: packages/worker/.env.production"
+if [ ! -f "packages/worker/.env" ]; then
+    echo -e "${RED}✗ 未找到 .env 文件${NC}"
+    echo "请先创建配置文件: packages/worker/.env"
+    echo "提示: 服务器上使用 .env 文件（不是 .env.production）"
     exit 1
 fi
 echo -e "${GREEN}✓ 配置文件存在${NC}"
@@ -76,7 +77,8 @@ echo ""
 # 启动服务
 echo -e "${YELLOW}[7/8] 启动 Worker 服务...${NC}"
 cd packages/worker
-pm2 start ecosystem.config.js --env production
+# 服务器上直接使用 .env 文件，不需要 --env production
+pm2 start ecosystem.config.js
 pm2 save
 echo -e "${GREEN}✓ 服务启动成功${NC}"
 echo ""
