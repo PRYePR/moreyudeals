@@ -76,7 +76,6 @@ export class DeduplicationService {
    * 增加 duplicate_count 并更新 last_seen_at
    * 同时更新商家信息(如果新数据包含商家信息且原记录缺失)
    * 同时更新 published_at (跟随源网站的更新)
-   * 同时更新 expires_at (重新计算过期时间)
    *
    * @param dealId 已存在的 Deal ID
    * @param newDeal 新抓取的 Deal 数据(可选,用于更新商家信息)
@@ -91,11 +90,6 @@ export class DeduplicationService {
     // 始终更新 published_at (跟随源网站的发布时间变化)
     if (newDeal?.publishedAt) {
       updateData.publishedAt = newDeal.publishedAt;
-    }
-
-    // 始终更新 expires_at (重新计算过期时间，因为是从抓取时间开始计算)
-    if (newDeal?.expiresAt !== undefined) {
-      updateData.expiresAt = newDeal.expiresAt;
     }
 
     // 如果新数据包含图片且原记录缺失，更新图片
