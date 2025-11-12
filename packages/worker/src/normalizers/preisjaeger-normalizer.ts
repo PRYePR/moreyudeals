@@ -232,7 +232,20 @@ export class PreisjaegerNormalizer extends BaseNormalizer<PreisjaegerDetailItem,
       normalizeCategory(catName, 'preisjaeger')
     );
 
-    const categories = normalizedCategories.map(c => c.canonicalId);
+    // 只保存已映射的分类（isMatched = true）
+    const mappedCategories = normalizedCategories.filter(c => c.isMatched);
+
+    // 记录未映射的分类
+    const unmappedCategories = normalizedCategories.filter(c => !c.isMatched);
+    if (unmappedCategories.length > 0) {
+      console.warn(`[Preisjaeger] 未映射的分类: ${unmappedCategories.map(c => c.originalName).join(', ')}`);
+    }
+
+    // 如果没有任何已映射的分类，使用"其他"作为兜底
+    const categories = mappedCategories.length > 0
+      ? mappedCategories.map(c => c.canonicalId)
+      : ['other'];
+
     const categoriesRaw = categoryNames; // 保留原始分类名称
 
     // 11. 时间信息

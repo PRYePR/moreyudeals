@@ -15,6 +15,7 @@ import { BaseNormalizer } from './base-normalizer';
 import { Deal } from '../types/deal.types';
 import { HomepageArticle } from '../services/homepage-fetcher';
 import { normalizeMerchant } from '../utils/merchant-normalizer';
+import { normalizeCategory } from '../utils/category-normalizer';
 import { parseGermanRelativeTime } from '../utils/date-parser';
 
 /**
@@ -83,8 +84,27 @@ export class SparhamsterNormalizer extends BaseNormalizer<any, Deal> {
     const imageUrl = htmlData.imageUrl || undefined;
     const images = imageUrl ? [imageUrl] : [];
 
-    // 9. 分类（HTML 优先）
-    const categories = htmlData.categories || [];
+    // 9. 分类（HTML 优先，需要标准化）
+    const rawCategories = htmlData.categories || [];
+
+    // 标准化分类
+    const normalizedCategories = rawCategories.map(catName =>
+      normalizeCategory(catName, 'sparhamster')
+    );
+
+    // 只保存已映射的分类
+    const mappedCategories = normalizedCategories.filter(c => c.isMatched);
+
+    // 记录未映射的分类
+    const unmappedCategories = normalizedCategories.filter(c => !c.isMatched);
+    if (unmappedCategories.length > 0) {
+      console.warn(`[Sparhamster] 未映射的分类: ${unmappedCategories.map(c => c.originalName).join(', ')}`);
+    }
+
+    // 如果没有任何已映射的分类，使用"其他"作为兜底
+    const categories = mappedCategories.length > 0
+      ? mappedCategories.map(c => c.canonicalId)
+      : ['other'];
 
     // 10. 时间信息（HTML 优先，API 作为备选）
     const publishedAt = htmlData.publishedAt || apiData.publishedAt;
@@ -220,8 +240,27 @@ export class SparhamsterNormalizer extends BaseNormalizer<any, Deal> {
     const imageUrl = htmlData.imageUrl || undefined;
     const images = imageUrl ? [imageUrl] : [];
 
-    // 9. 分类
-    const categories = htmlData.categories || [];
+    // 9. 分类（需要标准化）
+    const rawCategories = htmlData.categories || [];
+
+    // 标准化分类
+    const normalizedCategories = rawCategories.map(catName =>
+      normalizeCategory(catName, 'sparhamster')
+    );
+
+    // 只保存已映射的分类
+    const mappedCategories = normalizedCategories.filter(c => c.isMatched);
+
+    // 记录未映射的分类
+    const unmappedCategories = normalizedCategories.filter(c => !c.isMatched);
+    if (unmappedCategories.length > 0) {
+      console.warn(`[Sparhamster] 未映射的分类: ${unmappedCategories.map(c => c.originalName).join(', ')}`);
+    }
+
+    // 如果没有任何已映射的分类，使用"其他"作为兜底
+    const categories = mappedCategories.length > 0
+      ? mappedCategories.map(c => c.canonicalId)
+      : ['other'];
 
     // 10. 时间信息
     const publishedAt = htmlData.publishedAt || new Date();

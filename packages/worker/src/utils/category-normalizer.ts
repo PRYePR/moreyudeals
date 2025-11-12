@@ -21,8 +21,6 @@ export interface NormalizedCategory {
   originalName: string;
   /** 是否匹配到规范配置 */
   isMatched: boolean;
-  /** 父分类ID (如果有) */
-  parentId?: string;
   /** 匹配到的配置 (如果有) */
   mapping?: CategoryMapping;
 }
@@ -90,7 +88,6 @@ export function normalizeCategory(
       canonicalNameDe: mapping.canonicalNameDe,
       originalName: cleanName,
       isMatched: true,
-      parentId: mapping.parentId,
       mapping
     };
   }
@@ -188,68 +185,10 @@ export function isCategoryMapped(categoryName: string, sourceSite: string = 'unk
 }
 
 /**
- * 获取分类的完整层级路径
- *
- * @param canonicalId - 规范分类ID
- * @returns 从根到该分类的完整路径数组
- *
- * @example
- * ```ts
- * getCategoryPath('coffee-machines')
- * // => ['home-living', 'home-appliances', 'coffee-machines']
- * ```
+ * 注意：以下层级相关函数已废弃，因为当前只使用一级分类
+ * 如果未来需要二级分类，可以取消注释并更新CategoryMapping接口添加parentId字段
  */
-export function getCategoryPath(canonicalId: string): string[] {
-  const path: string[] = [];
-  let currentId: string | undefined = canonicalId;
 
-  // 最多追溯10层，防止循环引用
-  let maxDepth = 10;
-
-  while (currentId && maxDepth > 0) {
-    path.unshift(currentId);
-
-    const category = getCategoryByCanonicalId(currentId);
-    if (!category || !category.parentId) {
-      break;
-    }
-
-    currentId = category.parentId;
-    maxDepth--;
-  }
-
-  return path;
-}
-
-/**
- * 获取分类的所有子分类
- *
- * @param canonicalId - 规范分类ID
- * @returns 所有直接子分类列表
- *
- * @example
- * ```ts
- * getChildCategories('home-living')
- * // => [CategoryMapping(home-appliances), CategoryMapping(kitchen-cooking), ...]
- * ```
- */
-export function getChildCategories(canonicalId: string): CategoryMapping[] {
-  return CATEGORY_MAPPINGS.filter(c => c.parentId === canonicalId);
-}
-
-/**
- * 获取分类树（包含所有后代）
- *
- * @param canonicalId - 规范分类ID
- * @returns 该分类及其所有后代的ID列表
- */
-export function getCategoryTree(canonicalId: string): string[] {
-  const tree = [canonicalId];
-  const children = getChildCategories(canonicalId);
-
-  children.forEach(child => {
-    tree.push(...getCategoryTree(child.canonicalId));
-  });
-
-  return tree;
-}
+// export function getCategoryPath(canonicalId: string): string[] { ... }
+// export function getChildCategories(canonicalId: string): CategoryMapping[] { ... }
+// export function getCategoryTree(canonicalId: string): string[] { ... }
