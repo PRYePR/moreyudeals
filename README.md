@@ -8,7 +8,7 @@
 
 ## 🚀 项目特色
 
-- **自动化抓取** - 定时从 Sparhamster 抓取最新优惠
+- **多数据源抓取** - 支持 Sparhamster (奥地利) 和 Preisjaeger (德国/奥地利) 双数据源
 - **智能翻译** - 多 Provider 架构（DeepL/Microsoft），智能路由降低成本
 - **无头架构** - Express API + Next.js 前端完全分离
 - **性能优化** - Redis 缓存 + PostgreSQL 索引 + ISR 渲染
@@ -20,6 +20,7 @@
 
 ### 开发文档
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — 技术架构和数据模型
+- **[DATA_SOURCES.md](./docs/DATA_SOURCES.md)** — 数据源配置 (Sparhamster / Preisjaeger)
 - **[LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)** — 本地开发环境配置
 - **[SERVER_OPERATIONS.md](./docs/SERVER_OPERATIONS.md)** — 服务器端操作指令
 
