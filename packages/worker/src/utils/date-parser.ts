@@ -12,6 +12,7 @@
  * - "noch 2 Wochen" → 当前时间 + 2周
  * - "noch 3 Monate" → 当前时间 + 3个月
  * - "abgelaufen" → 当前时间（已过期）
+ * - "in 7Std 24Min 2s" → 当前时间 + 7小时24分钟（Preisjaeger 紧凑格式）
  *
  * @param text 德语时间表达式
  * @param baseDate 基准时间（默认为当前时间）
@@ -30,35 +31,62 @@ export function parseGermanRelativeTime(
     return baseDate; // 返回当前时间作为过期时间
   }
 
-  // 2. "noch X Minuten"
+  // 2. Preisjaeger 紧凑格式: "in 7Std 24Min 2s" 或 "7Std 24Min"
+  // 提取所有时间单位
+  const compactMatch = normalizedText.match(/(\d+)\s*std|(\d+)\s*min|(\d+)\s*s/gi);
+  if (compactMatch && compactMatch.length > 0) {
+    let totalMilliseconds = 0;
+
+    compactMatch.forEach(match => {
+      const hoursCompact = match.match(/(\d+)\s*std/i);
+      const minutesCompact = match.match(/(\d+)\s*min/i);
+      const secondsCompact = match.match(/(\d+)\s*s(?!t)/i); // s 但不是 std
+
+      if (hoursCompact) {
+        totalMilliseconds += parseInt(hoursCompact[1], 10) * 60 * 60 * 1000;
+      }
+      if (minutesCompact) {
+        totalMilliseconds += parseInt(minutesCompact[1], 10) * 60 * 1000;
+      }
+      if (secondsCompact) {
+        totalMilliseconds += parseInt(secondsCompact[1], 10) * 1000;
+      }
+    });
+
+    if (totalMilliseconds > 0) {
+      return new Date(baseDate.getTime() + totalMilliseconds);
+    }
+  }
+
+  // 3. "noch X Minuten"
   const minutesMatch = normalizedText.match(/noch\s+(\d+)\s+minuten?/i);
   if (minutesMatch) {
     const minutes = parseInt(minutesMatch[1], 10);
     return new Date(baseDate.getTime() + minutes * 60 * 1000);
   }
 
-  // 3. "noch X Stunden"
+  // 4. "noch X Stunden"
   const hoursMatch = normalizedText.match(/noch\s+(\d+)\s+stunden?/i);
   if (hoursMatch) {
     const hours = parseInt(hoursMatch[1], 10);
     return new Date(baseDate.getTime() + hours * 60 * 60 * 1000);
   }
 
-  // 4. "noch X Tage"
+  // 5. "noch X Tage"
   const daysMatch = normalizedText.match(/noch\s+(\d+)\s+tage?/i);
   if (daysMatch) {
     const days = parseInt(daysMatch[1], 10);
     return new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
   }
 
-  // 5. "noch X Wochen"
+  // 6. "noch X Wochen"
   const weeksMatch = normalizedText.match(/noch\s+(\d+)\s+wochen?/i);
   if (weeksMatch) {
     const weeks = parseInt(weeksMatch[1], 10);
     return new Date(baseDate.getTime() + weeks * 7 * 24 * 60 * 60 * 1000);
   }
 
-  // 6. "noch X Monate"
+  // 7. "noch X Monate"
   const monthsMatch = normalizedText.match(/noch\s+(\d+)\s+monate?/i);
   if (monthsMatch) {
     const months = parseInt(monthsMatch[1], 10);

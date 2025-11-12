@@ -368,6 +368,9 @@ export class DatabaseManager {
     let paramCount = 1;
 
     for (const [key, value] of Object.entries(updates)) {
+      // 跳过 id 和 updatedAt
+      if (key === 'id' || key === 'updatedAt') continue;
+
       if (value !== undefined) {
         // 转换 camelCase 为 snake_case
         const columnName = key.replace(/([A-Z])/g, '_$1').toLowerCase();

@@ -11,6 +11,7 @@ export class TranslationWorker {
   private translationManager: CoreTranslationManager;
   private database: DatabaseManager;
   private isProcessing = false;
+  private intervalId?: NodeJS.Timeout; // 保存 setInterval 返回值
 
   constructor(database: DatabaseManager, translationConfig: any) {
     this.database = database;
@@ -21,7 +22,7 @@ export class TranslationWorker {
     console.log('🔄 翻译Worker启动');
 
     // 每30秒检查一次待翻译的任务
-    setInterval(async () => {
+    this.intervalId = setInterval(async () => {
       if (!this.isProcessing) {
         await this.processTranslationJobs();
       }
@@ -29,6 +30,27 @@ export class TranslationWorker {
 
     // 立即执行一次
     await this.processTranslationJobs();
+  }
+
+  /**
+   * 停止翻译Worker
+   */
+  async stop(): Promise<void> {
+    console.log('🛑 停止翻译Worker...');
+
+    // 清理定时器
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+
+    // 等待当前正在处理的任务完成
+    while (this.isProcessing) {
+      console.log('⏳ 等待当前翻译任务完成...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    console.log('✅ 翻译Worker已停止');
   }
 
   async processTranslationJobs(): Promise<void> {

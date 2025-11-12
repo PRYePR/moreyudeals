@@ -1,0 +1,331 @@
+/**
+ * Preisjaeger Fetcher
+ *
+ * 负责抓取 Preisjaeger.at 的优惠数据
+ *
+ * 抓取策略：
+ * 1. 抓取列表页（/neu），从 data-vue3 属性解析 JSON
+ * 2. 提取 threadId 列表
+ * 3. 去重检查（过滤已存在的 threadId）
+ * 4. 限制详情页数量（最多 20 个）
+ * 5. 抓取详情页，从 window.__INITIAL_STATE__.threadDetail 解析 JSON
+ * 6. 随机延迟 5-15 秒（避免被限制）
+ *
+ * 数据来源：
+ * - 列表页：https://www.preisjaeger.at/neu
+ * - 详情页：https://www.preisjaeger.at/deals/{titleSlug}-{threadId}
+ */
+
+import axios from 'axios';
+import { load as cheerioLoad } from 'cheerio';
+import { DatabaseManager } from '../database';
+import { PreisjaegerNormalizer, PreisjaegerListItem, PreisjaegerDetailItem } from '../normalizers/preisjaeger-normalizer';
+import { DeduplicationService } from '../services/deduplication-service';
+import { AffiliateLinkService } from '../services/affiliate-link-service';
+import { FetchResult } from '../types/fetcher.types';
+import { Deal } from '../types/deal.types';
+
+// 配置
+const LIST_URL = process.env.PREISJAEGER_LIST_URL || 'https://www.preisjaeger.at/neu';
+const MAX_DETAIL_PAGES = Number(process.env.PREISJAEGER_MAX_DETAIL_PAGES || '20');
+const DETAIL_MIN_DELAY = Number(process.env.PREISJAEGER_DETAIL_MIN_DELAY || '5000'); // 5秒
+const DETAIL_MAX_DELAY = Number(process.env.PREISJAEGER_DETAIL_MAX_DELAY || '15000'); // 15秒
+
+/**
+ * Preisjaeger Fetcher
+ */
+export class PreisjaegerFetcher {
+  private readonly normalizer: PreisjaegerNormalizer;
+  private readonly deduplicator: DeduplicationService;
+  private readonly affiliateLinkService: AffiliateLinkService;
+
+  constructor(private readonly database: DatabaseManager) {
+    this.normalizer = new PreisjaegerNormalizer();
+    this.deduplicator = new DeduplicationService(database);
+    this.affiliateLinkService = new AffiliateLinkService();
+  }
+
+  /**
+   * 主抓取方法
+   *
+   * 流程：
+   * 1. 抓取列表页，提取 threadId 列表
+   * 2. 去重检查（过滤已存在的）
+   * 3. 限制数量（最多 20 个）
+   * 4. 逐个抓取详情页（带延迟）
+   * 5. 标准化数据
+   * 6. 处理联盟链接
+   * 7. 去重和入库
+   */
+  async fetchLatest(): Promise<FetchResult> {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀 开始抓取 Preisjaeger');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    const result: FetchResult = {
+      fetched: 0,
+      inserted: 0,
+      updated: 0,
+      duplicates: 0,
+      errors: [],
+    };
+
+    try {
+      // Step 1: 抓取列表页
+      console.log(`📡 抓取列表页: ${LIST_URL}`);
+      const listItems = await this.fetchListPage();
+      console.log(`📥 列表页返回 ${listItems.length} 条记录`);
+
+      if (listItems.length === 0) {
+        console.log('✓ 列表页无数据，跳过');
+        return result;
+      }
+
+      // Step 2: 去重检查
+      const existingThreadIds = await this.getExistingThreadIds();
+      const newItems = listItems.filter(item => !existingThreadIds.has(item.threadId));
+
+      console.log(`📊 新商品数量: ${newItems.length}/${listItems.length}`);
+
+      if (newItems.length === 0) {
+        console.log('✓ 无新商品，跳过详情页抓取');
+        return result;
+      }
+
+      // Step 3: 限制数量
+      const itemsToFetch = newItems.slice(0, MAX_DETAIL_PAGES);
+      if (newItems.length > MAX_DETAIL_PAGES) {
+        console.log(`⚠️  新商品超过限制，只抓取前 ${MAX_DETAIL_PAGES} 个`);
+      }
+
+      result.fetched = itemsToFetch.length;
+
+      // Step 4: 使用列表页数据快速写入
+      const newDeals: Array<{ listItem: PreisjaegerListItem; dealId: string }> = []; // 记录新插入的商品及其ID
+      for (let i = 0; i < itemsToFetch.length; i++) {
+        const listItem = itemsToFetch[i];
+
+        try {
+          // 使用列表页数据标准化
+          console.log(`📦 [${i + 1}/${itemsToFetch.length}] 处理商品(列表页): ${listItem.title}`);
+          const deal = await this.normalizer.normalizeFromList(listItem);
+
+          // 去重检查
+          const dupResult = await this.deduplicator.checkDuplicate(deal);
+
+          if (dupResult.isDuplicate && dupResult.existingDeal) {
+            // 重复记录,跳过
+            result.duplicates++;
+            console.log(`🔁 重复: ${deal.titleDe}`);
+          } else {
+            // 插入新记录 (列表页数据)
+            const newDealId = await this.database.createDeal(deal);
+            newDeals.push({ listItem, dealId: newDealId }); // 记录商品和ID的对应关系
+            result.inserted++;
+            console.log(`✅ 新增(列表页): ${deal.titleDe}`);
+          }
+        } catch (error) {
+          const errorMsg = `处理 Thread ${listItem.threadId} 失败: ${(error as Error).message}`;
+          console.error(`❌ ${errorMsg}`);
+          result.errors.push(errorMsg);
+        }
+      }
+
+      // Step 5: 抓取新商品的详情页并更新数据库
+      if (newDeals.length > 0) {
+        console.log(`\n🔍 开始抓取 ${newDeals.length} 个新商品的详情页...\n`);
+
+        for (let i = 0; i < newDeals.length; i++) {
+          const { listItem, dealId } = newDeals[i];
+
+          try {
+            // 随机延迟(第一个不延迟)
+            if (i > 0) {
+              const delay = this.getRandomDelay(DETAIL_MIN_DELAY, DETAIL_MAX_DELAY);
+              console.log(`⏳ 延迟 ${(delay / 1000).toFixed(1)} 秒...`);
+              await this.sleep(delay);
+            }
+
+            // 抓取详情页
+            console.log(`📄 [${i + 1}/${newDealsIds.length}] 抓取详情页: ${listItem.title}`);
+            const detailItem = await this.fetchDetailPage(listItem, i < 3); // 前3个保存HTML
+
+            // 重新标准化(使用详情页数据)
+            const updatedDeal = await this.normalizer.normalize(detailItem);
+
+            // 删除 id 字段,使用 dealId 作为更新条件
+            delete (updatedDeal as any).id;
+
+            // 更新数据库
+            await this.database.updateDeal(dealId, updatedDeal);
+            result.updated++;
+            console.log(`🔄 更新(详情页): ${updatedDeal.titleDe}`);
+          } catch (error) {
+            const errorMsg = `抓取详情页失败 Thread ${listItem.threadId}: ${(error as Error).message}`;
+            console.warn(`⚠️  ${errorMsg} (保留列表页数据)`);
+            result.errors.push(errorMsg);
+          }
+        }
+      }
+
+      console.log('\n📊 抓取统计:');
+      console.log(`   - 抓取: ${result.fetched}`);
+      console.log(`   - 新增: ${result.inserted}`);
+      console.log(`   - 重复: ${result.duplicates}`);
+      console.log(`   - 错误: ${result.errors.length}`);
+
+      return result;
+    } catch (error) {
+      const errorMsg = `Preisjaeger 抓取失败: ${(error as Error).message}`;
+      console.error(`❌ ${errorMsg}`);
+      result.errors.push(errorMsg);
+      return result;
+    }
+  }
+
+  /**
+   * 抓取列表页并解析 data-vue3 属性
+   *
+   * @returns PreisjaegerListItem 列表
+   */
+  private async fetchListPage(): Promise<PreisjaegerListItem[]> {
+    const response = await axios.get(LIST_URL, {
+      headers: {
+        'User-Agent': process.env.PREISJAEGER_USER_AGENT ||
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.preisjaeger.at/',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+      },
+      timeout: 30000,
+    });
+
+    const html = response.data;
+    const $ = cheerioLoad(html);
+
+    // 查找所有包含 data-vue3 属性的元素
+    const items: PreisjaegerListItem[] = [];
+
+    $('[data-vue3]').each((_, element) => {
+      try {
+        const dataVue3 = $(element).attr('data-vue3');
+        if (!dataVue3) return;
+
+        // 解析 JSON
+        const vueData = JSON.parse(dataVue3);
+
+        // 检查是否是 ThreadMainListItemNormalizer 组件（包含 thread 数据）
+        if (vueData.name === 'ThreadMainListItemNormalizer' && vueData.props?.thread) {
+          const thread = vueData.props.thread as PreisjaegerListItem;
+
+          // 基本验证
+          if (thread.threadId && thread.title) {
+            // 从 JSON metadata 中提取简短描述作为临时 description
+            // @ts-ignore - metadata 可能存在于 thread 中
+            const metadata = thread.metadata;
+            if (metadata?.description) {
+              thread.descriptionHtml = metadata.description;
+            }
+
+            items.push(thread);
+          }
+        }
+      } catch (error) {
+        // 解析失败，跳过
+        console.warn(`解析 data-vue3 失败: ${(error as Error).message}`);
+      }
+    });
+
+    return items;
+  }
+
+  /**
+   * 抓取详情页并解析 window.__INITIAL_STATE__.threadDetail
+   *
+   * @param listItem - 列表页数据（用于构建 URL）
+   * @param saveHtml - 是否保存HTML到文件(用于调试)
+   * @returns 详情页完整数据
+   */
+  private async fetchDetailPage(listItem: PreisjaegerListItem, saveHtml: boolean = false): Promise<PreisjaegerDetailItem> {
+    // 构建详情页 URL
+    const detailUrl = `https://www.preisjaeger.at/deals/${listItem.titleSlug}-${listItem.threadId}`;
+
+    const response = await axios.get(detailUrl, {
+      headers: {
+        'User-Agent': process.env.PREISJAEGER_USER_AGENT ||
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': LIST_URL,
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+      },
+      timeout: 30000,
+    });
+
+    const html = response.data;
+
+    // 保存HTML到文件(调试用)
+    if (saveHtml) {
+      try {
+        const fs = await import('fs/promises');
+        const path = `/tmp/thread_${listItem.threadId}.html`;
+        await fs.writeFile(path, html, 'utf-8');
+        console.log(`   💾 已保存HTML: ${path}`);
+      } catch (error) {
+        console.warn(`   ⚠️  保存HTML失败: ${(error as Error).message}`);
+      }
+    }
+
+    // 从 HTML 中提取 window.__INITIAL_STATE__
+    const initialStateMatch = html.match(/window\.__INITIAL_STATE__\s*=\s*({.+?});/s);
+
+    if (!initialStateMatch) {
+      throw new Error(`无法从详情页提取 __INITIAL_STATE__: ${detailUrl}`);
+    }
+
+    try {
+      const initialState = JSON.parse(initialStateMatch[1]);
+
+      // 提取 threadDetail
+      const threadDetail = initialState.threadDetail;
+
+      if (!threadDetail || !threadDetail.threadId) {
+        throw new Error('threadDetail 数据不完整');
+      }
+
+      return threadDetail as PreisjaegerDetailItem;
+    } catch (error) {
+      throw new Error(`解析 __INITIAL_STATE__ 失败: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * 获取数据库中已存在的 threadId
+   */
+  private async getExistingThreadIds(): Promise<Set<string>> {
+    const existingDeals = await this.database.query(
+      `SELECT source_post_id FROM deals WHERE source_site = 'preisjaeger' LIMIT 1000`
+    ) as { source_post_id: string }[];
+
+    return new Set(existingDeals.map(d => d.source_post_id));
+  }
+
+  /**
+   * 获取随机延迟（毫秒）
+   */
+  private getRandomDelay(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  /**
+   * 休眠
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}

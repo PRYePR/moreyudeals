@@ -28,6 +28,7 @@ export interface SchedulerConfig {
 export class RandomScheduler {
   private timeoutId?: NodeJS.Timeout;
   private isRunning: boolean = false;
+  private currentTask?: Promise<void>; // 跟踪当前正在执行的任务
 
   constructor(
     private readonly config: SchedulerConfig,
@@ -69,14 +70,22 @@ export class RandomScheduler {
 
   /**
    * 停止调度器
+   * 返回 Promise，等待当前任务完成（如果有）
    */
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = undefined;
     }
 
     this.isRunning = false;
+
+    // 等待当前正在执行的任务完成
+    if (this.currentTask) {
+      console.log(`⏳ 等待当前任务完成: ${this.config.taskName}`);
+      await this.currentTask;
+    }
+
     console.log(`🛑 停止调度器: ${this.config.taskName}`);
   }
 
@@ -113,14 +122,21 @@ export class RandomScheduler {
     const startTime = Date.now();
     console.log(`🔄 开始执行任务: ${this.config.taskName}`);
 
-    try {
-      await this.task();
-      const duration = Date.now() - startTime;
-      console.log(`✅ 任务完成: ${this.config.taskName} (耗时 ${duration}ms)`);
-    } catch (error) {
-      console.error(`❌ 任务失败: ${this.config.taskName}`, error);
-      // 注意: 任务失败不影响下次调度,会在 scheduleNext() 中继续
-    }
+    // 保存当前任务的 Promise，用于优雅关闭时等待
+    this.currentTask = (async () => {
+      try {
+        await this.task();
+        const duration = Date.now() - startTime;
+        console.log(`✅ 任务完成: ${this.config.taskName} (耗时 ${duration}ms)`);
+      } catch (error) {
+        console.error(`❌ 任务失败: ${this.config.taskName}`, error);
+        // 注意: 任务失败不影响下次调度,会在 scheduleNext() 中继续
+      } finally {
+        this.currentTask = undefined; // 任务完成后清理
+      }
+    })();
+
+    await this.currentTask;
   }
 
   /**

@@ -28,19 +28,23 @@ export interface MerchantMapping {
  * 3. 更新 sites 记录该商家出现的站点
  */
 export const MERCHANT_MAPPINGS: MerchantMapping[] = [
-  // 奥地利电子商城
+  // 亚马逊德国站 (主要市场)
   {
-    canonicalId: 'amazon-at',
-    canonicalName: 'Amazon.at',
+    canonicalId: 'amazon-de',
+    canonicalName: 'Amazon.de',
     aliases: [
       'amazon',
+      'amazon.de',
+      'amazon de',
       'amazon.at',
       'amazon at',
+      'amazon germany',
+      'amazon deutschland',
       'amazon austria',
       'amazon österreich'
     ],
     sites: ['sparhamster', 'preisjaeger'],
-    website: 'https://www.amazon.at'
+    website: 'https://www.amazon.de'
   },
 
   // 奥地利电子产品零售商
@@ -274,6 +278,165 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.willhaben.at'
+  },
+
+  // 电子产品与配件
+  {
+    canonicalId: 'tink',
+    canonicalName: 'tink',
+    aliases: [
+      'tink',
+      'tink.de',
+      'tink.at'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.tink.de'
+  },
+
+  {
+    canonicalId: 'samsung',
+    canonicalName: 'Samsung',
+    aliases: [
+      'samsung',
+      'samsung.at',
+      'samsung at',
+      'samsung austria'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.samsung.com/at/'
+  },
+
+  // 国际电商
+  {
+    canonicalId: 'aliexpress',
+    canonicalName: 'AliExpress',
+    aliases: [
+      'aliexpress',
+      'ali express',
+      'aliexpress.com'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.aliexpress.com'
+  },
+
+  {
+    canonicalId: 'ebay-de',
+    canonicalName: 'eBay.de',
+    aliases: [
+      'ebay de',
+      'ebay.de',
+      'ebay germany',
+      'ebay deutschland'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.ebay.de'
+  },
+
+  // 运动健身
+  {
+    canonicalId: 'gymbeam',
+    canonicalName: 'GymBeam',
+    aliases: [
+      'gymbeam',
+      'gym beam',
+      'gymbeam.at',
+      'gymbeam.de'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.gymbeam.at'
+  },
+
+  {
+    canonicalId: 'bergzeit',
+    canonicalName: 'Bergzeit',
+    aliases: [
+      'bergzeit',
+      'bergzeit.de',
+      'bergzeit.at'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.bergzeit.de'
+  },
+
+  // 运动鞋类
+  {
+    canonicalId: '43einhalb',
+    canonicalName: '43einhalb',
+    aliases: [
+      '43einhalb',
+      '43 einhalb',
+      '43einhalb.com'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.43einhalb.com'
+  },
+
+  {
+    canonicalId: 'afew-store',
+    canonicalName: 'AFEW Store',
+    aliases: [
+      'afew',
+      'afew store',
+      'afew-store',
+      'afew-store.com'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.afew-store.com'
+  },
+
+  // 玩具
+  {
+    canonicalId: 'smyths-toys',
+    canonicalName: 'Smyths Toys',
+    aliases: [
+      'smyths',
+      'smyths toys',
+      'smyths-toys',
+      'smythstoys',
+      'smyths.at'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.smythstoys.com/at'
+  },
+
+  // 家具家电
+  {
+    canonicalId: 'flexispot',
+    canonicalName: 'FlexiSpot',
+    aliases: [
+      'flexispot',
+      'flexi spot',
+      'flexispot.de',
+      'flexispot.at'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.flexispot.de'
+  },
+
+  {
+    canonicalId: 'shark',
+    canonicalName: 'Shark',
+    aliases: [
+      'shark',
+      'shark.at',
+      'sharkclean'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.sharkclean.at'
+  },
+
+  // 药妆补充
+  {
+    canonicalId: 'dm-drogerie',
+    canonicalName: 'dm-drogerie markt',
+    aliases: [
+      'dm drogerie markt',
+      'dm-drogerie markt',
+      'dm drogeriemarkt',
+      'drogerie markt'
+    ],
+    sites: ['preisjaeger'],
+    website: 'https://www.dm.at'
   }
 ];
 
