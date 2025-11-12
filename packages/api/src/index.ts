@@ -136,9 +136,10 @@ app.get('/api/deals', async (req, res) => {
     }
 
     if (category) {
-      // categories is a JSONB column in the database
+      // categories is a JSONB array column in the database
+      // Use @> operator to check if the array contains the category
       conditions.push(`categories @> $${paramIndex}::jsonb`);
-      params.push(JSON.stringify(category));
+      params.push(JSON.stringify([category])); // Wrap in array for JSONB containment check
       paramIndex++;
     }
 

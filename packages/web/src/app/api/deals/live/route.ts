@@ -16,26 +16,21 @@ function mapSortField(sortBy?: string): 'created_at' | 'price' | 'discount' | 'p
   return sortBy ? mapping[sortBy] : undefined
 }
 
-// 映射前端标准分类ID到后端德语分类名（一对多关系）
-function mapCategoryToBackend(category?: string): string[] | undefined {
+// 映射前端标准分类ID到后端分类ID（现在是一对一，直接透传）
+function mapCategoryToBackend(category?: string): string | undefined {
   if (!category) return undefined
 
-  const categoryMapping: Record<string, string[]> = {
-    'electronics': ['Elektronik', 'Computer'],
-    'gaming': ['Entertainment', 'Gaming'],
-    'fashion': ['Fashion & Beauty', 'Fashion &amp; Beauty'],
-    'beauty-health': ['Erotik'], // 只包含Erotik，Fashion & Beauty属于fashion
-    'home-kitchen': ['Haushalt'],
-    'sports-outdoor': ['Freizeit', 'Sport'],
-    'food-drinks': ['Lebensmittel'],
-    'toys-kids': ['Spielzeug'],
-    'automotive': ['Werkzeug & Baumarkt', 'Werkzeug &amp; Baumarkt'],
-    'office': ['Büro', 'B\u00fcro'],
-    'garden': ['Garten'],
-    'general': ['Schnäppchen', 'Sonstiges', 'Reisen'],
-  }
+  // 标准分类列表（与后端 category-mapping.ts 保持一致）
+  const standardCategories = [
+    'electronics', 'appliances', 'fashion', 'beauty',
+    'food', 'sports', 'family-kids', 'home',
+    'auto', 'entertainment', 'other'
+  ]
 
-  return categoryMapping[category.toLowerCase()]
+  // 数据库现在直接存储标准分类ID，不需要映射，直接透传
+  return standardCategories.includes(category.toLowerCase())
+    ? category.toLowerCase()
+    : undefined
 }
 
 export async function GET(request: NextRequest) {
@@ -66,8 +61,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 映射前端分类ID到后端德语分类名
-    const backendCategory = category ? mapCategoryToBackend(category)?.[0] : undefined
+    // 映射前端分类ID到后端分类ID（现在是直接透传）
+    const backendCategory = category ? mapCategoryToBackend(category) : undefined
 
     // 调用后端API
     // 默认按源网站发布时间 (published_at) 排序，跟随源网站的排序逻辑

@@ -107,14 +107,23 @@ export abstract class BaseFetcher {
   protected getPlaceholderImage(categories?: string[]): string {
     if (!categories) return 'https://picsum.photos/300/200?random=1'
 
+    // 11个标准分类占位图，与 category-mapping.ts 保持一致
     const categoryImages: Record<string, string> = {
+      'electronics': 'https://picsum.photos/300/200?random=2',
       'elektronik': 'https://picsum.photos/300/200?random=2',
-      'amazon': 'https://picsum.photos/300/200?random=3',
+      'appliances': 'https://picsum.photos/300/200?random=3',
       'fashion': 'https://picsum.photos/300/200?random=4',
-      'gaming': 'https://picsum.photos/300/200?random=5',
-      'haushalt': 'https://picsum.photos/300/200?random=6',
       'beauty': 'https://picsum.photos/300/200?random=7',
-      'lebensmittel': 'https://picsum.photos/300/200?random=8'
+      'food': 'https://picsum.photos/300/200?random=8',
+      'lebensmittel': 'https://picsum.photos/300/200?random=8',
+      'sports': 'https://picsum.photos/300/200?random=9',
+      'family-kids': 'https://picsum.photos/300/200?random=10',
+      'home': 'https://picsum.photos/300/200?random=6',
+      'haushalt': 'https://picsum.photos/300/200?random=6',
+      'auto': 'https://picsum.photos/300/200?random=11',
+      'entertainment': 'https://picsum.photos/300/200?random=5',
+      'gaming': 'https://picsum.photos/300/200?random=5',
+      'other': 'https://picsum.photos/300/200?random=12'
     }
 
     for (const category of categories) {

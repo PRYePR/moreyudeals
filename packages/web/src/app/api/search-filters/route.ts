@@ -61,30 +61,35 @@ export async function GET(request: NextRequest) {
     const merchants = merchantsRes.merchants || []
     const allMerchantsData = allMerchantsRes.merchants || []
 
-    // 标准分类映射
+    // 标准分类映射（11个核心分类，与 page.tsx 和 category-mapping.ts 保持一致）
     const categoryNameToId: Record<string, string> = {
-      'gaming': 'gaming',
+      // 标准分类ID（直接映射）
       'electronics': 'electronics',
+      'appliances': 'appliances',
+      'fashion': 'fashion',
+      'beauty': 'beauty',
+      'food': 'food',
+      'sports': 'sports',
+      'family-kids': 'family-kids',
+      'home': 'home',
+      'auto': 'auto',
+      'entertainment': 'entertainment',
+      'other': 'other',
+
+      // 德语别名映射
       'elektronik': 'electronics',
       'computer': 'electronics',
-      'fashion': 'fashion',
-      'home & kitchen': 'home-kitchen',
-      'haushalt': 'home-kitchen',
-      'sports & outdoor': 'sports-outdoor',
-      'freizeit': 'sports-outdoor',
-      'beauty & health': 'beauty-health',
-      'automotive': 'automotive',
-      'food & drinks': 'food-drinks',
-      'lebensmittel': 'food-drinks',
-      'toys & kids': 'toys-kids',
-      'spielzeug': 'toys-kids',
-      'books & media': 'books-media',
-      'pets': 'pets',
-      'office': 'office',
-      'garden': 'garden',
-      'general': 'general',
-      'schnäppchen': 'general',
-      'sonstiges': 'general'
+      'haushaltsgeräte': 'appliances',
+      'mode': 'fashion',
+      'schönheit': 'beauty',
+      'lebensmittel': 'food',
+      'sport': 'sports',
+      'familie & kinder': 'family-kids',
+      'haushalt': 'home',
+      'kfz': 'auto',
+      'unterhaltung': 'entertainment',
+      'sonstiges': 'other',
+      'andere': 'other',
     }
 
     // 聚合分类数据

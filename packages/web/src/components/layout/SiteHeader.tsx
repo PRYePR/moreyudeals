@@ -54,22 +54,19 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
   const [merchantsOpen, setMerchantsOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // 分类图标映射
+  // 分类图标映射（11个标准分类，与 category-mapping.ts 保持一致）
   const categoryIcons: Record<string, any> = {
-    'gaming': Gamepad2,
     'electronics': Laptop,
+    'appliances': Home,
     'fashion': Shirt,
-    'home-kitchen': Home,
-    'sports-outdoor': Bike,
-    'beauty-health': Heart,
-    'automotive': Car,
-    'food-drinks': Utensils,
-    'toys-kids': Baby,
-    'books-media': Book,
-    'pets': PawPrint,
-    'office': Briefcase,
-    'garden': Leaf,
-    'general': Tag,
+    'beauty': Heart,
+    'food': Utensils,
+    'sports': Bike,
+    'family-kids': Baby,
+    'home': Home,
+    'auto': Car,
+    'entertainment': Gamepad2,
+    'other': Tag,
   }
 
   // 按商品数量排序分类

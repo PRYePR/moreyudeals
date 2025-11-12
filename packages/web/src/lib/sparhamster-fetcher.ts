@@ -283,22 +283,37 @@ export class SparhamsterFetcher {
   }
 
   private mapCategory(categories?: string[]): string {
-    if (!categories || categories.length === 0) return 'General'
+    if (!categories || categories.length === 0) return 'Other'
 
+    // 11个标准分类，与 category-mapping.ts 保持一致
     const categoryMapping: Record<string, string> = {
       'elektronik': 'Electronics',
-      'amazon': 'Electronics',
+      'computer': 'Electronics',
+      'haushaltsgeräte': 'Appliances',
+      'haushalt': 'Home',
+      'wohnen': 'Home',
+      'küche': 'Home',
       'fashion': 'Fashion',
       'kleidung': 'Fashion',
-      'gaming': 'Gaming',
-      'spiele': 'Gaming',
-      'haushalt': 'Home & Kitchen',
-      'küche': 'Home & Kitchen',
-      'beauty': 'Beauty & Health',
-      'sport': 'Sports & Outdoor',
-      'auto': 'Automotive',
-      'bücher': 'Books',
-      'musik': 'Music & Movies'
+      'mode': 'Fashion',
+      'beauty': 'Beauty',
+      'gesundheit': 'Beauty',
+      'lebensmittel': 'Food',
+      'sport': 'Sports',
+      'freizeit': 'Sports',
+      'familie': 'Family & Kids',
+      'spielzeug': 'Family & Kids',
+      'kinder': 'Family & Kids',
+      'auto': 'Auto',
+      'motorrad': 'Auto',
+      'kfz': 'Auto',
+      'gaming': 'Entertainment',
+      'entertainment': 'Entertainment',
+      'spiele': 'Entertainment',
+      'unterhaltung': 'Entertainment',
+      'bücher': 'Other',
+      'musik': 'Other',
+      'amazon': 'Other',
     }
 
     for (const category of categories) {

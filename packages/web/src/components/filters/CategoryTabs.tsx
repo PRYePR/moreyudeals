@@ -33,33 +33,20 @@ interface CategoryTabsProps {
   categoryByMerchant?: Record<string, Record<string, number>>
 }
 
-// 分类图标映射（14个标准分类）
+// 分类图标映射（11个标准分类）
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  // 标准分类 ID
-  'gaming': <Gamepad2 className="w-4 h-4" />,
+  // 标准分类 ID（与 category-mapping.ts 一致）
   'electronics': <Laptop className="w-4 h-4" />,
+  'appliances': <Home className="w-4 h-4" />,
   'fashion': <Shirt className="w-4 h-4" />,
-  'home-kitchen': <Home className="w-4 h-4" />,
-  'sports-outdoor': <Bike className="w-4 h-4" />,
-  'beauty-health': <Heart className="w-4 h-4" />,
-  'automotive': <Car className="w-4 h-4" />,
-  'food-drinks': <Utensils className="w-4 h-4" />,
-  'toys-kids': <Baby className="w-4 h-4" />,
-  'books-media': <Book className="w-4 h-4" />,
-  'pets': <PawPrint className="w-4 h-4" />,
-  'office': <Briefcase className="w-4 h-4" />,
-  'garden': <Leaf className="w-4 h-4" />,
-  'general': <Tag className="w-4 h-4" />,
-
-  // 兼容旧格式
-  'home & kitchen': <Home className="w-4 h-4" />,
-  'home and kitchen': <Home className="w-4 h-4" />,
-  'beauty & health': <Heart className="w-4 h-4" />,
-  'beauty and health': <Heart className="w-4 h-4" />,
-  'food & drinks': <Utensils className="w-4 h-4" />,
-  'food and drinks': <Utensils className="w-4 h-4" />,
-  'sports & outdoor': <Bike className="w-4 h-4" />,
-  'sports and outdoor': <Bike className="w-4 h-4" />,
+  'beauty': <Heart className="w-4 h-4" />,
+  'food': <Utensils className="w-4 h-4" />,
+  'sports': <Bike className="w-4 h-4" />,
+  'family-kids': <Baby className="w-4 h-4" />,
+  'home': <Home className="w-4 h-4" />,
+  'auto': <Car className="w-4 h-4" />,
+  'entertainment': <Gamepad2 className="w-4 h-4" />,
+  'other': <Tag className="w-4 h-4" />,
 }
 
 export default function CategoryTabs({
