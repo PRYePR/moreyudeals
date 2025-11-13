@@ -179,7 +179,8 @@ export class PreisjaegerNormalizer extends BaseNormalizer<PreisjaegerDetailItem,
     }
 
     // 6. 解析加密跳转链接（仅在需要时）
-    if (merchantLink && merchantLink.includes('/visit/homenew/')) {
+    // 支持 /visit/homenew/ 和 /visit/threadmain/ 两种格式
+    if (merchantLink && (merchantLink.includes('/visit/homenew/') || merchantLink.includes('/visit/threadmain/'))) {
       try {
         console.log(`   🔗 解析加密跳转链接...`);
         const resolveResult = await this.linkResolver.resolveLink(merchantLink);
