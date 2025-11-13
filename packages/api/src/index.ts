@@ -14,6 +14,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - required for Cloudflare Tunnel
+app.set('trust proxy', true);
+
 // Database connection pool (read-only)
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -65,6 +68,8 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip health checks to avoid rate limiting monitoring tools
+  skip: (req) => req.path === '/api/health',
 });
 
 app.use('/api/', limiter);
