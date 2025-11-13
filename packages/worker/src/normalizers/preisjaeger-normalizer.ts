@@ -136,7 +136,27 @@ export class PreisjaegerNormalizer extends BaseNormalizer<PreisjaegerDetailItem,
 
     // 4. 商家信息
     const merchant = source.merchant?.merchantName || source.linkHost || undefined;
-    const merchantLogo = undefined; // Preisjaeger 未提供商家 Logo URL
+
+    // 商家Logo: 先规范化商家,然后从website自动生成Logo
+    const normalizedMerchantForLogo = normalizeMerchant(merchant);
+    let merchantLogo: string | undefined;
+
+    // 优先使用merchant-mapping中配置的logo
+    if (normalizedMerchantForLogo.mapping?.logo) {
+      merchantLogo = normalizedMerchantForLogo.mapping.logo;
+    }
+    // 如果有website,使用Google Favicon服务
+    else if (normalizedMerchantForLogo.mapping?.website) {
+      try {
+        const domain = new URL(normalizedMerchantForLogo.mapping.website).hostname;
+        merchantLogo = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      } catch (error) {
+        merchantLogo = undefined;
+      }
+    }
+    else {
+      merchantLogo = undefined;
+    }
 
     // 5. 构建商家链接：优先使用 cpcLink（详情页），否则构建 /visit/homenew/ 链接
     let merchantLink: string | undefined;

@@ -42,7 +42,9 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
       'amazon germany',
       'amazon deutschland',
       'amazon austria',
-      'amazon österreich'
+      'amazon österreich',
+      'amazon.co.uk',
+      'amazon uk'
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.amazon.de'

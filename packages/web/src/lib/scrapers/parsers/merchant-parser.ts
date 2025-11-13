@@ -4,6 +4,7 @@
  */
 
 import { createModuleLogger } from '../../logger'
+import { MERCHANT_MAPPINGS } from '../../config/merchant-mapping'
 
 const logger = createModuleLogger('scrapers:merchant-parser')
 
@@ -140,22 +141,22 @@ export class MerchantParser {
   }
 
   /**
-   * 从 slug 匹配已知商家
+   * 从 slug 匹配已知商家(使用merchant-mapping配置)
    */
   matchKnownMerchant(tags: string[]): { name: string; slug: string } | undefined {
-    const knownMerchants: Record<string, string> = {
-      'amazon-de': 'Amazon',
-      'mediamarkt': 'MediaMarkt',
-      'saturn': 'Saturn',
-      'conrad': 'Conrad',
-      'notebooksbilliger': 'Notebooksbilliger',
-      'alternate': 'Alternate',
-    }
-
     for (const tag of tags) {
-      const slug = tag.toLowerCase()
-      if (knownMerchants[slug]) {
-        return { name: knownMerchants[slug], slug }
+      const normalizedTag = tag.toLowerCase()
+
+      // 在MERCHANT_MAPPINGS中查找匹配
+      const mapping = MERCHANT_MAPPINGS.find(m =>
+        m.aliases.some(alias => alias.toLowerCase() === normalizedTag)
+      )
+
+      if (mapping) {
+        return {
+          name: mapping.canonicalName,
+          slug: mapping.canonicalId
+        }
       }
     }
 

@@ -7,6 +7,7 @@ import {
 } from './scrapers'
 import { defaultCache, cacheKeys, CACHE_TTL } from './cache'
 import { createModuleLogger } from './logger'
+import { normalizeMerchant } from './utils/merchant-normalizer'
 
 const logger = createModuleLogger('sparhamster-fetcher')
 
@@ -172,6 +173,9 @@ export class SparhamsterFetcher {
     // 提取商家信息
     const merchantInfo = this.extractMerchantInfo(content, post.link, categoryNames)
 
+    // 规范化商家名称
+    const normalizedMerchant = normalizeMerchant(merchantInfo.merchantName)
+
     return {
       id: this.generateId(post.link),
       title: translatedTitle,
@@ -195,7 +199,7 @@ export class SparhamsterFetcher {
       isTranslated: true,
       categories: categoryNames,
       content: textCleaner.cleanHtml(content),
-      merchantName: merchantInfo.merchantName,
+      merchantName: normalizedMerchant.canonicalName, // 使用规范化后的商家名
       merchantLogo: merchantInfo.merchantLogo
     }
   }
