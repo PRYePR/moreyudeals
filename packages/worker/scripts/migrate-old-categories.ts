@@ -9,28 +9,46 @@
 
 import { Pool } from 'pg';
 
-// 旧分类 -> 新分类的映射关系
+// 旧分类 -> 新分类的映射关系（11个标准分类）
 const CATEGORY_MIGRATION_MAP: Record<string, string> = {
-  // 旧分类 -> 新分类
-  'electronics': 'electronics',           // 数码电子 -> 数码电子
-  'home-appliances': 'home-living',       // 家用电器 -> 家居生活
-  'fashion': 'fashion-accessories',        // 时尚服饰 -> 时尚服饰
-  'beauty': 'beauty-health',              // 美妆个护 -> 美容健康
-  'food': 'food-beverages',               // 食品饮料 -> 食品饮料
-  'sports': 'sports-outdoors',            // 运动户外 -> 运动户外
-  'toys': 'toys-games',                   // 玩具游戏 -> 玩具游戏
-  'books': 'books-media',                 // 图书影音 -> 图书影音
-  'home-garden': 'home-living',           // 家居园艺 -> 家居生活
-  'automotive': 'automotive',             // 汽车用品 -> 汽车用品
-  'pet': 'pets',                          // 宠物用品 -> 宠物用品
-  'baby': 'mother-baby',                  // 母婴用品 -> 母婴用品
-  'office': 'home-living',                // 办公用品 -> 家居生活
-  'services': 'travel-services',          // 服务类 -> 旅游服务
+  // 新分类ID（保持不变）
+  'electronics': 'electronics',           // 数码电子
+  'appliances': 'appliances',             // 家用电器
+  'fashion': 'fashion',                   // 时尚服饰
+  'beauty': 'beauty',                     // 美妆个护
+  'food': 'food',                         // 食品饮料
+  'sports': 'sports',                     // 运动户外
+  'family-kids': 'family-kids',           // 母婴玩具
+  'home': 'home',                         // 家居生活
+  'auto': 'auto',                         // 汽车用品
+  'entertainment': 'entertainment',       // 休闲娱乐
+  'other': 'other',                       // 其他
+
+  // 旧分类ID -> 新分类ID的映射
+  'home-appliances': 'appliances',        // 旧: 家用电器 -> 新: appliances
+  'fashion-accessories': 'fashion',       // 旧: 时尚服饰 -> 新: fashion
+  'beauty-health': 'beauty',              // 旧: 美妆个护 -> 新: beauty
+  'food-beverages': 'food',               // 旧: 食品饮料 -> 新: food
+  'sports-outdoors': 'sports',            // 旧: 运动户外 -> 新: sports
+  'toys-games': 'family-kids',            // 旧: 玩具游戏 -> 新: family-kids
+  'books-media': 'entertainment',         // 旧: 图书影音 -> 新: entertainment
+  'home-garden': 'home',                  // 旧: 家居园艺 -> 新: home
+  'home-living': 'home',                  // 旧: 家居生活 -> 新: home
+  'automotive': 'auto',                   // 旧: 汽车用品 -> 新: auto
+  'pets': 'other',                        // 旧: 宠物用品 -> 新: other
+  'pet': 'other',                         // 旧: 宠物用品 -> 新: other
+  'mother-baby': 'family-kids',           // 旧: 母婴用品 -> 新: family-kids
+  'baby': 'family-kids',                  // 旧: 母婴用品 -> 新: family-kids
+  'office': 'home',                       // 旧: 办公用品 -> 新: home
+  'travel-services': 'other',             // 旧: 旅游服务 -> 新: other
+  'services': 'other',                    // 旧: 服务类 -> 新: other
 
   // 其他可能的旧分类
-  'health': 'beauty-health',              // 健康 -> 美容健康
-  'gaming': 'toys-games',                 // 游戏 -> 玩具游戏
-  'travel': 'travel-services',            // 旅游 -> 旅游服务
+  'health': 'beauty',                     // 健康 -> beauty
+  'gaming': 'entertainment',              // 游戏 -> entertainment
+  'toys': 'family-kids',                  // 玩具 -> family-kids
+  'books': 'entertainment',               // 图书 -> entertainment
+  'travel': 'other',                      // 旅游 -> other
 };
 
 async function migrateCategories() {
