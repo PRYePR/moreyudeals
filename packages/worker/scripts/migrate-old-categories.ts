@@ -11,44 +11,146 @@ import { Pool } from 'pg';
 
 // 旧分类 -> 新分类的映射关系（11个标准分类）
 const CATEGORY_MIGRATION_MAP: Record<string, string> = {
-  // 新分类ID（保持不变）
-  'electronics': 'electronics',           // 数码电子
-  'appliances': 'appliances',             // 家用电器
-  'fashion': 'fashion',                   // 时尚服饰
-  'beauty': 'beauty',                     // 美妆个护
-  'food': 'food',                         // 食品饮料
-  'sports': 'sports',                     // 运动户外
-  'family-kids': 'family-kids',           // 母婴玩具
-  'home': 'home',                         // 家居生活
-  'auto': 'auto',                         // 汽车用品
-  'entertainment': 'entertainment',       // 休闲娱乐
-  'other': 'other',                       // 其他
+  // === 新分类ID（保持不变）===
+  'electronics': 'electronics',
+  'appliances': 'appliances',
+  'fashion': 'fashion',
+  'beauty': 'beauty',
+  'food': 'food',
+  'sports': 'sports',
+  'family-kids': 'family-kids',
+  'home': 'home',
+  'auto': 'auto',
+  'entertainment': 'entertainment',
+  'other': 'other',
 
-  // 旧分类ID -> 新分类ID的映射
-  'home-appliances': 'appliances',        // 旧: 家用电器 -> 新: appliances
-  'fashion-accessories': 'fashion',       // 旧: 时尚服饰 -> 新: fashion
-  'beauty-health': 'beauty',              // 旧: 美妆个护 -> 新: beauty
-  'food-beverages': 'food',               // 旧: 食品饮料 -> 新: food
-  'sports-outdoors': 'sports',            // 旧: 运动户外 -> 新: sports
-  'toys-games': 'family-kids',            // 旧: 玩具游戏 -> 新: family-kids
-  'books-media': 'entertainment',         // 旧: 图书影音 -> 新: entertainment
-  'home-garden': 'home',                  // 旧: 家居园艺 -> 新: home
-  'home-living': 'home',                  // 旧: 家居生活 -> 新: home
-  'automotive': 'auto',                   // 旧: 汽车用品 -> 新: auto
-  'pets': 'other',                        // 旧: 宠物用品 -> 新: other
-  'pet': 'other',                         // 旧: 宠物用品 -> 新: other
-  'mother-baby': 'family-kids',           // 旧: 母婴用品 -> 新: family-kids
-  'baby': 'family-kids',                  // 旧: 母婴用品 -> 新: family-kids
-  'office': 'home',                       // 旧: 办公用品 -> 新: home
-  'travel-services': 'other',             // 旧: 旅游服务 -> 新: other
-  'services': 'other',                    // 旧: 服务类 -> 新: other
+  // === 旧英文ID -> 新ID ===
+  'home-appliances': 'appliances',
+  'fashion-accessories': 'fashion',
+  'beauty-health': 'beauty',
+  'food-beverages': 'food',
+  'sports-outdoors': 'sports',
+  'toys-games': 'family-kids',
+  'books-media': 'entertainment',
+  'home-garden': 'home',
+  'home-living': 'home',
+  'automotive': 'auto',
+  'pets': 'other',
+  'pet': 'other',
+  'mother-baby': 'family-kids',
+  'baby': 'family-kids',
+  'office': 'home',
+  'travel-services': 'other',
+  'services': 'other',
+  'health': 'beauty',
+  'gaming': 'entertainment',
+  'toys': 'family-kids',
+  'books': 'entertainment',
+  'travel': 'other',
 
-  // 其他可能的旧分类
-  'health': 'beauty',                     // 健康 -> beauty
-  'gaming': 'entertainment',              // 游戏 -> entertainment
-  'toys': 'family-kids',                  // 玩具 -> family-kids
-  'books': 'entertainment',               // 图书 -> entertainment
-  'travel': 'other',                      // 旅游 -> other
+  // === Sparhamster德语分类 -> 新ID ===
+  // 数码电子
+  'elektronik': 'electronics',
+  'Elektronik': 'electronics',
+  'computer': 'electronics',
+  'Computer': 'electronics',
+
+  // 家用电器 & 家居生活
+  'haushalt': 'home',
+  'Haushalt': 'home',
+  'werkzeug-baumarkt': 'home',
+  'Werkzeug & Baumarkt': 'home',
+  'Werkzeug &amp; Baumarkt': 'home',
+
+  // 时尚服饰
+  'Fashion & Beauty': 'fashion',
+  'Fashion &amp; Beauty': 'fashion',
+
+  // 食品饮料
+  'lebensmittel': 'food',
+  'Lebensmittel': 'food',
+  'essen-und-trinken': 'food',
+
+  // 休闲娱乐
+  'freizeit': 'entertainment',
+  'Freizeit': 'entertainment',
+  'Entertainment': 'entertainment',
+  'spielzeug': 'family-kids',
+  'Spielzeug': 'family-kids',
+
+  // 旅游
+  'reisen': 'other',
+  'Reisen': 'other',
+
+  // 其他/杂项
+  'sonstiges': 'other',
+  'Sonstiges': 'other',
+  'Schnäppchen': 'other',
+  'schnäppchen': 'other',
+
+  // 商家名称（误当作分类）-> other
+  'Amazon': 'other',
+  'amazon': 'other',
+  'MediaMarkt': 'other',
+  'Marktguru': 'other',
+  'Sparhamsterin': 'other',
+  'sparhamsterin': 'other',
+  'iBOOD': 'other',
+  'Möbelix': 'other',
+  'Interspar': 'other',
+  'Pagro': 'other',
+  'Gastroback': 'other',
+  'Barilla': 'other',
+  'Magenta': 'other',
+  'BILLA': 'other',
+  'Mueller': 'other',
+  'Hunkemöller': 'other',
+  'LEGO': 'other',
+  'Ikea': 'other',
+  'Sportscheck': 'other',
+  'Bergzeit': 'other',
+  'bonprix': 'other',
+  'alza': 'other',
+  'babywalz': 'other',
+  'NKD': 'other',
+  'XXXLutz': 'other',
+  'Eduscho': 'other',
+  'EMP': 'other',
+
+  // 活动/专题 -> other
+  'Singles Day 2025': 'other',
+  'singles-day-angebote': 'other',
+  'Amazon Prime Day 2025': 'other',
+  'amazon-prime-day': 'other',
+  'Black Friday 2025': 'other',
+  'Gratisproben Österreich': 'other',
+  'Urlaubshamster': 'other',
+  'hamster-woche': 'other',
+
+  // 其他杂项
+  'erotik': 'other',
+  'Erotik': 'other',
+  'Nintendo Switch': 'electronics',
+  'tink': 'other',
+  'we-are.travel': 'other',
+  'Milka': 'other',
+  'Coca Cola': 'other',
+  'Almdudler': 'other',
+  'audible': 'entertainment',
+  'Eis.at': 'other',
+  'Red Bull': 'other',
+  '0815': 'other',
+  'Readly': 'entertainment',
+  'Lottoland': 'other',
+  'zalando-lounge': 'fashion',
+  'Stiegl': 'other',
+  'Lidl Connect': 'other',
+  'Seidensticker': 'fashion',
+  'Tom-Tailor': 'fashion',
+  'Schwechater Bier': 'other',
+  'yesss': 'other',
+  'Drei': 'other',
+  'Peek und Cloppenburg': 'fashion',
 };
 
 async function migrateCategories() {
