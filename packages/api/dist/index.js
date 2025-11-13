@@ -16,6 +16,8 @@ dotenv_1.default.config({ path: path_1.default.resolve(process.cwd(), '.env.loca
 dotenv_1.default.config({ path: path_1.default.resolve(process.cwd(), '.env') });
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
+// Trust proxy - required for Cloudflare Tunnel
+app.set('trust proxy', true);
 // Database connection pool (read-only)
 const pool = new pg_1.Pool({
     host: process.env.DB_HOST || 'localhost',
@@ -62,6 +64,8 @@ const limiter = (0, express_rate_limit_1.default)({
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
+    // Skip health checks to avoid rate limiting monitoring tools
+    skip: (req) => req.path === '/api/health',
 });
 app.use('/api/', limiter);
 // API Key middleware
@@ -113,9 +117,10 @@ app.get('/api/deals', async (req, res) => {
             params.push(merchant);
         }
         if (category) {
-            // categories is a JSONB column in the database
+            // categories is a JSONB array column in the database
+            // Use @> operator to check if the array contains the category
             conditions.push(`categories @> $${paramIndex}::jsonb`);
-            params.push(JSON.stringify(category));
+            params.push(JSON.stringify([category])); // Wrap in array for JSONB containment check
             paramIndex++;
         }
         if (min_price) {
