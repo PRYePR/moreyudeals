@@ -46,7 +46,7 @@ async function main() {
       else if (normalizedMerchant.mapping?.website) {
         try {
           const domain = new URL(normalizedMerchant.mapping.website).hostname;
-          merchantLogo = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+          merchantLogo = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
         } catch (error) {
           merchantLogo = undefined;
         }

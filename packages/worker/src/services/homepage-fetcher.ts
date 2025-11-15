@@ -325,8 +325,8 @@ export class HomepageFetcher {
       const url = new URL(merchantLink);
       const domain = url.hostname;
 
-      // 使用 Google Favicon 服务，统一尺寸 sz=64
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+      // 使用 Google Favicon 服务，统一尺寸 sz=128
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
     } catch (error) {
       console.warn(`无法从 merchantLink 提取域名: ${merchantLink}`, error);
       return undefined;

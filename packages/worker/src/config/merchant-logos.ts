@@ -30,5 +30,5 @@ export function getMerchantLogo(merchantName: string, domain: string): string {
   }
 
   // 默认使用 Google Favicon 服务
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 }
