@@ -146,6 +146,20 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
     website: 'https://www.lidl.at'
   },
 
+  // 优惠券和折扣平台
+  {
+    canonicalId: 'marktguru',
+    canonicalName: 'Marktguru',
+    aliases: [
+      'marktguru',
+      'markt guru',
+      'marktguru.at',
+      'marktguru at'
+    ],
+    sites: ['preisjaeger', 'sparhamster'],
+    website: 'https://www.marktguru.at'
+  },
+
   // 时尚与服装
   {
     canonicalId: 'zalando',
