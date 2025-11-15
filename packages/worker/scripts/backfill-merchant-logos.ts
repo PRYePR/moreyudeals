@@ -21,52 +21,61 @@ async function main() {
   console.log('🔄 开始回填Preisjaeger商品的Logo...\n');
 
   try {
-    // 获取所有没有Logo的Preisjaeger商品
+    // 获取所有Preisjaeger商品（强制更新所有Logo，包括旧的错误Logo）
     const result = await pool.query(`
-      SELECT id, merchant, canonical_merchant_name
+      SELECT id, merchant, canonical_merchant_name, merchant_logo
       FROM deals
       WHERE source_site = 'preisjaeger'
-        AND (merchant_logo IS NULL OR merchant_logo = '')
     `);
 
     console.log(`📊 找到 ${result.rows.length} 个需要更新Logo的商品\n`);
 
     let updated = 0;
     let skipped = 0;
+    let unchanged = 0;
 
     for (const row of result.rows) {
       const normalizedMerchant = normalizeMerchant(row.merchant);
-      let merchantLogo: string | undefined;
+      let newMerchantLogo: string | undefined;
 
       // 优先使用merchant-mapping中配置的logo
       if (normalizedMerchant.mapping?.logo) {
-        merchantLogo = normalizedMerchant.mapping.logo;
+        newMerchantLogo = normalizedMerchant.mapping.logo;
       }
       // 如果有website,使用Google Favicon服务
       else if (normalizedMerchant.mapping?.website) {
         try {
           const domain = new URL(normalizedMerchant.mapping.website).hostname;
-          merchantLogo = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+          newMerchantLogo = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
         } catch (error) {
-          merchantLogo = undefined;
+          newMerchantLogo = undefined;
         }
       }
 
-      if (merchantLogo) {
+      // 如果新Logo和旧Logo一样，跳过更新
+      if (newMerchantLogo && newMerchantLogo === row.merchant_logo) {
+        unchanged++;
+        continue;
+      }
+
+      if (newMerchantLogo) {
         await pool.query(
           'UPDATE deals SET merchant_logo = $1 WHERE id = $2',
-          [merchantLogo, row.id]
+          [newMerchantLogo, row.id]
         );
         updated++;
-        console.log(`✅ 更新: ${row.canonical_merchant_name || row.merchant} -> ${merchantLogo}`);
+        const oldLogo = row.merchant_logo ? ` (旧: ${row.merchant_logo.substring(0, 60)}...)` : '';
+        console.log(`✅ 更新: ${row.canonical_merchant_name || row.merchant}${oldLogo}`);
       } else {
         skipped++;
+        console.log(`⏭️  跳过: ${row.canonical_merchant_name || row.merchant} (未配置website)`);
       }
     }
 
     console.log(`\n📊 更新完成:`);
     console.log(`   ✅ 成功更新: ${updated} 个`);
     console.log(`   ⏭️  跳过: ${skipped} 个 (未配置website)`);
+    console.log(`   ➡️  未改变: ${unchanged} 个 (Logo已是最新)`);
 
     // 显示更新后的统计
     const stats = await pool.query(`
