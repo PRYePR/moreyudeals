@@ -113,7 +113,8 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
       'billa',
       'billa.at',
       'billa at',
-      'billa plus'
+      'billa plus',
+      'shop.billa.at'
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.billa.at'
@@ -1362,6 +1363,177 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.zalando-lounge.at'
+  },
+
+  // 0815 奥地利在线商店
+  {
+    canonicalId: '0815',
+    canonicalName: '0815',
+    aliases: [
+      '0815',
+      '0815.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.0815.at'
+  },
+
+  // Anycubic 3D打印机
+  {
+    canonicalId: 'anycubic',
+    canonicalName: 'Anycubic',
+    aliases: [
+      'anycubic',
+      'eu.anycubic.com',
+      'anycubic.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.anycubic.com'
+  },
+
+  // Basler Beauty 美妆
+  {
+    canonicalId: 'basler-beauty',
+    canonicalName: 'Basler Beauty',
+    aliases: [
+      'basler-beauty',
+      'basler beauty',
+      'www.basler-beauty.at',
+      'basler-beauty.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.basler-beauty.at'
+  },
+
+  // Eduscho 咖啡
+  {
+    canonicalId: 'eduscho',
+    canonicalName: 'Eduscho',
+    aliases: [
+      'eduscho',
+      'eduscho.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.tchibo.de'
+  },
+
+  // Hagebau Nadlinger 建材
+  {
+    canonicalId: 'hagebau-nadlinger',
+    canonicalName: 'Hagebau Nadlinger',
+    aliases: [
+      'hagebau nadlinger',
+      'hagebau-nadlinger',
+      'nadlinger'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.nadlinger.at'
+  },
+
+  // Issuu 数字出版平台
+  {
+    canonicalId: 'issuu',
+    canonicalName: 'Issuu',
+    aliases: [
+      'issuu',
+      'e.issuu.com',
+      'issuu.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://issuu.com'
+  },
+
+  // LG Electronics 韩国电子品牌
+  {
+    canonicalId: 'lg',
+    canonicalName: 'LG',
+    aliases: [
+      'lg',
+      'www.lg.com',
+      'lg.com',
+      'lg electronics'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.lg.com/at'
+  },
+
+  // McFit 健身房
+  {
+    canonicalId: 'mcfit',
+    canonicalName: 'McFit',
+    aliases: [
+      'mcfit',
+      'www.mcfit.com',
+      'mcfit.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.mcfit.com/at'
+  },
+
+  // Priority Pass 机场贵宾室
+  {
+    canonicalId: 'priority-pass',
+    canonicalName: 'Priority Pass',
+    aliases: [
+      'priority pass',
+      'priority-pass',
+      'prioritypass',
+      'join.prioritypass.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.prioritypass.com'
+  },
+
+  // Reisefux 旅游网站
+  {
+    canonicalId: 'reisefux',
+    canonicalName: 'Reisefux',
+    aliases: [
+      'reisefux',
+      'reisefux.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.reisefux.at'
+  },
+
+  // shöpping.at 购物网站
+  {
+    canonicalId: 'shoepping',
+    canonicalName: 'shöpping.at',
+    aliases: [
+      'shöpping',
+      'shöpping.at',
+      'shoepping',
+      'shoepping.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.xn--shpping-b1a.at'
+  },
+
+  // SK Rapid Fanshop 足球俱乐部商店
+  {
+    canonicalId: 'sk-rapid-fanshop',
+    canonicalName: 'SK Rapid Fanshop',
+    aliases: [
+      'sk rapid fanshop',
+      'sk rapid',
+      'rapid fanshop',
+      'sk-rapid-fanshop'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://fanshop.skrapid.at'
+  },
+
+  // we-are.travel 旅游网站
+  {
+    canonicalId: 'we-are-travel',
+    canonicalName: 'we-are.travel',
+    aliases: [
+      'we-are.travel',
+      'we are travel',
+      'weare.travel'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://we-are.travel'
   },
 
   // 通用商家（用于无法识别的品牌）
