@@ -6,14 +6,28 @@
 
 import { Pool } from 'pg';
 import { MERCHANT_MAPPINGS } from '../src/config/merchant-mapping';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-const pool = new Pool({
+// 加载环境变量
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// 创建数据库连接池
+const poolConfig: any = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'moreyudeals_dev',
   user: process.env.DB_USER || 'prye',
-  password: process.env.DB_PASSWORD,
-});
+};
+
+// 只有当密码存在且不为空时才添加
+if (process.env.DB_PASSWORD && process.env.DB_PASSWORD.trim() !== '') {
+  poolConfig.password = process.env.DB_PASSWORD;
+}
+
+console.log(`📊 数据库配置: ${poolConfig.user}@${poolConfig.host}:${poolConfig.port}/${poolConfig.database}`);
+
+const pool = new Pool(poolConfig);
 
 /**
  * 基于商家名称生成 Logo
