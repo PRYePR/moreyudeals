@@ -14,6 +14,7 @@
 
 import axios from 'axios';
 import * as cheerio from '@moreyudeals/shared-html';
+import { MERCHANT_MAPPINGS } from '../config/merchant-mapping';
 
 /**
  * 从首页提取的完整文章信息
@@ -204,8 +205,8 @@ export class HomepageFetcher {
         // 4. 提取 Forward 链接
         const merchantLink = this.extractForwardLink(article);
 
-        // 5. 生成商家 Logo（使用 Google Favicon）
-        const merchantLogo = this.generateMerchantLogo(merchantLink);
+        // 5. 生成商家 Logo（基于商家名称 + merchant-mapping）
+        const merchantLogo = this.generateMerchantLogoFromName(merchant);
 
         // 6. 提取价格信息
         const { price, originalPrice, discount } = this.extractPriceInfo(article);
@@ -313,24 +314,32 @@ export class HomepageFetcher {
   }
 
   /**
-   * 生成商家 Logo（使用 Google Favicon）
+   * 基于商家名称生成 Logo（使用 merchant-mapping 配置）
    */
-  private generateMerchantLogo(merchantLink?: string): string | undefined {
-    if (!merchantLink) {
+  private generateMerchantLogoFromName(merchantName?: string): string | undefined {
+    if (!merchantName) {
       return undefined;
     }
 
-    try {
-      // 从 merchantLink 中提取域名
-      const url = new URL(merchantLink);
-      const domain = url.hostname;
+    // 查找商家配置（不区分大小写）
+    const normalizedName = merchantName.toLowerCase().trim();
+    const mapping = MERCHANT_MAPPINGS.find(m =>
+      m.aliases.some(alias => alias.toLowerCase() === normalizedName)
+    );
 
-      // 使用 Google Favicon 服务，统一尺寸 sz=128
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-    } catch (error) {
-      console.warn(`无法从 merchantLink 提取域名: ${merchantLink}`, error);
-      return undefined;
+    if (mapping && mapping.website) {
+      // 从配置的 website 提取域名
+      try {
+        const url = new URL(mapping.website);
+        const domain = url.hostname;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      } catch (error) {
+        console.warn(`无法解析商家网站: ${mapping.website}`, error);
+      }
     }
+
+    // 如果没有找到配置，返回 undefined（不生成 logo）
+    return undefined;
   }
 
   /**
