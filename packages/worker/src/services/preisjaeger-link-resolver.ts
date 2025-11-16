@@ -47,8 +47,17 @@ export class PreisjaegerLinkResolver {
       const response = await axios.get(visitUrl, {
         headers: {
           'User-Agent': this.userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'de-AT,de;q=0.9,en;q=0.7',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'de-AT,de;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Referer': 'https://www.preisjaeger.at/',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'same-origin',
+          'Cache-Control': 'max-age=0',
         },
         timeout: this.timeout,
         maxRedirects: 10, // 最多跟随10次重定向
@@ -202,7 +211,7 @@ export class PreisjaegerLinkResolver {
    */
   async resolveMultiple(
     visitUrls: string[],
-    delayMs: number = 500
+    delayMs: number = 2000
   ): Promise<Map<string, PreisjaegerLinkResolveResult>> {
     const results = new Map<string, PreisjaegerLinkResolveResult>();
 
@@ -211,9 +220,11 @@ export class PreisjaegerLinkResolver {
       const result = await this.resolveLink(visitUrl);
       results.set(visitUrl, result);
 
-      // 延迟，避免被限流
+      // 延迟，避免被限流（添加随机抖动模拟真实用户）
       if (i < visitUrls.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        const randomJitter = Math.random() * 1000; // 随机 0-1000ms
+        const totalDelay = delayMs + randomJitter; // 2000-3000ms
+        await new Promise(resolve => setTimeout(resolve, totalDelay));
       }
     }
 
