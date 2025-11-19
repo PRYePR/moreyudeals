@@ -46,7 +46,8 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
 
   // 处理数据
   const displayTitle = deal.translatedTitle || deal.title || '无标题'
-  const displayImage = deal.imageUrl || '/placeholder-product.jpg'
+  // 图片优先级: imageUrl → merchantLogo → null (显示默认占位图)
+  const displayImage = deal.imageUrl || deal.merchantLogo || null
   const displayMerchant = deal.merchantName || deal.merchant || '未知商店'
 
   // 价格处理
@@ -85,13 +86,22 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
     <Link href={`/deals/${deal.id}`} onClick={handleCardClick} className="deal-card-waterfall bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group block">
       {/* 图片区域 */}
       <div className="relative w-full aspect-square bg-gray-100 overflow-hidden flex-shrink-0">
-        <Image
-          src={displayImage}
-          alt={displayTitle}
-          fill
-          className="object-contain group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-        />
+        {displayImage ? (
+          <Image
+            src={displayImage}
+            alt={displayTitle}
+            fill
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <Store className="w-16 h-16 text-gray-300 mb-2" />
+            <span className="text-xs text-gray-400 font-medium text-center px-4">
+              {displayMerchant}
+            </span>
+          </div>
+        )}
 
         {/* 折扣徽章 - 覆盖在图片右上角，加大尺寸 */}
         {discountPercent && discountPercent > 0 && (
