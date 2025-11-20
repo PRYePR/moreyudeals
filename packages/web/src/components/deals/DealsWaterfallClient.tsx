@@ -136,15 +136,21 @@ export default function DealsWaterfallClient({
   useEffect(() => {
     if (typeof window === 'undefined' || hasRestoredState.current) return
 
-    const restored = restoreStateFromCache()
+    // 只在从详情页返回时使用缓存，普通刷新始终使用服务端最新数据
+    const fromListPage = sessionStorage.getItem(RETURN_FLAG)
+    const restored = fromListPage ? restoreStateFromCache() : null
+
     if (restored) {
       setDeals(restored.deals)
       setCurrentPage(restored.currentPage)
       setTotalCount(restored.totalCount)
       hasRestoredState.current = true
+      // 清除返回标记，确保缓存只使用一次
+      sessionStorage.removeItem(RETURN_FLAG)
       return
     }
 
+    // 使用服务端最新数据（刷新或首次加载）
     setDeals(initialDeals)
     setTotalCount(initialTotalCount)
     setCurrentPage(initialPage)
