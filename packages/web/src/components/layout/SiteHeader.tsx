@@ -27,7 +27,6 @@ import {
 } from 'lucide-react'
 import { TranslationControl } from '@/components/TranslatableContent'
 import LayoutSwitcher from '@/components/LayoutSwitcher'
-import Image from 'next/image'
 
 const CACHE_PREFIX = 'deals_cache_'
 const RETURN_FLAG = 'fromListPage'
@@ -192,14 +191,10 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
             >
               {/* Logo 图片 */}
               <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Image
+                <img
                   src="/logo.png"
                   alt="墨鱼折扣"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  priority
-                  unoptimized
+                  className="w-10 h-10 object-contain"
                 />
               </div>
               {/* 网站名 */}

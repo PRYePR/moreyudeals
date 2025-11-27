@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Store } from 'lucide-react'
@@ -87,12 +86,11 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
       {/* 图片区域 */}
       <div className="relative w-full aspect-square bg-gray-100 overflow-hidden flex-shrink-0">
         {displayImage ? (
-          <Image
+          <img
             src={displayImage}
             alt={displayTitle}
-            fill
-            className="object-contain group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -153,12 +151,11 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
           title={`筛选 ${displayMerchant} 的优惠`}
         >
           {deal.merchantLogo ? (
-            <Image
+            <img
               src={deal.merchantLogo}
               alt={displayMerchant}
-              width={14}
-              height={14}
-              className="object-contain rounded"
+              className="w-3.5 h-3.5 object-contain rounded"
+              loading="lazy"
             />
           ) : (
             <Store className="w-3.5 h-3.5 text-gray-900 group-hover/merchant:text-brand-primary transition-colors" />

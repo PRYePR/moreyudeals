@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import { ContentBlock } from '@/lib/api-client/types'
 
 interface ContentBlocksRendererProps {
@@ -55,13 +54,11 @@ export default function ContentBlocksRenderer({ blocks }: ContentBlocksRendererP
             return (
               <div key={index} className="my-6">
                 <div className="relative w-full h-auto rounded-lg overflow-hidden shadow-md">
-                  <Image
+                  <img
                     src={block.src}
                     alt={block.alt || 'Deal image'}
-                    width={800}
-                    height={450}
                     className="w-full h-auto"
-                    sizes="(max-width: 768px) 100vw, 800px"
+                    loading="lazy"
                   />
                 </div>
                 {block.alt && (

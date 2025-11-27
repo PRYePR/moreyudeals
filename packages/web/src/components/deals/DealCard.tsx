@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { Deal } from '@/lib/api-client/types'
 import { formatDistance } from 'date-fns'
@@ -82,12 +81,11 @@ export default function DealCard({ deal }: DealCardProps) {
         {/* Image Section */}
         <div className="relative w-full aspect-[16/9] overflow-hidden bg-gray-100">
           {displayImage ? (
-            <Image
+            <img
               src={displayImage}
               alt={deal.title || ''}
-              fill
-              className="object-contain group-hover:scale-105 transition-transform duration-300"
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -103,12 +101,11 @@ export default function DealCard({ deal }: DealCardProps) {
           {/* Merchant Logo - Top Left */}
           {deal.merchantLogo && (
             <div className="absolute top-2 left-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-md p-0.5 md:p-1 shadow-md">
-              <Image
+              <img
                 src={deal.merchantLogo}
                 alt={deal.canonicalMerchantName || deal.merchant || 'Merchant'}
-                width={40}
-                height={40}
-                className="object-contain"
+                className="w-full h-full object-contain"
+                loading="lazy"
               />
             </div>
           )}

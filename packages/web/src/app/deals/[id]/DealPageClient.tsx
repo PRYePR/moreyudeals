@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -169,13 +168,11 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
 
               {/* 左侧图片区域 - 占2列 */}
               <div className="md:col-span-2 bg-gray-100 relative aspect-square md:aspect-auto">
-                <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
-                  <Image
+                <div className="relative w-full h-full min-h-[300px] md:min-h-[400px] p-8">
+                  <img
                     src={deal.imageUrl || '/placeholder-deal.png'}
                     alt={deal.title}
-                    fill
-                    className="object-contain p-8"
-                    priority
+                    className="w-full h-full object-contain"
                   />
 
                   {/* 折扣徽章 */}
@@ -236,11 +233,11 @@ export default function DealPageClient({ deal, dealId }: DealPageClientProps) {
                     <span className="text-xs sm:text-sm text-gray-600">商家:</span>
                     {deal.merchantLogo && (
                       <div className="relative w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
-                        <Image
+                        <img
                           src={deal.merchantLogo}
                           alt={deal.merchantName}
-                          fill
-                          className="object-contain"
+                          className="w-full h-full object-contain"
+                          loading="lazy"
                         />
                       </div>
                     )}

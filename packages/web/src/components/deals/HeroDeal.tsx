@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { Deal } from '@/lib/api-client/types'
 
@@ -99,13 +98,10 @@ export default function HeroDeal({ deal }: HeroDealProps) {
         {/* Right Side - Image */}
         <div className="relative h-64 lg:h-96">
           {deal.imageUrl ? (
-            <Image
+            <img
               src={deal.imageUrl}
               alt={altText}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="w-full h-full object-cover"
             />
           ) : (
             <div className="w-full h-full bg-primary-500/30 flex items-center justify-center">
@@ -117,13 +113,12 @@ export default function HeroDeal({ deal }: HeroDealProps) {
 
           {/* Merchant Logo Overlay */}
           {deal.merchantLogo && (
-            <div className="absolute bottom-4 right-4 bg-white rounded-lg p-2 shadow-xl">
-              <Image
+            <div className="absolute bottom-4 right-4 bg-white rounded-lg p-2 shadow-xl w-16 h-16">
+              <img
                 src={deal.merchantLogo}
                 alt={deal.merchant || 'Merchant'}
-                width={60}
-                height={60}
-                className="object-contain"
+                className="w-full h-full object-contain"
+                loading="lazy"
               />
             </div>
           )}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { MessageCircle, Share2, Bookmark, ExternalLink, MapPin, Store } from 'lucide-react'
@@ -103,12 +102,11 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           title={`筛选 ${displayMerchant} 的优惠`}
         >
           {deal.merchantLogo ? (
-            <Image
+            <img
               src={deal.merchantLogo}
               alt={displayMerchant}
-              width={28}
-              height={28}
-              className="object-contain rounded"
+              className="w-7 h-7 object-contain rounded"
+              loading="lazy"
             />
           ) : (
             <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
@@ -132,12 +130,11 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           <Link href={`/deals/${deal.id}`} className="deal-image-container relative w-28 h-28 lg:w-44 lg:h-auto lg:max-h-[400px] flex-shrink-0 group">
             <div className="relative w-full h-full bg-gray-100 overflow-hidden rounded-md lg:rounded-lg">
               {displayImage ? (
-                <Image
+                <img
                   src={displayImage}
                   alt={displayTitle}
-                  fill
-                  className="object-cover lg:object-contain group-hover:scale-105 transition-transform duration-300"
-                  sizes="(max-width: 1024px) 112px, 256px"
+                  className="w-full h-full object-cover lg:object-contain group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -192,12 +189,11 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
               title={`筛选 ${displayMerchant} 的优惠`}
             >
               {deal.merchantLogo ? (
-                <Image
+                <img
                   src={deal.merchantLogo}
                   alt={displayMerchant}
-                  width={28}
-                  height={28}
-                  className="object-contain rounded"
+                  className="w-7 h-7 object-contain rounded"
+                  loading="lazy"
                 />
               ) : (
                 <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
