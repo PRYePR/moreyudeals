@@ -298,7 +298,8 @@ app.get('/api/categories', async (req, res) => {
     const { search, category, merchant } = req.query;
 
     // 构建 WHERE 条件
-    const conditions = ['category IS NOT NULL', 'translation_status = $1'];
+    // 注意：categories 是 JSONB 数组列，不是 category（VARCHAR，已废弃）
+    const conditions = ["categories IS NOT NULL", "categories != '[]'::jsonb", 'translation_status = $1'];
     const params: any[] = ['completed'];
     let paramIndex = 2;
 
@@ -327,13 +328,13 @@ app.get('/api/categories', async (req, res) => {
 
     const query = `
       SELECT
-        category,
+        cat_name,
         COUNT(*) as deal_count,
         MAX(created_at) as last_deal_at
       FROM deals,
-           jsonb_array_elements_text(categories) as category
+           jsonb_array_elements_text(categories) as cat_name
       WHERE ${whereClause}
-      GROUP BY category
+      GROUP BY cat_name
       ORDER BY deal_count DESC
     `;
 
@@ -341,7 +342,7 @@ app.get('/api/categories', async (req, res) => {
 
     // Transform to match frontend expectation: {categories: [{name, count}]}
     const categories = result.rows.map(row => ({
-      name: row.category,
+      name: row.cat_name,
       count: parseInt(row.deal_count)
     }));
 
@@ -356,18 +357,20 @@ app.get('/api/categories', async (req, res) => {
 app.get('/api/cross-filter', async (req, res) => {
   try {
     // Get category-merchant combinations with counts
+    // 注意：使用 cat_name 避免与 deals.category 列名冲突
     const query = `
       SELECT
-        category,
+        cat_name,
         COALESCE(canonical_merchant_name, 'Unknown') as merchant,
         COUNT(*) as deal_count
       FROM deals,
-           jsonb_array_elements_text(categories) as category
-      WHERE category IS NOT NULL
+           jsonb_array_elements_text(categories) as cat_name
+      WHERE categories IS NOT NULL
+        AND categories != '[]'::jsonb
         AND translation_status = 'completed'
-      GROUP BY category, canonical_merchant_name
+      GROUP BY cat_name, canonical_merchant_name
       HAVING COUNT(*) > 0
-      ORDER BY category, deal_count DESC
+      ORDER BY cat_name, deal_count DESC
     `;
 
     const result = await pool.query(query);
@@ -377,20 +380,20 @@ app.get('/api/cross-filter', async (req, res) => {
     const merchantByCategory: Record<string, Record<string, number>> = {};
 
     result.rows.forEach(row => {
-      const { category, merchant, deal_count } = row;
+      const { cat_name, merchant, deal_count } = row;
       const count = parseInt(deal_count);
 
-      // categoryByMerchant[merchant][category] = count
+      // categoryByMerchant[merchant][cat_name] = count
       if (!categoryByMerchant[merchant]) {
         categoryByMerchant[merchant] = {};
       }
-      categoryByMerchant[merchant][category] = count;
+      categoryByMerchant[merchant][cat_name] = count;
 
-      // merchantByCategory[category][merchant] = count
-      if (!merchantByCategory[category]) {
-        merchantByCategory[category] = {};
+      // merchantByCategory[cat_name][merchant] = count
+      if (!merchantByCategory[cat_name]) {
+        merchantByCategory[cat_name] = {};
       }
-      merchantByCategory[category][merchant] = count;
+      merchantByCategory[cat_name][merchant] = count;
     });
 
     res.json({

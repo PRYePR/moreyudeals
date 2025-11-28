@@ -80,32 +80,51 @@ export default function DealCard({ deal }: DealCardProps) {
       <div className="deal-card group flex flex-col bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1">
         {/* Image Section */}
         <div className="relative w-full aspect-[16/9] overflow-hidden bg-gray-100">
-          {displayImage ? (
+          {/* 商品图片 */}
+          {displayImage && (
             <img
               src={displayImage}
               alt={deal.title || ''}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 product-image"
               loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // 图片加载失败时隐藏图片，显示 fallback
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = 'none'
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
             />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <svg className="w-20 h-20 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-              <span className="text-xs text-gray-400 font-medium">
-                {deal.canonicalMerchantName || deal.merchant || '优惠活动'}
-              </span>
-            </div>
           )}
+          {/* Fallback: 商店图标 + 商家名 */}
+          <div
+            className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+            style={{ display: displayImage ? 'none' : 'flex' }}
+          >
+            <svg className="w-20 h-20 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            <span className="text-xs text-gray-400 font-medium">
+              {deal.canonicalMerchantName || deal.merchant || '优惠活动'}
+            </span>
+          </div>
 
           {/* Merchant Logo - Top Left */}
           {deal.merchantLogo && (
-            <div className="absolute top-2 left-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-md p-0.5 md:p-1 shadow-md">
+            <div className="absolute top-2 left-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-md p-0.5 md:p-1 shadow-md merchant-logo-container">
               <img
                 src={deal.merchantLogo}
                 alt={deal.canonicalMerchantName || deal.merchant || 'Merchant'}
                 className="w-full h-full object-contain"
                 loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  // 商家 Logo 加载失败时隐藏整个容器
+                  e.currentTarget.onerror = null
+                  const container = e.currentTarget.parentElement
+                  if (container) container.style.display = 'none'
+                }}
               />
             </div>
           )}

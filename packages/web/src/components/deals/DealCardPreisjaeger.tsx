@@ -107,10 +107,17 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
               alt={displayMerchant}
               className="w-7 h-7 object-contain rounded"
               loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // 商家 Logo 加载失败时隐藏图片，显示 Store 图标
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = 'none'
+                const storeIcon = e.currentTarget.nextElementSibling as HTMLElement
+                if (storeIcon) storeIcon.style.display = 'block'
+              }}
             />
-          ) : (
-            <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
-          )}
+          ) : null}
+          <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" style={{ display: deal.merchantLogo ? 'none' : 'block' }} />
           <span className="text-sm font-bold text-gray-900 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
         </button>
 
@@ -129,21 +136,33 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
           {/* 商品图片（移动端固定宽度正方形，桌面端固定宽度，限制最大高度） */}
           <Link href={`/deals/${deal.id}`} className="deal-image-container relative w-28 h-28 lg:w-44 lg:h-auto lg:max-h-[400px] flex-shrink-0 group">
             <div className="relative w-full h-full bg-gray-100 overflow-hidden rounded-md lg:rounded-lg">
-              {displayImage ? (
+              {/* 商品图片 */}
+              {displayImage && (
                 <img
                   src={displayImage}
                   alt={displayTitle}
-                  className="w-full h-full object-cover lg:object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover lg:object-contain group-hover:scale-105 transition-transform duration-300 product-image"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    // 图片加载失败时隐藏图片，显示 fallback
+                    e.currentTarget.onerror = null
+                    e.currentTarget.style.display = 'none'
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                    if (fallback) fallback.style.display = 'flex'
+                  }}
                 />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                  <Store className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 mb-1" />
-                  <span className="text-[10px] lg:text-xs text-gray-400 font-medium text-center px-2">
-                    {displayMerchant}
-                  </span>
-                </div>
               )}
+              {/* Fallback: 商店图标 + 商家名 */}
+              <div
+                className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+                style={{ display: displayImage ? 'none' : 'flex' }}
+              >
+                <Store className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 mb-1" />
+                <span className="text-[10px] lg:text-xs text-gray-400 font-medium text-center px-2">
+                  {displayMerchant}
+                </span>
+              </div>
               {/* 折扣徽章 */}
               {discountPercent && discountPercent > 0 && (
                 <div className="absolute top-2 right-2">
@@ -194,10 +213,17 @@ export default function DealCardPreisjaeger({ deal }: DealCardPreisjaegerProps) 
                   alt={displayMerchant}
                   className="w-7 h-7 object-contain rounded"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    // 商家 Logo 加载失败时隐藏图片，显示 Store 图标
+                    e.currentTarget.onerror = null
+                    e.currentTarget.style.display = 'none'
+                    const storeIcon = e.currentTarget.nextElementSibling as HTMLElement
+                    if (storeIcon) storeIcon.style.display = 'block'
+                  }}
                 />
-              ) : (
-                <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" />
-              )}
+              ) : null}
+              <Store className="w-6 h-6 text-gray-900 group-hover:text-brand-primary transition-colors" style={{ display: deal.merchantLogo ? 'none' : 'block' }} />
               <span className="text-base font-semibold text-gray-900 group-hover:text-brand-primary transition-colors">{displayMerchant}</span>
             </button>
 

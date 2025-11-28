@@ -28,10 +28,6 @@ import {
 import { TranslationControl } from '@/components/TranslatableContent'
 import LayoutSwitcher from '@/components/LayoutSwitcher'
 
-const CACHE_PREFIX = 'deals_cache_'
-const RETURN_FLAG = 'fromListPage'
-const SCROLL_KEY = 'scrollY'
-
 interface Category {
   id: string
   name: string
@@ -155,25 +151,11 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
     }
   }
 
-  const clearListCache = () => {
-    if (typeof window === 'undefined') return
-    const keysToRemove: string[] = []
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i)
-      if (!key) continue
-      if (key.startsWith(CACHE_PREFIX) || key === RETURN_FLAG || key === SCROLL_KEY) {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key))
-  }
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Logo 点击：清除缓存并强制刷新整个页面
-    clearListCache()
+    // Logo 点击：导航到首页
     const layout = searchParams.get('layout')
-    window.location.href = layout ? `/?layout=${layout}` : '/'
+    router.push(layout ? `/?layout=${layout}` : '/')
   }
 
   return (
