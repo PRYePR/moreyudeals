@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /deals/
+Sitemap: https://deals.moreyu.com/sitemap.xml
