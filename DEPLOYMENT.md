@@ -120,8 +120,8 @@
 ssh root@43.157.40.96
 
 # 2. 克隆代码
-git clone https://github.com/PRYePR/moreyudeals.git /www/wwwroot/Moreyudeals
-cd /www/wwwroot/Moreyudeals
+git clone https://github.com/PRYePR/moreyudeals.git /var/www/Moreyudeals
+cd /var/www/Moreyudeals
 
 # 3. 授予脚本执行权限
 chmod +x scripts/*.sh
@@ -262,7 +262,7 @@ exit
 #### 2.2 运行迁移脚本
 
 ```bash
-cd /www/wwwroot/Moreyudeals
+cd /var/www/Moreyudeals
 sudo bash scripts/init-database-server.sh
 ```
 
@@ -311,7 +311,7 @@ git checkout latest-2025
 ### 步骤 4: 安装依赖
 
 ```bash
-cd /www/wwwroot/Moreyudeals
+cd /var/www/Moreyudeals
 
 # 安装根目录依赖 (如果是monorepo)
 npm install
@@ -329,7 +329,7 @@ npm list --depth=0
 创建生产环境配置:
 
 ```bash
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 nano .env.production
 ```
 
@@ -373,7 +373,7 @@ NODE_ENV=production
 ### 步骤 6: 构建项目
 
 ```bash
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 
 # 编译 TypeScript
 npm run build
@@ -387,14 +387,14 @@ ls -la dist/
 ### 步骤 7: 创建日志目录
 
 ```bash
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 mkdir -p logs
 ```
 
 ### 步骤 8: 启动服务
 
 ```bash
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 
 # 使用 PM2 启动
 pm2 start ecosystem.config.js --env production
@@ -508,7 +508,7 @@ PGPASSWORD=338e930fbb psql -h localhost -p 5432 -U moreyudeals -d moreyudeals \
 
 ### ecosystem.config.js 说明
 
-PM2配置文件位置: `/www/wwwroot/Moreyudeals/packages/worker/ecosystem.config.js`
+PM2配置文件位置: `/var/www/Moreyudeals/packages/worker/ecosystem.config.js`
 
 ```javascript
 module.exports = {
@@ -538,7 +538,7 @@ module.exports = {
 
 ```bash
 # 编辑配置
-nano /www/wwwroot/Moreyudeals/packages/worker/.env.production
+nano /var/www/Moreyudeals/packages/worker/.env.production
 ```
 
 修改以下配置:
@@ -592,7 +592,7 @@ pm2 unstartup                         # 禁用开机启动
 #### 方法 1: 使用自动脚本 (推荐)
 
 ```bash
-cd /www/wwwroot/Moreyudeals
+cd /var/www/Moreyudeals
 bash scripts/update-server.sh
 ```
 
@@ -606,7 +606,7 @@ bash scripts/update-server.sh
 
 ```bash
 # 1. 进入项目目录
-cd /www/wwwroot/Moreyudeals
+cd /var/www/Moreyudeals
 
 # 2. 拉取最新代码
 git pull origin latest-2025
@@ -768,7 +768,7 @@ pm2 status
 
 **日志位置**:
 - PM2日志: `~/.pm2/logs/`
-- Worker日志: `/www/wwwroot/Moreyudeals/packages/worker/logs/`
+- Worker日志: `/var/www/Moreyudeals/packages/worker/logs/`
 - PostgreSQL日志: `/var/log/postgresql/`
 
 **查看日志**:
@@ -778,7 +778,7 @@ pm2 status
 pm2 logs moreyudeals-worker --lines 100
 
 # Worker自定义日志
-tail -f /www/wwwroot/Moreyudeals/packages/worker/logs/out.log
+tail -f /var/www/Moreyudeals/packages/worker/logs/out.log
 
 # PostgreSQL日志
 sudo tail -f /var/log/postgresql/postgresql-15-main.log
@@ -857,10 +857,10 @@ crontab -e
 pm2 logs moreyudeals-worker --err --lines 50
 
 # 2. 检查构建是否成功
-ls -la /www/wwwroot/Moreyudeals/packages/worker/dist/
+ls -la /var/www/Moreyudeals/packages/worker/dist/
 
 # 3. 手动运行看详细错误
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 node dist/index.js
 
 # 4. 检查配置文件
@@ -913,7 +913,7 @@ pm2 logs moreyudeals-worker | grep "抓取"
 curl -I https://www.sparhamster.at
 
 # 3. 手动测试抓取
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 TRANSLATION_ENABLED=false npx tsx src/index.ts
 
 # 4. 检查数据源配置
@@ -940,7 +940,7 @@ pm2 restart moreyudeals-worker
 
 # 3. 调整内存限制
 # 编辑 ecosystem.config.js
-nano /www/wwwroot/Moreyudeals/packages/worker/ecosystem.config.js
+nano /var/www/Moreyudeals/packages/worker/ecosystem.config.js
 
 # 修改: max_memory_restart: '500M'
 
@@ -964,7 +964,7 @@ curl -X POST "https://api-free.deepl.com/v2/translate" \
   -d "target_lang=ZH"
 
 # 2. 检查配置
-cat /www/wwwroot/Moreyudeals/packages/worker/.env.production | grep DEEPL
+cat /var/www/Moreyudeals/packages/worker/.env.production | grep DEEPL
 
 # 3. 查看翻译错误日志
 pm2 logs moreyudeals-worker | grep "翻译"
@@ -986,14 +986,14 @@ pm2 restart moreyudeals-worker
 ```bash
 # 1. 检查磁盘使用
 df -h
-du -sh /www/wwwroot/Moreyudeals/* | sort -h
+du -sh /var/www/Moreyudeals/* | sort -h
 
 # 2. 清理PM2日志
 pm2 flush
 
 # 3. 清理旧日志
 find ~/.pm2/logs -name "*.log" -mtime +7 -delete
-find /www/wwwroot/Moreyudeals/packages/worker/logs -name "*.log" -mtime +7 -delete
+find /var/www/Moreyudeals/packages/worker/logs -name "*.log" -mtime +7 -delete
 
 # 4. 清理系统日志
 sudo journalctl --vacuum-time=7d
@@ -1095,7 +1095,7 @@ sudo grep "sudo" /var/log/auth.log | tail -20
 
 ```bash
 # 编辑配置
-nano /www/wwwroot/Moreyudeals/packages/worker/.env.production
+nano /var/www/Moreyudeals/packages/worker/.env.production
 
 # 修改为60分钟
 FETCH_INTERVAL=60
@@ -1109,7 +1109,7 @@ pm2 restart moreyudeals-worker
 **A**: 使用环境变量覆盖
 
 ```bash
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 TRANSLATION_ENABLED=true npx tsx src/index.ts
 ```
 
@@ -1142,7 +1142,7 @@ sudo ufw allow from YOUR_IP to any port 5432
 pm2 logs moreyudeals-worker -f
 
 # 方法2: Worker日志文件
-tail -f /www/wwwroot/Moreyudeals/packages/worker/logs/out.log
+tail -f /var/www/Moreyudeals/packages/worker/logs/out.log
 
 # 方法3: 数据库查询
 watch -n 10 "PGPASSWORD=338e930fbb psql -h localhost -p 5432 -U moreyudeals -d moreyudeals -tAc 'SELECT COUNT(*) FROM deals;'"
@@ -1176,7 +1176,7 @@ sudo systemctl start postgresql
 pm2 resurrect
 
 # 或手动启动
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 pm2 start ecosystem.config.js --env production
 ```
 
@@ -1187,7 +1187,7 @@ pm2 start ecosystem.config.js --env production
 ### 目录结构
 
 ```
-/www/wwwroot/Moreyudeals/
+/var/www/Moreyudeals/
 ├── packages/
 │   └── worker/
 │       ├── src/                 # 源代码

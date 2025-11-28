@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { Deal } from '@/lib/api-client/types'
 
@@ -98,32 +97,51 @@ export default function HeroDeal({ deal }: HeroDealProps) {
 
         {/* Right Side - Image */}
         <div className="relative h-64 lg:h-96">
-          {deal.imageUrl ? (
-            <Image
+          {/* 商品图片 */}
+          {deal.imageUrl && (
+            <img
               src={deal.imageUrl}
               alt={altText}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="w-full h-full object-cover product-image"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // 图片加载失败时隐藏图片，显示 fallback
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = 'none'
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                if (fallback) fallback.style.display = 'flex'
+              }}
             />
-          ) : (
-            <div className="w-full h-full bg-primary-500/30 flex items-center justify-center">
-              <svg className="w-32 h-32 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
           )}
+          {/* Fallback: 商店图标 + 商家名 */}
+          <div
+            className="w-full h-full bg-primary-500/30 flex flex-col items-center justify-center"
+            style={{ display: deal.imageUrl ? 'none' : 'flex' }}
+          >
+            <svg className="w-32 h-32 text-white/30 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            <span className="text-white/50 text-lg font-medium">
+              {deal.merchant || '精选优惠'}
+            </span>
+          </div>
 
           {/* Merchant Logo Overlay */}
           {deal.merchantLogo && (
-            <div className="absolute bottom-4 right-4 bg-white rounded-lg p-2 shadow-xl">
-              <Image
+            <div className="absolute bottom-4 right-4 bg-white rounded-lg p-2 shadow-xl w-16 h-16 merchant-logo-container">
+              <img
                 src={deal.merchantLogo}
                 alt={deal.merchant || 'Merchant'}
-                width={60}
-                height={60}
-                className="object-contain"
+                className="w-full h-full object-contain"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  // 商家 Logo 加载失败时隐藏整个容器
+                  e.currentTarget.onerror = null
+                  const container = e.currentTarget.parentElement
+                  if (container) container.style.display = 'none'
+                }}
               />
             </div>
           )}

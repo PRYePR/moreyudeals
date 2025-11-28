@@ -1,14 +1,10 @@
 'use client'
 
-import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import DealCardWaterfall from './DealCardWaterfall'
 import FloatingActionMenu from '../FloatingActionMenu'
-
-const CACHE_TTL = 20 * 60 * 1000
-const RETURN_FLAG = 'fromListPage'
-const SCROLL_KEY = 'scrollY'
 
 // 动态导入 react-masonry-css，禁用 SSR
 const Masonry = dynamic(() => import('react-masonry-css'), { ssr: false })
@@ -60,66 +56,11 @@ export default function DealsWaterfallClient({
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [isLoading, setIsLoading] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
-  const hasRestoredState = useRef(false)
 
   // 获取当前筛选参数
   const currentMerchant = searchParams.get('merchant')
   const currentCategory = searchParams.get('category')
   const currentSearch = searchParams.get('search')
-
-  // 计算缓存 key（基于筛选参数）
-  const cacheKey = useMemo(() => {
-    const merchantKey = currentMerchant || ''
-    const categoryKey = currentCategory || ''
-    const searchKey = currentSearch || ''
-    return `deals_cache_${merchantKey}_${categoryKey}_${searchKey}`
-  }, [currentMerchant, currentCategory, currentSearch])
-
-  const saveStateToCache = useCallback((nextDeals: any[], nextPage: number, nextTotal: number) => {
-    if (typeof window === 'undefined') return
-    const payload = {
-      deals: nextDeals,
-      currentPage: nextPage,
-      totalCount: nextTotal,
-      timestamp: Date.now()
-    }
-    sessionStorage.setItem(cacheKey, JSON.stringify(payload))
-  }, [cacheKey])
-
-  const restoreStateFromCache = useCallback(() => {
-    if (typeof window === 'undefined') return null
-    if (!sessionStorage.getItem(RETURN_FLAG)) return null
-
-    const cached = sessionStorage.getItem(cacheKey)
-    if (!cached) return null
-
-    try {
-      const parsed = JSON.parse(cached) as {
-        deals?: any[]
-        currentPage?: number
-        totalCount?: number
-        timestamp?: number
-      }
-
-      if (!parsed.deals || !Array.isArray(parsed.deals)) {
-        return null
-      }
-
-      if (parsed.timestamp && Date.now() - parsed.timestamp > CACHE_TTL) {
-        sessionStorage.removeItem(cacheKey)
-        return null
-      }
-
-      return {
-        deals: parsed.deals,
-        currentPage: parsed.currentPage ?? Math.ceil(parsed.deals.length / pageSize),
-        totalCount: parsed.totalCount ?? initialTotalCount
-      }
-    } catch {
-      sessionStorage.removeItem(cacheKey)
-      return null
-    }
-  }, [cacheKey, initialTotalCount, pageSize])
 
   // 获取分类的中文翻译
   const getCategoryName = (categoryId: string) => {
@@ -127,62 +68,13 @@ export default function DealsWaterfallClient({
     return category?.translatedName || categoryId
   }
 
-  // 当筛选条件或初始数据变化时，允许重新执行恢复逻辑
+  // 当 initialDeals 变化时同步更新（筛选条件变化）
+  // Intercepting Routes 会自动保持滚动位置，无需手动恢复
   useEffect(() => {
-    hasRestoredState.current = false
-  }, [cacheKey, initialDeals, initialPage, initialTotalCount])
-
-  // 初始化或筛选变化时，从缓存恢复或使用服务端数据
-  useEffect(() => {
-    if (typeof window === 'undefined' || hasRestoredState.current) return
-
-    const restored = restoreStateFromCache()
-    if (restored) {
-      setDeals(restored.deals)
-      setCurrentPage(restored.currentPage)
-      setTotalCount(restored.totalCount)
-      hasRestoredState.current = true
-      return
-    }
-
     setDeals(initialDeals)
     setTotalCount(initialTotalCount)
     setCurrentPage(initialPage)
-    saveStateToCache(initialDeals, initialPage, initialTotalCount)
-    hasRestoredState.current = true
-  }, [initialDeals, initialPage, initialTotalCount, restoreStateFromCache, saveStateToCache])
-
-  // 恢复滚动位置（在数据渲染后执行）
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const savedScrollY = sessionStorage.getItem(SCROLL_KEY)
-    if (!savedScrollY) return
-
-    const fromListPage = sessionStorage.getItem(RETURN_FLAG)
-    if (!fromListPage) return
-
-    // 临时禁用 scroll-smooth
-    const html = document.documentElement
-    const hadScrollSmooth = html.classList.contains('scroll-smooth')
-    const originalBehavior = html.style.scrollBehavior
-
-    if (hadScrollSmooth) {
-      html.classList.remove('scroll-smooth')
-    }
-    html.style.scrollBehavior = 'auto'
-
-    window.scrollTo({ top: parseInt(savedScrollY, 10), behavior: 'auto' })
-
-    // 清除标记（下次点击卡片时会重新设置）
-    sessionStorage.removeItem(SCROLL_KEY)
-
-    // 恢复原本的滚动设置
-    requestAnimationFrame(() => {
-      html.style.scrollBehavior = originalBehavior
-      if (hadScrollSmooth) html.classList.add('scroll-smooth')
-    })
-  }, [deals]) // 依赖 deals，确保数据渲染后才执行
+  }, [initialDeals, initialTotalCount, initialPage])
 
   // 监听滚动显示"返回顶部"按钮
   useEffect(() => {
@@ -242,7 +134,6 @@ export default function DealsWaterfallClient({
         setDeals(updatedDeals)
         setCurrentPage(nextPage)
         setTotalCount(nextTotal)
-        saveStateToCache(updatedDeals, nextPage, nextTotal)
       }
     } catch (error) {
       console.error('加载更多失败:', error)

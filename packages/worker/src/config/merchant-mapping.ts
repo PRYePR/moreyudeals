@@ -113,7 +113,8 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
       'billa',
       'billa.at',
       'billa at',
-      'billa plus'
+      'billa plus',
+      'shop.billa.at'
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.billa.at'
@@ -144,6 +145,20 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
     ],
     sites: ['sparhamster', 'preisjaeger'],
     website: 'https://www.lidl.at'
+  },
+
+  // 优惠券和折扣平台
+  {
+    canonicalId: 'marktguru',
+    canonicalName: 'Marktguru',
+    aliases: [
+      'marktguru',
+      'markt guru',
+      'marktguru.at',
+      'marktguru at'
+    ],
+    sites: ['preisjaeger', 'sparhamster'],
+    website: 'https://www.marktguru.at'
   },
 
   // 时尚与服装
@@ -627,6 +642,898 @@ export const MERCHANT_MAPPINGS: MerchantMapping[] = [
     ],
     sites: ['preisjaeger'],
     website: 'https://eu.snapmaker.com'
+  },
+
+  // A1 奥地利电信
+  {
+    canonicalId: 'a1-telekom',
+    canonicalName: 'A1',
+    aliases: [
+      'a1',
+      'a1 telekom',
+      'a1.net'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.a1.net'
+  },
+
+  // Adidas 运动品牌
+  {
+    canonicalId: 'adidas',
+    canonicalName: 'adidas',
+    aliases: [
+      'adidas',
+      'adidas.at',
+      'adidas.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.adidas.at'
+  },
+
+  // Alternate 电脑硬件
+  {
+    canonicalId: 'alternate',
+    canonicalName: 'Alternate',
+    aliases: [
+      'alternate',
+      'alternate.at',
+      'alternate.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.alternate.at'
+  },
+
+  // Audible 有声读物
+  {
+    canonicalId: 'audible',
+    canonicalName: 'Audible',
+    aliases: [
+      'audible',
+      'audible.de',
+      'audible.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.audible.de'
+  },
+
+  // Baby-Markt 婴儿用品
+  {
+    canonicalId: 'baby-markt',
+    canonicalName: 'Baby-Markt',
+    aliases: [
+      'baby-markt',
+      'baby markt',
+      'babymarkt',
+      'babymarkt.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.baby-markt.at'
+  },
+
+  // Babywalz 婴儿用品
+  {
+    canonicalId: 'babywalz',
+    canonicalName: 'babywalz',
+    aliases: [
+      'babywalz',
+      'babywalz.at',
+      'babywalz.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.babywalz.at'
+  },
+
+  // BIPA 药妆店
+  {
+    canonicalId: 'bipa',
+    canonicalName: 'BIPA',
+    aliases: [
+      'bipa',
+      'bipa.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.bipa.at'
+  },
+
+  // Biogena 保健品
+  {
+    canonicalId: 'biogena',
+    canonicalName: 'Biogena',
+    aliases: [
+      'biogena',
+      'biogena.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.biogena.com'
+  },
+
+  // Blinkist 阅读应用
+  {
+    canonicalId: 'blinkist',
+    canonicalName: 'Blinkist',
+    aliases: [
+      'blinkist',
+      'blinkist.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.blinkist.com'
+  },
+
+  // Bonprix 时尚零售
+  {
+    canonicalId: 'bonprix',
+    canonicalName: 'bonprix',
+    aliases: [
+      'bonprix',
+      'bonprix.at',
+      'bonprix.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.bonprix.at'
+  },
+
+  // Burger King 快餐
+  {
+    canonicalId: 'burger-king',
+    canonicalName: 'Burger King',
+    aliases: [
+      'burger king',
+      'burgerking',
+      'bk'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.burgerking.at'
+  },
+
+  // Computeruniverse 电脑硬件
+  {
+    canonicalId: 'computeruniverse',
+    canonicalName: 'Computeruniverse',
+    aliases: [
+      'computeruniverse',
+      'computeruniverse.net'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.computeruniverse.net'
+  },
+
+  // Cyberport 电子产品
+  {
+    canonicalId: 'cyberport',
+    canonicalName: 'Cyberport',
+    aliases: [
+      'cyberport',
+      'cyberport.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.cyberport.de'
+  },
+
+  // DJI 无人机
+  {
+    canonicalId: 'dji',
+    canonicalName: 'DJI',
+    aliases: [
+      'dji',
+      'dji.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.dji.com'
+  },
+
+  // Disney Shop 迪士尼商店
+  {
+    canonicalId: 'disney-shop',
+    canonicalName: 'Disney Shop',
+    aliases: [
+      'disney shop',
+      'disney-shop',
+      'disneystore'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.shopdisney.de'
+  },
+
+  // Drei 奥地利电信
+  {
+    canonicalId: 'drei',
+    canonicalName: 'Drei',
+    aliases: [
+      'drei',
+      'drei.at',
+      '3'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.drei.at'
+  },
+
+  // Dyson 家电
+  {
+    canonicalId: 'dyson',
+    canonicalName: 'Dyson',
+    aliases: [
+      'dyson',
+      'dyson onlineshop',
+      'dyson.at',
+      'dyson.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.dyson.at'
+  },
+
+  // Electronic4you 电子产品
+  {
+    canonicalId: 'electronic4you',
+    canonicalName: 'Electronic4you',
+    aliases: [
+      'electronic4you',
+      'electronic 4 you'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.electronic4you.at'
+  },
+
+  // EMP 音乐周边
+  {
+    canonicalId: 'emp',
+    canonicalName: 'EMP',
+    aliases: [
+      'emp',
+      'emp.at',
+      'emp.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.emp.at'
+  },
+
+  // Epic Games 游戏平台
+  {
+    canonicalId: 'epic-games',
+    canonicalName: 'Epic Games',
+    aliases: [
+      'epicgames',
+      'epic games',
+      'epic-games'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.epicgames.com'
+  },
+
+  // Fielmann 眼镜
+  {
+    canonicalId: 'fielmann',
+    canonicalName: 'Fielmann',
+    aliases: [
+      'fielmann',
+      'fielmann.at',
+      'fielmann.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.fielmann.at'
+  },
+
+  // Galaxus 电商平台
+  {
+    canonicalId: 'galaxus',
+    canonicalName: 'Galaxus',
+    aliases: [
+      'galaxus',
+      'galaxus.at',
+      'galaxus.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.galaxus.at'
+  },
+
+  // Games2Game 游戏
+  {
+    canonicalId: 'games2game',
+    canonicalName: 'Games2Game',
+    aliases: [
+      'games2game',
+      'games 2 game'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.mmoga.de'
+  },
+
+  // Hervis 运动用品
+  {
+    canonicalId: 'hervis',
+    canonicalName: 'Hervis',
+    aliases: [
+      'hervis',
+      'hervis.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.hervis.at'
+  },
+
+  // hessnatur 生态时尚
+  {
+    canonicalId: 'hessnatur',
+    canonicalName: 'hessnatur',
+    aliases: [
+      'hessnatur',
+      'hessnatur.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.hessnatur.com'
+  },
+
+  // Humanic 鞋类
+  {
+    canonicalId: 'humanic',
+    canonicalName: 'Humanic',
+    aliases: [
+      'humanic',
+      'humanic.net'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.humanic.net'
+  },
+
+  // Hunkemöller 内衣
+  {
+    canonicalId: 'hunkemoeller',
+    canonicalName: 'Hunkemöller',
+    aliases: [
+      'hunkemöller',
+      'hunkemoeller',
+      'hunkemoller'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.hunkemoller.at'
+  },
+
+  // iBOOD 闪购平台
+  {
+    canonicalId: 'ibood',
+    canonicalName: 'iBOOD',
+    aliases: [
+      'ibood',
+      'ibood.at',
+      'ibood.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.ibood.com'
+  },
+
+  // Lenovo 电脑
+  {
+    canonicalId: 'lenovo',
+    canonicalName: 'Lenovo',
+    aliases: [
+      'lenovo',
+      'lenovo.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.lenovo.com'
+  },
+
+  // Loaded 电子产品
+  {
+    canonicalId: 'loaded',
+    canonicalName: 'Loaded',
+    aliases: [
+      'loaded',
+      'loaded.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.loaded.at'
+  },
+
+  // Lottoland 彩票
+  {
+    canonicalId: 'lottoland',
+    canonicalName: 'Lottoland',
+    aliases: [
+      'lottoland',
+      'lottoland.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.lottoland.at'
+  },
+
+  // Magenta 电信
+  {
+    canonicalId: 'magenta',
+    canonicalName: 'Magenta',
+    aliases: [
+      'magenta',
+      'magenta.at',
+      't-mobile'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.magenta.at'
+  },
+
+  // McDonald's 快餐
+  {
+    canonicalId: 'mcdonalds',
+    canonicalName: "McDonald's",
+    aliases: [
+      'mcdonalds',
+      "mcdonald's",
+      'mc donalds'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.mcdonalds.at'
+  },
+
+  // Medimops 二手书
+  {
+    canonicalId: 'medimops',
+    canonicalName: 'Medimops',
+    aliases: [
+      'medimops',
+      'medimops.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.medimops.de'
+  },
+
+  // Melitta 咖啡机
+  {
+    canonicalId: 'melitta',
+    canonicalName: 'Melitta',
+    aliases: [
+      'melitta',
+      'melitta shop',
+      'melitta-shop'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.melitta.at'
+  },
+
+  // Möbelix 家具
+  {
+    canonicalId: 'moebelix',
+    canonicalName: 'Möbelix',
+    aliases: [
+      'möbelix',
+      'moebelix',
+      'moebelix.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.moebelix.at'
+  },
+
+  // mömax 家具
+  {
+    canonicalId: 'moemax',
+    canonicalName: 'mömax',
+    aliases: [
+      'mömax',
+      'moemax',
+      'moemax.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.moemax.at'
+  },
+
+  // NKD 服装
+  {
+    canonicalId: 'nkd',
+    canonicalName: 'NKD',
+    aliases: [
+      'nkd',
+      'nkd.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.nkd.com'
+  },
+
+  // OBI 建材
+  {
+    canonicalId: 'obi',
+    canonicalName: 'OBI',
+    aliases: [
+      'obi',
+      'obi.at',
+      'obi.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.obi.at'
+  },
+
+  // OTTO 电商
+  {
+    canonicalId: 'otto',
+    canonicalName: 'OTTO',
+    aliases: [
+      'otto',
+      'otto versand',
+      'ottoversand',
+      'otto.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.otto.de'
+  },
+
+  // Pagro 文具
+  {
+    canonicalId: 'pagro',
+    canonicalName: 'Pagro',
+    aliases: [
+      'pagro',
+      'pagro diskont',
+      'pagro / libro',
+      'pagro libro'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.pagro.at'
+  },
+
+  // Peek & Cloppenburg 时尚
+  {
+    canonicalId: 'peek-cloppenburg',
+    canonicalName: 'Peek & Cloppenburg',
+    aliases: [
+      'peek und cloppenburg',
+      'peek & cloppenburg',
+      'p&c'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.peek-cloppenburg.at'
+  },
+
+  // Philips 电子产品
+  {
+    canonicalId: 'philips',
+    canonicalName: 'Philips',
+    aliases: [
+      'philips',
+      'philips.at',
+      'philips.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.philips.at'
+  },
+
+  // PlayStation Store 游戏
+  {
+    canonicalId: 'playstation-store',
+    canonicalName: 'PlayStation Store',
+    aliases: [
+      'playstation store',
+      'playstation-store',
+      'ps store',
+      'psn'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://store.playstation.com'
+  },
+
+  // Readly 杂志订阅
+  {
+    canonicalId: 'readly',
+    canonicalName: 'Readly',
+    aliases: [
+      'readly',
+      'readly.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.readly.com'
+  },
+
+  // Seidensticker 衬衫
+  {
+    canonicalId: 'seidensticker',
+    canonicalName: 'Seidensticker',
+    aliases: [
+      'seidensticker',
+      'seidensticker.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.seidensticker.com'
+  },
+
+  // Shell 加油站
+  {
+    canonicalId: 'shell',
+    canonicalName: 'Shell',
+    aliases: [
+      'shell',
+      'shell.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.shell.at'
+  },
+
+  // s.Oliver 时尚
+  {
+    canonicalId: 'soliver',
+    canonicalName: 's.Oliver',
+    aliases: [
+      'soliver',
+      's.oliver',
+      's oliver'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.soliver.at'
+  },
+
+  // SportScheck 运动用品
+  {
+    canonicalId: 'sportscheck',
+    canonicalName: 'SportScheck',
+    aliases: [
+      'sportscheck',
+      'sport scheck'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.sportscheck.com'
+  },
+
+  // Steam 游戏平台
+  {
+    canonicalId: 'steam',
+    canonicalName: 'Steam',
+    aliases: [
+      'steam',
+      'steampowered',
+      'steam.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://store.steampowered.com'
+  },
+
+  // tipp3 博彩
+  {
+    canonicalId: 'tipp3',
+    canonicalName: 'tipp3',
+    aliases: [
+      'tipp3',
+      'tipp3.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.tipp3.at'
+  },
+
+  // Tom Tailor 时尚
+  {
+    canonicalId: 'tom-tailor',
+    canonicalName: 'Tom Tailor',
+    aliases: [
+      'tom-tailor',
+      'tom tailor',
+      'tomtailor'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.tom-tailor.at'
+  },
+
+  // Ubisoft 游戏
+  {
+    canonicalId: 'ubisoft',
+    canonicalName: 'Ubisoft Store',
+    aliases: [
+      'ubisoft',
+      'ubisoft store',
+      'ubisoft-store'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://store.ubi.com'
+  },
+
+  // Udemy 在线课程
+  {
+    canonicalId: 'udemy',
+    canonicalName: 'Udemy',
+    aliases: [
+      'udemy',
+      'udemy.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.udemy.com'
+  },
+
+  // Universal 通用商家
+  {
+    canonicalId: 'universal',
+    canonicalName: 'Universal',
+    aliases: [
+      'universal'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.universal.at'
+  },
+
+  // win2day 博彩
+  {
+    canonicalId: 'win2day',
+    canonicalName: 'win2day',
+    aliases: [
+      'win2day',
+      'win2day.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.win2day.at'
+  },
+
+  // Zalando Lounge 闪购
+  {
+    canonicalId: 'zalando-lounge',
+    canonicalName: 'Zalando Lounge',
+    aliases: [
+      'zalando-lounge',
+      'zalando lounge',
+      'zalandolounge'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.zalando-lounge.at'
+  },
+
+  // 0815 奥地利在线商店
+  {
+    canonicalId: '0815',
+    canonicalName: '0815',
+    aliases: [
+      '0815',
+      '0815.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.0815.at'
+  },
+
+  // Anycubic 3D打印机
+  {
+    canonicalId: 'anycubic',
+    canonicalName: 'Anycubic',
+    aliases: [
+      'anycubic',
+      'eu.anycubic.com',
+      'anycubic.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.anycubic.com'
+  },
+
+  // Basler Beauty 美妆
+  {
+    canonicalId: 'basler-beauty',
+    canonicalName: 'Basler Beauty',
+    aliases: [
+      'basler-beauty',
+      'basler beauty',
+      'www.basler-beauty.at',
+      'basler-beauty.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.basler-beauty.at'
+  },
+
+  // Eduscho 咖啡
+  {
+    canonicalId: 'eduscho',
+    canonicalName: 'Eduscho',
+    aliases: [
+      'eduscho',
+      'eduscho.de'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.tchibo.de'
+  },
+
+  // Hagebau Nadlinger 建材
+  {
+    canonicalId: 'hagebau-nadlinger',
+    canonicalName: 'Hagebau Nadlinger',
+    aliases: [
+      'hagebau nadlinger',
+      'hagebau-nadlinger',
+      'nadlinger'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.nadlinger.at'
+  },
+
+  // Issuu 数字出版平台
+  {
+    canonicalId: 'issuu',
+    canonicalName: 'Issuu',
+    aliases: [
+      'issuu',
+      'e.issuu.com',
+      'issuu.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://issuu.com'
+  },
+
+  // LG Electronics 韩国电子品牌
+  {
+    canonicalId: 'lg',
+    canonicalName: 'LG',
+    aliases: [
+      'lg',
+      'www.lg.com',
+      'lg.com',
+      'lg electronics'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.lg.com/at'
+  },
+
+  // McFit 健身房
+  {
+    canonicalId: 'mcfit',
+    canonicalName: 'McFit',
+    aliases: [
+      'mcfit',
+      'www.mcfit.com',
+      'mcfit.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.mcfit.com/at'
+  },
+
+  // Priority Pass 机场贵宾室
+  {
+    canonicalId: 'priority-pass',
+    canonicalName: 'Priority Pass',
+    aliases: [
+      'priority pass',
+      'priority-pass',
+      'prioritypass',
+      'join.prioritypass.com'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.prioritypass.com'
+  },
+
+  // Reisefux 旅游网站
+  {
+    canonicalId: 'reisefux',
+    canonicalName: 'Reisefux',
+    aliases: [
+      'reisefux',
+      'reisefux.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.reisefux.at'
+  },
+
+  // shöpping.at 购物网站
+  {
+    canonicalId: 'shoepping',
+    canonicalName: 'shöpping.at',
+    aliases: [
+      'shöpping',
+      'shöpping.at',
+      'shoepping',
+      'shoepping.at'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://www.xn--shpping-b1a.at'
+  },
+
+  // SK Rapid Fanshop 足球俱乐部商店
+  {
+    canonicalId: 'sk-rapid-fanshop',
+    canonicalName: 'SK Rapid Fanshop',
+    aliases: [
+      'sk rapid fanshop',
+      'sk rapid',
+      'rapid fanshop',
+      'sk-rapid-fanshop'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://fanshop.skrapid.at'
+  },
+
+  // we-are.travel 旅游网站
+  {
+    canonicalId: 'we-are-travel',
+    canonicalName: 'we-are.travel',
+    aliases: [
+      'we-are.travel',
+      'we are travel',
+      'weare.travel'
+    ],
+    sites: ['sparhamster', 'preisjaeger'],
+    website: 'https://we-are.travel'
   },
 
   // 通用商家（用于无法识别的品牌）

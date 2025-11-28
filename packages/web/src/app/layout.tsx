@@ -30,8 +30,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode
+  modal: React.ReactNode
 }) {
   return (
     <html lang="de" className="scroll-smooth">
@@ -44,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-gray-50 text-gray-900">
         <LanguageProvider>
           {children}
+          {modal}
         </LanguageProvider>
         <Analytics />
       </body>

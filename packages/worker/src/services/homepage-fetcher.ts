@@ -14,6 +14,7 @@
 
 import axios from 'axios';
 import * as cheerio from '@moreyudeals/shared-html';
+import { MERCHANT_MAPPINGS } from '../config/merchant-mapping';
 
 /**
  * 从首页提取的完整文章信息
@@ -199,27 +200,30 @@ export class HomepageFetcher {
         const { title, link, slug } = this.extractTitleAndLink(article);
 
         // 3. 提取商家信息
-        const { merchant, merchantLogo } = this.extractMerchantInfo(article);
+        const { merchant } = this.extractMerchantInfo(article);
 
         // 4. 提取 Forward 链接
         const merchantLink = this.extractForwardLink(article);
 
-        // 5. 提取价格信息
+        // 5. 生成商家 Logo（基于商家名称 + merchant-mapping）
+        const merchantLogo = this.generateMerchantLogoFromName(merchant);
+
+        // 6. 提取价格信息
         const { price, originalPrice, discount } = this.extractPriceInfo(article);
 
-        // 6. 提取优惠码
+        // 7. 提取优惠码
         const couponCode = this.extractCouponCode(article);
 
-        // 7. 提取活动剩余时间
+        // 8. 提取活动剩余时间
         const expiresIn = this.extractExpiresIn(article);
 
-        // 8. 提取商品图片
+        // 9. 提取商品图片
         const imageUrl = this.extractImageUrl(article);
 
-        // 9. 提取分类标签
+        // 10. 提取分类标签
         const categories = this.extractCategories(article);
 
-        // 10. 提取时间信息
+        // 11. 提取时间信息
         const { publishedAt, modifiedAt } = this.extractDates(article);
 
         // 组装文章信息
@@ -284,11 +288,10 @@ export class HomepageFetcher {
   }
 
   /**
-   * 提取商家信息（名称和 Logo）
+   * 提取商家信息（仅名称，Logo 由 generateMerchantLogo 生成）
    */
   private extractMerchantInfo(article: cheerio.Cheerio): {
     merchant?: string;
-    merchantLogo?: string;
   } {
     const shopLink = article.find('a[href*="/shop/"]').first();
     if (!shopLink.length) {
@@ -307,17 +310,36 @@ export class HomepageFetcher {
       merchant = undefined;
     }
 
-    // 提取商家 Logo
-    const logoImg = article
-      .find('img[src*="/images/shops/"], img[data-lazy-src*="/images/shops/"]')
-      .first();
+    return { merchant };
+  }
 
-    const merchantLogo =
-      logoImg.attr('data-lazy-src') ||
-      logoImg.attr('src') ||
-      undefined;
+  /**
+   * 基于商家名称生成 Logo（使用 merchant-mapping 配置）
+   */
+  private generateMerchantLogoFromName(merchantName?: string): string | undefined {
+    if (!merchantName) {
+      return undefined;
+    }
 
-    return { merchant, merchantLogo };
+    // 查找商家配置（不区分大小写）
+    const normalizedName = merchantName.toLowerCase().trim();
+    const mapping = MERCHANT_MAPPINGS.find(m =>
+      m.aliases.some(alias => alias.toLowerCase() === normalizedName)
+    );
+
+    if (mapping && mapping.website) {
+      // 从配置的 website 提取域名
+      try {
+        const url = new URL(mapping.website);
+        const domain = url.hostname;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      } catch (error) {
+        console.warn(`无法解析商家网站: ${mapping.website}`, error);
+      }
+    }
+
+    // 如果没有找到配置，返回 undefined（不生成 logo）
+    return undefined;
   }
 
   /**

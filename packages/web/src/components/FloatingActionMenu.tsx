@@ -56,8 +56,7 @@ export default function FloatingActionMenu({
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    // 清空所有缓存并硬刷新页面，与浏览器原生刷新效果一致
-    sessionStorage.clear()
+    // 硬刷新页面
     window.location.reload()
   }
 

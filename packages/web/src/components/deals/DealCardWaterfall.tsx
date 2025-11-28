@@ -1,15 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Store } from 'lucide-react'
 import { formatRelativeTime, formatCurrency, calculateDiscount } from '@/lib/formatters'
 import { TranslatableText } from '@/components/TranslatableContent'
-
-const RETURN_FLAG = 'fromListPage'
-const SCROLL_KEY = 'scrollY'
 
 interface Deal {
   id: string
@@ -46,7 +41,8 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
 
   // 处理数据
   const displayTitle = deal.translatedTitle || deal.title || '无标题'
-  const displayImage = deal.imageUrl || '/placeholder-product.jpg'
+  // 图片优先级: imageUrl → merchantLogo → null (显示默认占位图)
+  const displayImage = deal.imageUrl || deal.merchantLogo || null
   const displayMerchant = deal.merchantName || deal.merchant || '未知商店'
 
   // 价格处理
@@ -74,24 +70,39 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
     }
   }
 
-  // 点击卡片时保存滚动位置
-  const handleCardClick = () => {
-    if (typeof window === 'undefined') return
-    sessionStorage.setItem(RETURN_FLAG, 'true')
-    sessionStorage.setItem(SCROLL_KEY, Math.max(window.scrollY, 0).toString())
-  }
+  // Intercepting Routes 会自动保持滚动位置，无需手动保存
 
   return (
-    <Link href={`/deals/${deal.id}`} onClick={handleCardClick} className="deal-card-waterfall bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group block">
+    <Link href={`/deals/${deal.id}`} className="deal-card-waterfall bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full group block">
       {/* 图片区域 */}
       <div className="relative w-full aspect-square bg-gray-100 overflow-hidden flex-shrink-0">
-        <Image
-          src={displayImage}
-          alt={displayTitle}
-          fill
-          className="object-contain group-hover:scale-105 transition-transform duration-300"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-        />
+        {/* 商品图片 */}
+        {displayImage && (
+          <img
+            src={displayImage}
+            alt={displayTitle}
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 product-image"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              // 图片加载失败时隐藏图片，显示 fallback
+              e.currentTarget.onerror = null
+              e.currentTarget.style.display = 'none'
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement
+              if (fallback) fallback.style.display = 'flex'
+            }}
+          />
+        )}
+        {/* Fallback: 商店图标 + 商家名 */}
+        <div
+          className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
+          style={{ display: displayImage ? 'none' : 'flex' }}
+        >
+          <Store className="w-16 h-16 text-gray-300 mb-2" />
+          <span className="text-xs text-gray-400 font-medium text-center px-4">
+            {displayMerchant}
+          </span>
+        </div>
 
         {/* 折扣徽章 - 覆盖在图片右上角，加大尺寸 */}
         {discountPercent && discountPercent > 0 && (
@@ -143,16 +154,23 @@ export default function DealCardWaterfall({ deal, currentDeals }: DealCardWaterf
           title={`筛选 ${displayMerchant} 的优惠`}
         >
           {deal.merchantLogo ? (
-            <Image
+            <img
               src={deal.merchantLogo}
               alt={displayMerchant}
-              width={14}
-              height={14}
-              className="object-contain rounded"
+              className="w-3.5 h-3.5 object-contain rounded merchant-logo"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // 商家 Logo 加载失败时隐藏图片，显示 Store 图标
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = 'none'
+                // 显示下一个兄弟元素（Store 图标）
+                const storeIcon = e.currentTarget.nextElementSibling as HTMLElement
+                if (storeIcon) storeIcon.style.display = 'block'
+              }}
             />
-          ) : (
-            <Store className="w-3.5 h-3.5 text-gray-900 group-hover/merchant:text-brand-primary transition-colors" />
-          )}
+          ) : null}
+          <Store className="w-3.5 h-3.5 text-gray-900 group-hover/merchant:text-brand-primary transition-colors" style={{ display: deal.merchantLogo ? 'none' : 'block' }} />
           <span>{displayMerchant}</span>
         </button>
 

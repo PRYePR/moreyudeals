@@ -1,7 +1,5 @@
 'use client'
 
-import Image from 'next/image'
-
 interface Deal {
   id: string
   title: string
@@ -66,12 +64,11 @@ export default function DealCard({ deal }: DealCardProps) {
       {/* Top Section: Merchant Info Bar */}
       <div className="flex items-center px-4 py-3 border-b border-gray-100 bg-gray-50">
         {deal.merchantLogo ? (
-          <Image
+          <img
             src={deal.merchantLogo}
             alt={deal.merchantName || 'Merchant'}
-            width={24}
-            height={24}
-            className="object-contain mr-3 rounded-sm"
+            className="w-6 h-6 object-contain mr-3 rounded-sm"
+            loading="lazy"
           />
         ) : (
           <div className="w-6 h-6 mr-3 bg-gray-200 rounded-sm flex items-center justify-center">
@@ -92,11 +89,11 @@ export default function DealCard({ deal }: DealCardProps) {
       <div className="flex flex-row p-4">
         {/* Left: Square Image Container */}
         <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 overflow-hidden rounded-md">
-          <Image
+          <img
             src={deal.imageUrl}
             alt={deal.translatedTitle}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            loading="lazy"
           />
           {deal.discountPercentage && (
             <div className="absolute top-2 right-2">

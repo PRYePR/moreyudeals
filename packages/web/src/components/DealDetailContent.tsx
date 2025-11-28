@@ -186,9 +186,11 @@ export default function DealDetailContent({ deal, dealId, initialContent, onCont
                   src={image}
                   alt={`产品图片 ${index + 1}`}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
                   onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = '/placeholder-deal.svg'
                   }}
                 />
               </div>
@@ -206,6 +208,13 @@ export default function DealDetailContent({ deal, dealId, initialContent, onCont
               src={detailContent.retailer.logo}
               alt={detailContent.retailer.name}
               className="w-12 h-12 object-contain"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                // 商家 Logo 加载失败时隐藏
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = 'none'
+              }}
             />
           )}
           <div>

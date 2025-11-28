@@ -165,6 +165,41 @@ yarn dev:worker # Worker      - 需要单独终端
 - **瀑布流布局**: Masonry 优惠卡片
 - **筛选功能**: 商家、分类交叉筛选
 - **SEO 优化**: Meta 标签、结构化数据
+- **Intercepting Routes**: Modal 详情浏览，自动保持滚动位置
+
+### 5. 详情页路由架构 (Intercepting Routes)
+
+采用 Next.js 15 的 Parallel Routes + Intercepting Routes 实现：
+
+```
+app/
+├── @modal/                      # Parallel Route (Modal 插槽)
+│   ├── default.tsx              # 默认返回 null
+│   └── (.)deals/[id]/           # 拦截 /deals/[id]
+│       ├── page.tsx             # Modal 入口
+│       └── DealModalContent.tsx # Modal 内容组件
+├── deals/
+│   └── [id]/
+│       ├── page.tsx             # 完整详情页 (刷新/直接访问)
+│       └── DealPageClient.tsx   # 详情页客户端组件
+└── layout.tsx                   # 渲染 {children} + {modal}
+```
+
+**用户体验流程**:
+
+| 场景 | 行为 |
+|------|------|
+| 从列表点击商品 | Modal 弹出显示详情，URL 变为 `/deals/123` |
+| 在 Modal 中关闭 | 返回列表，滚动位置自动保持 |
+| 在 Modal 中刷新 (F5) | 显示完整详情页 |
+| 直接访问 `/deals/123` | 显示完整详情页 |
+| 分享链接给他人 | 他人看到完整详情页 |
+
+**技术优势**:
+- 无需手动保存/恢复滚动位置
+- 浏览器原生前进后退支持
+- SEO 友好（完整页面可被爬虫索引）
+- 类似 Instagram/Twitter 的用户体验
 
 ---
 

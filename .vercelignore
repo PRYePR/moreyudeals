@@ -1,0 +1,6 @@
+# Vercel Ignore File
+# 强制 Vercel 不使用某些缓存
+
+.next/
+.turbo/
+node_modules/.cache/

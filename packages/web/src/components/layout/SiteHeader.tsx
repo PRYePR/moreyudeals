@@ -27,11 +27,6 @@ import {
 } from 'lucide-react'
 import { TranslationControl } from '@/components/TranslatableContent'
 import LayoutSwitcher from '@/components/LayoutSwitcher'
-import Image from 'next/image'
-
-const CACHE_PREFIX = 'deals_cache_'
-const RETURN_FLAG = 'fromListPage'
-const SCROLL_KEY = 'scrollY'
 
 interface Category {
   id: string
@@ -156,25 +151,11 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
     }
   }
 
-  const clearListCache = () => {
-    if (typeof window === 'undefined') return
-    const keysToRemove: string[] = []
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i)
-      if (!key) continue
-      if (key.startsWith(CACHE_PREFIX) || key === RETURN_FLAG || key === SCROLL_KEY) {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key))
-  }
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Logo 点击：清除缓存并强制刷新整个页面
-    clearListCache()
+    // Logo 点击：导航到首页
     const layout = searchParams.get('layout')
-    window.location.href = layout ? `/?layout=${layout}` : '/'
+    router.push(layout ? `/?layout=${layout}` : '/')
   }
 
   return (
@@ -192,14 +173,10 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
             >
               {/* Logo 图片 */}
               <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Image
+                <img
                   src="/logo.png"
                   alt="墨鱼折扣"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  priority
-                  unoptimized
+                  className="w-10 h-10 object-contain"
                 />
               </div>
               {/* 网站名 */}
@@ -344,7 +321,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索优惠信息..."
-                className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+                className="w-full pl-10 pr-12 py-2 bg-white text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <button
@@ -397,7 +374,7 @@ export default function SiteHeader({ merchants: allMerchants = [], categories: a
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索优惠信息..."
-              className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+              className="w-full pl-10 pr-12 py-2 bg-white text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <button

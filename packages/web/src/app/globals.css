@@ -109,3 +109,19 @@ a {
 .pagination-button.active {
   @apply bg-blue-500 text-white border-blue-500 hover:bg-blue-600;
 }
+
+/* Modal 动画 */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal-in {
+  animation: modal-in 0.2s ease-out;
+}

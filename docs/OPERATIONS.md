@@ -147,7 +147,7 @@ FETCH_RANDOM_DELAY_MAX=5  # 随机延迟最大值（分钟）
 ### 手动触发
 ```bash
 # 手动触发一次抓取
-cd /www/wwwroot/Moreyudeals/packages/worker
+cd /var/www/Moreyudeals/packages/worker
 node dist/index.js
 
 # 或通过PM2重启
@@ -192,7 +192,7 @@ pm2 logs moreyudeals-worker --err
 
 ### 告警渠道
 - **邮件通知**: `support@moreyu.com`
-- **日志文件**: `/www/wwwroot/Moreyudeals/logs/`
+- **日志文件**: `/var/www/Moreyudeals/logs/`
 - **PM2监控**: `pm2 monit`
 
 ---
