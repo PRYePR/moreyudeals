@@ -18,6 +18,7 @@ export default function DealModalContent({ dealId }: DealModalContentProps) {
   const [deal, setDeal] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
 
   // 获取 deal 数据
   useEffect(() => {
@@ -94,6 +95,39 @@ export default function DealModalContent({ dealId }: DealModalContentProps) {
     if (deal.merchantName) {
       // 使用 window.location.href 强制整页导航，确保 Modal 关闭
       window.location.href = `/?merchant=${encodeURIComponent(deal.merchantName)}`
+    }
+  }
+
+  // 分享功能
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/deals/${dealId}` : ''
+    const shareData = {
+      title: deal.title,
+      text: deal.price
+        ? `${deal.title} - ${formatPrice(deal.price)}`
+        : deal.title,
+      url: shareUrl
+    }
+
+    // 优先使用 Web Share API（移动端/微信内置浏览器支持）
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData)
+      } catch (err) {
+        // 用户取消分享不算错误
+        if ((err as Error).name !== 'AbortError') {
+          console.error('分享失败:', err)
+        }
+      }
+    } else {
+      // Fallback: 复制链接到剪贴板
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareStatus('copied')
+        setTimeout(() => setShareStatus('idle'), 2000)
+      } catch (err) {
+        console.error('复制失败:', err)
+      }
     }
   }
 
@@ -217,39 +251,68 @@ export default function DealModalContent({ dealId }: DealModalContentProps) {
             </div>
           </div>
 
-          {/* 商家信息 */}
-          {deal.merchantName && (
-            <button
-              onClick={handleMerchantClick}
-              className="mb-4 sm:mb-6 flex items-center gap-2 p-2 sm:p-2.5 bg-gray-50 hover:bg-orange-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all w-full text-left group cursor-pointer"
-              title={`查看 ${deal.merchantName} 的所有优惠`}
-            >
-              <span className="text-xs sm:text-sm text-gray-600">商家:</span>
-              {deal.merchantLogo && (
-                <div className="relative w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
-                  <img
-                    src={deal.merchantLogo}
-                    alt={deal.merchantName}
-                    className="w-full h-full object-contain"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      // 商家 Logo 加载失败时隐藏容器
-                      e.currentTarget.onerror = null
-                      const container = e.currentTarget.parentElement
-                      if (container) container.style.display = 'none'
-                    }}
-                  />
+          {/* 商家信息行 - 左侧商家可点击，右侧分享按钮 */}
+          <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            {/* 商家信息（可点击筛选） */}
+            {deal.merchantName ? (
+              <button
+                onClick={handleMerchantClick}
+                className="flex-1 flex items-center gap-2 p-2 sm:p-2.5 bg-gray-50 hover:bg-orange-50 rounded-lg border border-gray-200 hover:border-orange-300 transition-all text-left group cursor-pointer min-h-[44px]"
+                title={`查看 ${deal.merchantName} 的所有优惠`}
+              >
+                <span className="text-xs sm:text-sm text-gray-600">商家:</span>
+                {deal.merchantLogo && (
+                  <div className="relative w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
+                    <img
+                      src={deal.merchantLogo}
+                      alt={deal.merchantName}
+                      className="w-full h-full object-contain"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // 商家 Logo 加载失败时隐藏容器
+                        e.currentTarget.onerror = null
+                        const container = e.currentTarget.parentElement
+                        if (container) container.style.display = 'none'
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                  {deal.merchantName}
                 </div>
+                <svg className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+            ) : (
+              <div className="flex-1" />
+            )}
+
+            {/* 分享按钮 */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 hover:bg-orange-50 active:bg-orange-100 rounded-lg border border-gray-200 hover:border-orange-300 active:border-orange-400 transition-all min-h-[44px]"
+              title={shareStatus === 'copied' ? '已复制链接' : '分享此优惠'}
+            >
+              {shareStatus === 'copied' ? (
+                <>
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-xs sm:text-sm text-green-600 font-medium">已复制</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <span className="text-xs sm:text-sm text-gray-600 font-medium">分享</span>
+                </>
               )}
-              <div className="text-sm sm:text-base font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
-                {deal.merchantName}
-              </div>
-              <svg className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
             </button>
-          )}
+          </div>
 
           {/* CTA 按钮 */}
           <div className="mb-4 sm:mb-6">
