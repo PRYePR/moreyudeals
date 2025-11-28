@@ -15,7 +15,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Trust proxy - required for Cloudflare Tunnel
-app.set('trust proxy', true);
+// 设置为 1 表示只信任一层代理（Cloudflare），防止 IP 伪造绕过限速
+app.set('trust proxy', 1);
 
 // Database connection pool (read-only)
 const pool = new Pool({
